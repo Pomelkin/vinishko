@@ -26,7 +26,7 @@ HF_REPOS = {
     "winesensed": "christopher/winesensed",
     "rp2k": "JamieSJS/rp2k",
     "sop": "JamieSJS/stanford-online-products",
-    "products10k": "amaye15/Products-10k",
+    "products10k": "nyris/products10k-traintest-v1",
 }
 OFF_API = "https://world.openfoodfacts.org/api/v2/search"
 OFF_CATEGORY = "wines"
@@ -235,16 +235,16 @@ async def download_off(client: httpx.AsyncClient, out: Path, progress: Progress,
     progress.remove_task(dataset_task)
 
 
-async def run(out: Path, local: bool, proxy: str | None) -> None:
+async def run(out: Path, datasets: list[str], local: bool, proxy: str | None) -> None:
     overall = count_progress()
     transfer = bytes_progress()
     timeout = httpx.Timeout(60, read=600)
     with Live(Group(overall, transfer), console=console, refresh_per_second=8):
-        overall_task = overall.add_task("all", name="datasets", total=len(DATASETS))
+        overall_task = overall.add_task("all", name="datasets", total=len(datasets))
         async with httpx.AsyncClient(
             proxy=proxy, follow_redirects=True, timeout=timeout, headers={"User-Agent": USER_AGENT}
         ) as client:
-            for name in DATASETS:
+            for name in datasets:
                 overall.update(overall_task, name=f"datasets · {name}")
                 target = out / name
                 if name in HF_REPOS:
@@ -259,13 +259,14 @@ async def run(out: Path, local: bool, proxy: str | None) -> None:
 @click.argument("out", type=click.Path(path_type=Path))
 @click.option("--pb", type=click.Choice(["global", "local"]), default="global", show_default=True, help="Бар на датасет или бар на каждый файл")
 @click.option("--proxy", default=None, help="URL прокси, например http://127.0.0.1:2080")
-def main(out: Path, pb: str, proxy: str | None) -> None:
+@click.option("--datasets", "-d", multiple=True, type=click.Choice(DATASETS), help="Какие датасеты качать; по умолчанию все")
+def main(out: Path, pb: str, proxy: str | None, datasets: tuple[str, ...]) -> None:
     """Скачивает WineSensed, RP2K, Stanford Online Products, Products-10K и Open Food Facts (wines) в OUT."""
     if proxy:
         os.environ["HTTP_PROXY"] = proxy
         os.environ["HTTPS_PROXY"] = proxy
     out.mkdir(parents=True, exist_ok=True)
-    asyncio.run(run(out, pb == "local", proxy))
+    asyncio.run(run(out, list(datasets or DATASETS), pb == "local", proxy))
 
 
 if __name__ == "__main__":

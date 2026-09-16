@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-from features import FEAT_SIDE, FEATURES, candidate_features, gray_small
+from .features import FEAT_SIDE, FEATURES, candidate_features, gray_small
 
 HERE = Path(__file__).resolve().parent
 
