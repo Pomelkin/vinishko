@@ -1,0 +1,7 @@
+# данные и артефакты, которые не храним в git
+images
+out/
+labels.json
+features.jsonl
+*.pt
+__pycache__/
