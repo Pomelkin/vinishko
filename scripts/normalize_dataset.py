@@ -98,7 +98,7 @@ def main(datasets: tuple[Path, ...], config: Path, overrides: tuple[str, ...], s
     """Прогоняет Normalizer.annotate (SAM3 → отбор → ось бутылки, без рендера) по картинкам развёрнутого датасета и пишет разметку в <dataset>/normalization.jsonl.
 
     Одна строка на картинку: status, размер и все кандидаты с polys (маска в пикселях оригинала после EXIF), box, score и статусом отбора;
-    у отобранных — angle_deg, neck_point, base_point, bottle_size_px. Кропы не пишутся: их рендерит даталоадер через render_bottle с джиттером.
+    у отобранных — angle_deg, neck_point, base_point, bottle_size_px, mode, label_status, метрики label и маска этикетки label_polys. Кропы не пишутся: их рендерит даталоадер через render_bottle с джиттером.
     Дозапись: уже обработанные картинки пропускаются, порядок сплитов задаёт --splits. Запуск из корня: python -m scripts.normalize_dataset.
     """
     cfg = load_config(config, list(overrides))
