@@ -1,8 +1,3 @@
-"""Признаки кандидата SAM3 для отбора целевых бутылок.
-
-Веса логистической регрессии над этими признаками лежат в calibration.json.
-Порядок и смысл признаков должны совпадать с тем, на чём веса обучены.
-"""
 import cv2
 import numpy as np
 from PIL import Image
@@ -14,8 +9,8 @@ FEATURES = ["conf", "conf_rel", "conf_rank", "log_area", "area_rel", "height_fra
             "log_n_strong", "log_crowd"]
 
 
-def spectral_saliency(gray):
-    # Hou & Zhang 2007: спектральный остаток на миниатюре 64x64
+def spectral_saliency(gray: np.ndarray) -> np.ndarray:
+    """Карта салиентности по спектральному остатку (Hou & Zhang 2007) на миниатюре 64x64, растянутая до размера входа."""
     small = cv2.resize(gray, (64, 64), interpolation=cv2.INTER_AREA).astype(np.float32)
     f = np.fft.fft2(small)
     log_amp = np.log(np.abs(f) + 1e-8)
@@ -79,5 +74,5 @@ def candidate_features(gray_small: np.ndarray, seg: dict) -> list[dict]:
 def gray_small(img: Image.Image, side: int = FEAT_SIDE) -> np.ndarray:
     """Серая уменьшенная копия RGB-картинки: одинаково для калибровки и нормализации."""
     g = img.convert("L")
-    g.thumbnail((side, side), Image.BILINEAR)
+    g.thumbnail((side, side), Image.Resampling.BILINEAR)
     return np.asarray(g)

@@ -16,14 +16,14 @@
 |---|---|
 | `normalize.py` | нормализация, есть `--selftest` |
 | `normalize.toml` | конфиг, все параметры с комментариями |
-| `seg.py` | сегментация SAM3 и метрики этикетки |
+| `seg.py` | сегментация SAM3 (запасной вариант YOLO-seg, без этикеток) и метрики этикетки |
 | `features.py` | признаки кандидата для отбора |
 | `calibrate.py` | калибровка отбора по разметке |
 | `calibration.json` | текущие веса и порог отбора |
 
 ## Установка
 
-Нужны [uv](https://docs.astral.sh/uv/) и GPU с CUDA, зависимости описаны в шапке каждого скрипта. Веса SAM3 (`sam3.pt`, 3,4 ГБ) кладутся в эту папку. Официальный репозиторий https://huggingface.co/facebook/sam3 закрыт подтверждением доступа, тот же файл открыто лежит на ModelScope:
+Нужны [uv](https://docs.astral.sh/uv/) и GPU с CUDA. Зависимости ставятся из корня репозитория командой `uv sync`. Веса SAM3 (`sam3.pt`, 3,4 ГБ) кладутся в эту папку. Официальный репозиторий https://huggingface.co/facebook/sam3 закрыт подтверждением доступа, тот же файл открыто лежит на ModelScope:
 
 ```bash
 curl -L -o sam3.pt "https://modelscope.cn/models/facebook/sam3/resolve/master/sam3.pt"
@@ -35,11 +35,17 @@ uv run --with torch python -c "import torch; torch.load('sam3.pt', weights_only=
 
 ## Запуск
 
+Команды запускаются из корня репозитория:
+
 ```bash
-./normalize.py photo.jpg                           # одна картинка
-./normalize.py images/ --set output.dir=/data/out  # папка, параметр конфига из командной строки
-./normalize.py --selftest                          # проверка геометрии и метрик на синтетике, без модели
+N=vinishko.pipeline.steps.normalization
+uv run python -m $N.normalize photo.jpg                           # одна картинка
+uv run python -m $N.normalize images/ --set output.dir=/data/out  # папка, параметр конфига из командной строки
+uv run python -m $N.normalize --selftest                          # проверка геометрии и метрик на синтетике, без модели
+uv run python -m scripts.normalize_dataset datasets/<имя>         # разметка датасета в normalization.jsonl, без кропов
 ```
+
+Из кода: `Normalizer.annotate(path)` отдаёт разметку всех кандидатов без рендера, `Normalizer(img)` отдаёт список `Crop`.
 
 Модель загружается один раз за запуск, около 30 секунд. Дальше около 0,5 с на картинку. Если бутылка в кадре мелкая, этикетка ищется вторым проходом SAM3 по вырезке бутылки, это ещё около 0,35 с на такую бутылку.
 
@@ -82,7 +88,7 @@ uv run --with torch python -c "import torch; torch.load('sam3.pt', weights_only=
 
 `label_status` равен `ok` или причине из таблицы ниже, для целого фото `no_bottle`. Если этикетка не прошла проверку, поля `label_box`, `label_mask` и `label_crop` равны `null`.
 
-Строгий режим для индексации каталога и обучения: `--set label.required=true --set fallback.full_image=false`. Тогда бутылки без хорошей этикетки не вырезаются, а причины пишутся в консоль.
+Строгий режим для индексации каталога и обучения: `--set label.required=true --set fallback.full_image=false`. Тогда бутылки без хорошей этикетки не вырезаются, причина остаётся в `status` кандидата в разметке `annotate`.
 
 ## Отбор и проверка этикетки
 
@@ -104,8 +110,8 @@ uv run --with torch python -c "import torch; torch.load('sam3.pt', weights_only=
 ## Калибровка
 
 ```bash
-./calibrate.py                                  # images/ и labels.json в этой папке
-./calibrate.py --images /data/photos --beta 2   # порог сильнее в пользу полноты
+uv run python -m vinishko.pipeline.steps.normalization.calibrate                                 # images/ и labels.json в этой папке
+uv run python -m vinishko.pipeline.steps.normalization.calibrate --images /data/photos --beta 2  # порог сильнее в пользу полноты
 ```
 
 Скрипт прогоняет SAM3 по размеченным картинкам, считает 16 признаков кандидатов и обучает логистическую регрессию с групповой кросс-валидацией. Результат пишется в `calibration.json`. Формат разметки:
