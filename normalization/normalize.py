@@ -166,7 +166,9 @@ class Normalizer:
         self.threshold = sel["threshold"] if sel["threshold"] >= 0 else self.calib["threshold"]
         sc = cfg["segmentation"]
         from seg import Segmenter
-        self.seg = Segmenter(resolve(sc["model"], base), sc["prompt"], sc["conf"], sc["imgsz"], sc["max_side"])
+        lb = cfg["label"]
+        self.seg = Segmenter(resolve(sc["model"], base), sc["prompt"], sc["conf"], sc["imgsz"], sc["max_side"],
+                             label_prompt=lb["prompt"] if lb["enabled"] else None, label_conf=lb["min_conf"])
         if self.seg.tag != self.calib.get("segmentation"):
             print(f"внимание: калибровка сделана для сегментации {self.calib.get('segmentation')}, сейчас {self.seg.tag}", file=sys.stderr)
 
@@ -193,9 +195,14 @@ class Normalizer:
         for rank, i in enumerate(order):
             c = seg["cands"][i]
             entry = {"candidate": c["id"], "conf": c["conf"], "box": c["box"], "score": round(scores[i], 4)}
+            if "label" in c:
+                entry["label_conf"], entry["label_cover"] = c["label"]["conf"], c["label"]["cover"]
             cands.append(entry)
             if scores[i] < self.threshold or not any(len(p) >= 3 for p in c["polys"]):
                 entry["status"] = "below_threshold" if scores[i] < self.threshold else "empty_mask"
+                continue
+            if cfg["label"]["enabled"] and c["label"]["cover"] < cfg["label"]["min_cover"]:
+                entry["status"] = "no_label"
                 continue
             if sel["max_bottles"] and len(bottles) >= sel["max_bottles"]:
                 entry["status"] = "over_max_bottles"
@@ -211,6 +218,7 @@ class Normalizer:
                       "webp": [cv2.IMWRITE_WEBP_QUALITY, cfg["output"]["quality"]], "png": []}[cfg["output"]["format"]]
             cv2.imwrite(str(out_dir / fname), cv2.cvtColor(crop, cv2.COLOR_RGB2BGR), params)
             bottles.append({"index": n, "candidate": c["id"], "score": entry["score"], "conf": c["conf"],
+                            **({"label_conf": entry["label_conf"], "label_cover": entry["label_cover"]} if "label" in c else {}),
                             "box": c["box"], "output": fname, **info})
         timing["render"] = time.perf_counter() - t
         timing["total"] = time.perf_counter() - t0
@@ -221,7 +229,7 @@ class Normalizer:
             "source": {"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                        "width": seg["w"], "height": seg["h"]},
             "segmentation": {"model": seg["model"], "prompt": seg["prompt"], "imgsz": seg["imgsz"], "scale": seg["scale"],
-                             "n_candidates": len(seg["cands"])},
+                             "label_prompt": seg["label_prompt"], "n_candidates": len(seg["cands"])},
             "selection": {"calibration": self.cfg["selection"]["calibration"], "threshold": round(self.threshold, 4),
                           "candidates": cands},
             "bottles": bottles,
@@ -264,6 +272,14 @@ def selftest():
         assert info["neck_method"] == method, (deg, info["neck_method"])
         if deg == 170:  # почти вертикальная бутылка вверх ногами считается стоящей: верхний конец становится горлышком
             assert abs(info["angle_deg"]) < 15, info["angle_deg"]
+    from seg import label_stats
+    bottle = np.zeros((100, 40), bool); bottle[10:90, 10:30] = True                       # бутылка 20x80 = 1600 px
+    front = np.zeros_like(bottle); front[50:70, 10:30] = True                               # этикетка 400 px внутри
+    outside = np.zeros_like(bottle); outside[0:20, 0:40] = True                             # в основном снаружи бутылки
+    st = label_stats(bottle, [0.9, 0.95], [front, outside], 0.4)
+    assert st == {"conf": 0.9, "cover": 0.25}, st                                           # внешняя не считается
+    assert label_stats(bottle, [0.3], [front], 0.4) == {"conf": 0.3, "cover": 0.0}          # слабая не покрывает
+    assert label_stats(bottle, [], [], 0.4) == {"conf": 0.0, "cover": 0.0}
     print("selftest ok")
 
 
