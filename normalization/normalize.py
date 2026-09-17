@@ -106,14 +106,54 @@ def fast_blur(img: np.ndarray, sigma: float) -> np.ndarray:
     return cv2.resize(small, (w, h), interpolation=cv2.INTER_LINEAR)
 
 
-def render_bottle(rgb: np.ndarray, polys: list, cfg: dict) -> tuple[np.ndarray, dict]:
-    """Кроп одной бутылки: поворот, запас, блюр фона. Возвращает картинку и описание преобразования."""
+def limit_padding(own, others, px: float, py: float) -> tuple[float, float, list]:
+    """Урезает запас, чтобы он не заходил в боксы соседей. Боксы [x1, y1, x2, y2] в системе координат кропа.
+
+    Сосед, перекрывающий бокс самой бутылки, не учитывается: запасом это не исправить.
+    Запас по оси урезается симметрично, чтобы бутылка оставалась по центру кропа.
+    Возвращает px, py и номера соседей, которые урезали запас.
+    """
+    x1, y1, x2, y2 = own
+    side = {"left": (px, None), "right": (px, None), "top": (py, None), "bottom": (py, None)}
+
+    def tighten(name, gap, oid):
+        if gap < side[name][0]:
+            side[name] = (max(0.0, gap), oid)
+
+    for oid, (ox1, oy1, ox2, oy2) in others:
+        if oy2 > y1 - py and oy1 < y2 + py:  # сосед на уровне кропа по вертикали
+            if ox2 <= x1:
+                tighten("left", x1 - ox2, oid)
+            elif ox1 >= x2:
+                tighten("right", ox1 - x2, oid)
+    px = min(side["left"][0], side["right"][0])
+    for oid, (ox1, oy1, ox2, oy2) in others:
+        if ox2 > x1 - px and ox1 < x2 + px:  # сосед на уровне кропа по горизонтали, с уже урезанным запасом
+            if oy2 <= y1:
+                tighten("top", y1 - oy2, oid)
+            elif oy1 >= y2:
+                tighten("bottom", oy1 - y2, oid)
+    py = min(side["top"][0], side["bottom"][0])
+    binding = [side[s][1] for s in ("left", "right") if side[s][1] is not None and side[s][0] == px]
+    binding += [side[s][1] for s in ("top", "bottom") if side[s][1] is not None and side[s][0] == py]
+    return px, py, sorted(set(binding))
+
+
+def render_bottle(rgb: np.ndarray, polys: list, cfg: dict, others=()) -> tuple[np.ndarray, dict]:
+    """Кроп одной бутылки: поворот, запас, блюр фона. others: [(id кандидата, полигоны)] соседних бутылок."""
     ax = bottle_axis(polys, cfg["orientation"])
     M = cv2.getRotationMatrix2D(tuple(map(float, ax["center"])), ax["angle"], 1.0)
     verts = affine(M, np.concatenate([np.asarray(p, np.float64) for p in polys if len(p) >= 3]))
     (rx1, ry1), (rx2, ry2) = verts.min(0), verts.max(0)
     bw, bh = rx2 - rx1, ry2 - ry1
     px, py = cfg["crop"]["padding_x"] * bw, cfg["crop"]["padding_y"] * bh
+    limited_by = []
+    if cfg["crop"]["avoid_neighbors"] and others:
+        boxes = []
+        for oid, opolys in others:  # соседей поворачиваем той же матрицей, что и бутылку
+            ov = affine(M, np.concatenate([np.asarray(p, np.float64) for p in opolys]))
+            boxes.append((oid, (*ov.min(0), *ov.max(0))))
+        px, py, limited_by = limit_padding((rx1, ry1, rx2, ry2), boxes, px, py)
     W, H = max(1, math.ceil(bw + 2 * px)), max(1, math.ceil(bh + 2 * py))
     A = M.copy()
     A[:, 2] -= [rx1 - px, ry1 - py]
@@ -148,6 +188,8 @@ def render_bottle(rgb: np.ndarray, polys: list, cfg: dict) -> tuple[np.ndarray, 
         "base_point": [round(v, 1) for v in ax["base"]],
         "bottle_size_px": [round(bw, 1), round(bh, 1)],
         "padding_px": [round(px, 1), round(py, 1)],
+        "padding_frac": [round(px / max(bw, 1e-9), 4), round(py / max(bh, 1e-9), 4)],
+        "padding_limited_by": limited_by,
         "out_of_bounds_frac": round(1 - float(inside.mean()), 4),
         "matrix_src_to_dst": np.round(A, 6).tolist(),
         "matrix_dst_to_src": np.round(cv2.invertAffineTransform(A), 6).tolist(),
@@ -207,7 +249,9 @@ class Normalizer:
             if sel["max_bottles"] and len(bottles) >= sel["max_bottles"]:
                 entry["status"] = "over_max_bottles"
                 continue
-            crop, info = render_bottle(rgb, c["polys"], cfg)
+            others = [(o["id"], [p for p in o["polys"] if len(p) >= 3]) for o in seg["cands"]
+                      if o["id"] != c["id"] and any(len(p) >= 3 for p in o["polys"])]
+            crop, info = render_bottle(rgb, c["polys"], cfg, others)
             if sel["min_bottle_px"] and info["bottle_size_px"][1] < sel["min_bottle_px"]:
                 entry["status"] = "too_small"
                 continue
@@ -272,6 +316,18 @@ def selftest():
         assert info["neck_method"] == method, (deg, info["neck_method"])
         if deg == 170:  # почти вертикальная бутылка вверх ногами считается стоящей: верхний конец становится горлышком
             assert abs(info["angle_deg"]) < 15, info["angle_deg"]
+    # запас не заходит в соседние боксы: бутылка 40x180 с центром (120, 250), её бокс x 100..140
+    cfg["crop"]["avoid_neighbors"] = True
+    me = [(outline + [120, 250]).round().astype(int).tolist()]
+    rect = lambda x1, x2: [[x1, 160], [x2, 160], [x2, 340], [x1, 340]]
+    _, info = render_bottle(rgb, me, cfg, [(2, [rect(143, 183)])])                       # сосед в 3 px справа
+    assert abs(info["padding_px"][0] - 3) < 0.5 and info["padding_limited_by"] == [2], info       # слева урезано симметрично
+    assert abs(info["padding_px"][1] - 18.0) < 0.5, info                                   # по вертикали запас полный
+    _, info = render_bottle(rgb, me, cfg, [(3, [rect(400, 440)])])                        # сосед далеко
+    assert abs(info["padding_px"][0] - 4) < 0.5 and info["padding_limited_by"] == [], info
+    _, info = render_bottle(rgb, me, cfg, [(4, [rect(130, 170)])])                        # сосед внахлёст не учитывается
+    assert abs(info["padding_px"][0] - 4) < 0.5 and info["padding_limited_by"] == [], info
+
     from seg import label_stats
     bottle = np.zeros((100, 40), bool); bottle[10:90, 10:30] = True                       # бутылка 20x80 = 1600 px
     front = np.zeros_like(bottle); front[50:70, 10:30] = True                               # этикетка 400 px внутри

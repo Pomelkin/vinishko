@@ -43,7 +43,7 @@ uv run --with torch python -c "import torch; torch.load('sam3.pt', weights_only=
 ```bash
 ./normalize.py photo.jpg                          # одна картинка
 ./normalize.py images/ --set output.height=1024   # папка, с переопределением параметра
-./normalize.py --selftest                         # проверка геометрии и покрытия этикеткой на синтетике, без модели
+./normalize.py --selftest                         # проверка геометрии, запаса и покрытия этикеткой на синтетике, без модели
 ```
 
 Результат пишется в `out/`. Модель загружается один раз на запуск, это около 30 секунд. Дальше время на картинку такое, замер на RTX 4070, которую параллельно грузил другой процесс:
@@ -70,6 +70,7 @@ uv run --with torch python -c "import torch; torch.load('sam3.pt', weights_only=
 | `label.min_cover` | `0.10` | минимальная доля площади бутылки под этикеткой |
 | `orientation.upright_within_deg` | `30` | почти вертикальная бутылка считается стоящей горлышком вверх |
 | `crop.padding_x`, `crop.padding_y` | `0.10` | запас с каждой стороны, доля ширины и высоты бутылки |
+| `crop.avoid_neighbors` | `true` | запас не заходит в боксы других кандидатов |
 | `background.mode` | `blur` | `blur`, `color` или `none` |
 | `output.height` | `0` | высота выходного кропа, `0` сохраняет родное разрешение |
 
@@ -84,6 +85,12 @@ uv run --with torch python -c "import torch; torch.load('sam3.pt', weights_only=
 3. Если концы маски почти одной ширины, горлышком считается верхний конец.
 
 В JSON способ записан в поле `neck_method`: `upright_prior`, `profile` или `up`.
+
+### Запас вокруг бутылки
+
+Кроп — это бокс бутылки после поворота плюс `padding_x` ширины слева и справа и `padding_y` высоты сверху и снизу. Если запас с какой-то стороны заходит в бокс другого кандидата SAM3, он урезается до границы соседа. Соседей поворачивают той же матрицей, что и бутылку, поэтому сравнение идёт в системе координат кропа.
+
+Запас по оси урезается симметрично, чтобы бутылка оставалась по центру. Сосед, который перекрывает бокс самой бутылки, не учитывается: запасом такое перекрытие не исправить. Фактический запас записан в `padding_frac`, номера соседей, урезавших его, в `padding_limited_by`.
 
 ### Проверка этикетки
 
@@ -121,7 +128,7 @@ uv run --with torch python -c "import torch; torch.load('sam3.pt', weights_only=
     "candidate": 1, "score": 0.6834, "label_conf": 0.896, "label_cover": 0.375,
     "angle_deg": -1.25, "neck_method": "upright_prior",
     "neck_point": [272.4, 377.9], "base_point": [278.3, 646.0],
-    "bottle_size_px": [60.8, 267.7], "padding_px": [6.1, 26.8],
+    "bottle_size_px": [60.8, 267.7], "padding_px": [6.1, 26.8], "padding_frac": [0.1, 0.1], "padding_limited_by": [],
     "out_of_bounds_frac": 0.0,
     "matrix_src_to_dst": [[0.99976, -0.021899, -227.49], [0.021899, 0.99976, -357.01]],
     "matrix_dst_to_src": [[0.99976, 0.021899, 235.25], [-0.021899, 0.99976, 351.94]],
