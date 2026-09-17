@@ -23,6 +23,7 @@ from features import FEAT_SIDE, FEATURES, candidate_features, gray_small
 
 HERE = Path(__file__).resolve().parent
 
+
 def iou(a, b):
     ix = max(0, min(a[2], b[2]) - max(a[0], b[0])); iy = max(0, min(a[3], b[3]) - max(a[1], b[1]))
     inter = ix * iy
@@ -44,13 +45,13 @@ def image_rows(name, label, seg, gray):
     return name, rows, len(good), missed, len(seg["cands"])
 
 
-def evaluate(df_names, rows, probs, thr, n_good, n_missed, n_cands, subset=None):
+def evaluate(names, rows, probs, thr, n_good, n_missed, subset=None):
     """Метрики уровня бутылок и картинок для правила «берём кандидатов с p >= thr»."""
     by_img = {}
     for r, p in zip(rows, probs):
         by_img.setdefault(r["name"], []).append((r["y"], p >= thr))
     tp = fp = fn = exact = no_target_imgs = no_target_fp = imgs = 0
-    for n in df_names:
+    for n in names:
         if subset and not subset(n):
             continue
         imgs += 1
@@ -74,10 +75,10 @@ def fbeta(m, beta):
     return (1 + beta ** 2) * p * r / (beta ** 2 * p + r + 1e-9)
 
 
-def best_threshold(names, rows, probs, n_good, n_missed, n_cands, beta=1.0):
+def best_threshold(names, rows, probs, n_good, n_missed, beta=1.0):
     """Порог, максимизирующий F-бета: beta > 1 ценит полноту выше точности."""
     grid = np.linspace(0.05, 0.95, 91)
-    scores = [fbeta(evaluate(names, rows, probs, t, n_good, n_missed, n_cands), beta) for t in grid]
+    scores = [fbeta(evaluate(names, rows, probs, t, n_good, n_missed), beta) for t in grid]
     return float(grid[int(np.argmax(scores))])
 
 
@@ -98,9 +99,9 @@ def main():
     labels = {n: v for n, v in json.loads(args.labels.read_text()).items() if v["decision"] != "ambiguous"}
     todo = [(n, v) for n, v in labels.items() if (args.images / n).is_file()]
     print(f"размеченных картинок: {len(labels)}, найдено в {args.images}: {len(todo)}")
-    sc = tomllib.loads(args.config.read_text())["segmentation"]
-    model = Path(sc["model"]) if Path(sc["model"]).is_absolute() else args.config.resolve().parent / sc["model"]
-    segmenter = Segmenter(model, sc["prompt"], sc["conf"], sc["imgsz"], sc["max_side"])
+    seg_cfg = tomllib.loads(args.config.read_text())["segmentation"]
+    segmenter = Segmenter(args.config.resolve().parent / seg_cfg["model"], seg_cfg["prompt"], seg_cfg["conf"],
+                          seg_cfg["imgsz"], seg_cfg["max_side"])
     results = []
     for i, (n, v) in enumerate(todo, 1):
         img = open_image(args.images / n)
@@ -121,8 +122,8 @@ def main():
 
     oof = {"lr": np.zeros(len(y)), "gb": np.zeros(len(y))}
     for tr, te in GroupKFold(n_splits=5).split(X, y, groups):
-        sc = StandardScaler().fit(X[tr])
-        oof["lr"][te] = LogisticRegression(C=1.0, max_iter=2000).fit(sc.transform(X[tr]), y[tr]).predict_proba(sc.transform(X[te]))[:, 1]
+        scaler = StandardScaler().fit(X[tr])
+        oof["lr"][te] = LogisticRegression(C=1.0, max_iter=2000).fit(scaler.transform(X[tr]), y[tr]).predict_proba(scaler.transform(X[te]))[:, 1]
         oof["gb"][te] = HistGradientBoostingClassifier(max_iter=200, learning_rate=0.05).fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]
 
     conf = X[:, FEATURES.index("conf")]
@@ -137,27 +138,27 @@ def main():
     report = {}
     print(f"\n{'метод':34s} {'порог':>5s} | {'все: P':>6s} {'R':>5s} {'F1':>5s} {'точн.карт':>9s} {'FP пуст':>7s} | {'трудн: F1':>9s} {'точн.карт':>9s}")
     for m, probs in methods.items():
-        thr = best_threshold(names, rows, probs, n_good, n_missed, n_cands, args.beta)
-        a = evaluate(names, rows, probs, thr, n_good, n_missed, n_cands)
-        hd = evaluate(names, rows, probs, thr, n_good, n_missed, n_cands, subset=hard)
+        thr = best_threshold(names, rows, probs, n_good, n_missed, args.beta)
+        a = evaluate(names, rows, probs, thr, n_good, n_missed)
+        hd = evaluate(names, rows, probs, thr, n_good, n_missed, subset=hard)
         report[m] = {"threshold": thr, "all": a, "hard": hd}
         print(f"{m:34s} {thr:5.2f} | {a['precision']:6.3f} {a['recall']:5.3f} {a['f1']:5.3f} {a['exact_images']:9.3f} {a['fp_on_empty']:7.3f} |"
               f" {hd['f1']:9.3f} {hd['exact_images']:9.3f}   tp={a['tp']} fp={a['fp']} fn={a['fn']}")
 
     print("\nлогистическая регрессия, порог под разные beta:")
     for b in (1.0, 1.25, 1.5, 2.0):
-        t = best_threshold(names, rows, oof["lr"], n_good, n_missed, n_cands, b)
-        m = evaluate(names, rows, oof["lr"], t, n_good, n_missed, n_cands)
+        t = best_threshold(names, rows, oof["lr"], n_good, n_missed, b)
+        m = evaluate(names, rows, oof["lr"], t, n_good, n_missed)
         print(f"  beta={b:<4} порог={t:.2f}  P={m['precision']:.3f} R={m['recall']:.3f}  "
-              f"трудных верно={evaluate(names, rows, oof['lr'], t, n_good, n_missed, n_cands, subset=hard)['exact_images']:.3f}")
+              f"трудных верно={evaluate(names, rows, oof['lr'], t, n_good, n_missed, subset=hard)['exact_images']:.3f}")
 
-    sc = StandardScaler().fit(X)
-    lr = LogisticRegression(C=1.0, max_iter=2000).fit(sc.transform(X), y)
+    scaler = StandardScaler().fit(X)
+    lr = LogisticRegression(C=1.0, max_iter=2000).fit(scaler.transform(X), y)
     thr = report["логистическая регрессия"]["threshold"]
     print("\nвеса признаков (на стандартизованных значениях):")
     for k, wgt in sorted(zip(FEATURES, lr.coef_[0]), key=lambda t: -abs(t[1])):
         print(f"  {k:16s} {wgt:+.2f}")
-    calib = {"features": FEATURES, "mean": sc.mean_.tolist(), "std": sc.scale_.tolist(), "coef": lr.coef_[0].tolist(),
+    calib = {"features": FEATURES, "mean": scaler.mean_.tolist(), "std": scaler.scale_.tolist(), "coef": lr.coef_[0].tolist(),
              "intercept": float(lr.intercept_[0]), "threshold": thr, "beta": args.beta, "feat_side": FEAT_SIDE,
              "segmentation": segmenter.tag, "n_images": len(names), "n_candidates": len(rows), "cv_report": report}
     (HERE / "calibration.json").write_text(json.dumps(calib, ensure_ascii=False, indent=1))
