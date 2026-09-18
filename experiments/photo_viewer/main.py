@@ -1,22 +1,59 @@
 import random
+import re
+from io import BytesIO
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import unquote
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi import Request
 from fastapi.responses import FileResponse
 from fastapi.responses import HTMLResponse
+from PIL import Image
+from PIL import UnidentifiedImageError
 
 PHOTO_DIR = Path(__file__).with_name("demo_photos")
+SAVE_DIR = Path(__file__).with_name("sorted_photos")
 SPLIT_SEED = 54
 FOLDER_COUNT = 3
-HOST = "127.0.0.1"
+HOST = "0.0.0.0"
 PORT = 8000
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 
 app = FastAPI(title="Просмотрщик фотографий")
+
+
+def selected_image(folder_index: int, file_index: int) -> Path:
+    groups = image_groups()
+    if not 0 <= folder_index < len(groups) or not 0 <= file_index < len(groups[folder_index]):
+        raise HTTPException(status_code=404, detail="Изображение не найдено")
+    return groups[folder_index][file_index]
+
+
+def safe_name(value: str) -> str:
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", value).strip(" .")[:180] or "unnamed"
+    if name.upper() in {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
+                        *(f"LPT{i}" for i in range(1, 10))}:
+        name = f"_{name}"
+    return name
+
+
+def save_unique(directory: Path, filename: str, data: bytes) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    path = Path(filename)
+    counter = 1
+    while True:
+        target = directory / (filename if counter == 1 else f"{path.stem}_{counter}{path.suffix}")
+        try:
+            with target.open("xb") as file:
+                file.write(data)
+            return target
+        except FileExistsError:
+            counter += 1
 
 
 @lru_cache(maxsize=1)
@@ -56,10 +93,32 @@ def folders() -> list[dict[str, object]]:
 
 @app.get("/image/{folder_index}/{file_index}")
 def image(folder_index: int, file_index: int) -> FileResponse:
-    groups = image_groups()
-    if not 0 <= folder_index < len(groups) or not 0 <= file_index < len(groups[folder_index]):
-        raise HTTPException(status_code=404, detail="Изображение не найдено")
-    return FileResponse(groups[folder_index][file_index])
+    return FileResponse(selected_image(folder_index, file_index))
+
+
+@app.post("/api/save/{folder_index}/{file_index}")
+async def save_image(folder_index: int, file_index: int, request: Request) -> dict[str, str]:
+    source = selected_image(folder_index, file_index)
+    original_name = unquote(request.headers.get("x-filename", ""))
+    extension = Path(original_name).suffix.lower()
+    if extension not in IMAGE_EXTENSIONS:
+        raise HTTPException(status_code=415, detail="Можно загружать только изображения")
+
+    data = bytearray()
+    async for chunk in request.stream():
+        data.extend(chunk)
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Файл пустой или больше 50 МБ")
+    if not data:
+        raise HTTPException(status_code=413, detail="Файл пустой или больше 50 МБ")
+    try:
+        Image.open(BytesIO(data)).verify()
+    except (UnidentifiedImageError, OSError):
+        raise HTTPException(status_code=415, detail="Файл не является изображением") from None
+
+    filename = f"{safe_name(Path(original_name).stem)}{extension}"
+    target = save_unique(SAVE_DIR / safe_name(source.stem), filename, bytes(data))
+    return {"message": f"Сохранено: {target.relative_to(SAVE_DIR)}"}
 
 
 HTML = """<!doctype html>
@@ -87,12 +146,14 @@ HTML = """<!doctype html>
     main { display: grid; grid-template-rows: auto 1fr; min-width: 0; min-height: 0; }
     h1 { min-height: 72px; margin: 0; padding: 18px 80px; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(24px, 3vw, 42px); }
     .stage { position: relative; display: grid; min-height: 0; place-items: center; padding: 18px 70px 30px; }
+    .stage.dragging { outline: 5px dashed #7c5cff; outline-offset: -14px; background: #7c5cff18; }
     #photo { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 12px 40px #0008; }
     .arrow { position: absolute; top: 50%; width: 48px; height: 70px; border-radius: 12px; background: #292d35cc; font-size: 38px; transform: translateY(-50%); }
     .arrow:hover { background: #7c5cff; }
     .prev { left: 12px; }
     .next { right: 12px; }
     .empty { color: #9096a3; font-size: 20px; }
+    .notice { position: absolute; bottom: 16px; left: 50%; padding: 10px 16px; border-radius: 9px; background: #252932e8; transform: translateX(-50%); }
     @media (max-width: 700px) { .app { grid-template-columns: 150px 1fr; } .item { grid-template-columns: 1fr; } .item img { width: 100%; } .item span { font-size: 12px; } .folders { grid-template-columns: 1fr; } h1 { padding-inline: 20px; } }
   </style>
 </head>
@@ -108,6 +169,7 @@ HTML = """<!doctype html>
         <button class="arrow prev" aria-label="Предыдущее фото">‹</button>
         <img id="photo" alt="">
         <div class="empty" id="empty" hidden>В этой папке нет фотографий</div>
+        <div class="notice" id="notice" hidden></div>
         <button class="arrow next" aria-label="Следующее фото">›</button>
       </div>
     </main>
@@ -119,6 +181,8 @@ HTML = """<!doctype html>
     const title = document.querySelector('#title');
     const photo = document.querySelector('#photo');
     const empty = document.querySelector('#empty');
+    const stage = document.querySelector('#stage');
+    const notice = document.querySelector('#notice');
     const escapeText = value => value.replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
 
     function renderFolders() {
@@ -175,6 +239,34 @@ HTML = """<!doctype html>
     document.addEventListener('keydown', event => {
       if (event.key === 'ArrowLeft') move(-1);
       if (event.key === 'ArrowRight') move(1);
+    });
+
+    stage.addEventListener('dragover', event => {
+      event.preventDefault();
+      stage.classList.add('dragging');
+    });
+    stage.addEventListener('dragleave', () => stage.classList.remove('dragging'));
+    stage.addEventListener('drop', async event => {
+      event.preventDefault();
+      stage.classList.remove('dragging');
+      const file = event.dataTransfer.files[0];
+      if (!file || !folders[folderIndex].files[fileIndex]) return;
+
+      notice.hidden = false;
+      notice.textContent = 'Сохраняю…';
+      try {
+        const response = await fetch(`/api/save/${folderIndex}/${fileIndex}`, {
+          method: 'POST',
+          headers: {'X-Filename': encodeURIComponent(file.name)},
+          body: file,
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail);
+        notice.textContent = result.message;
+      } catch (error) {
+        notice.textContent = `Ошибка: ${error.message}`;
+      }
+      setTimeout(() => notice.hidden = true, 3500);
     });
 
     fetch('/api/folders').then(response => response.json()).then(data => {
