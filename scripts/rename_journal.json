@@ -1,0 +1,3141 @@
+{
+  "img_dir": "/Users/areremkin/Code/wine-hack/data/strapi/img",
+  "renames": [
+    {
+      "src": "01_Riesling_Silvaner_2022_1_4d11fabbf5.webp",
+      "dst": "01-Riesling-Silvaner-2022 (1).webp"
+    },
+    {
+      "src": "02_Silvaner_2022_2241743a4e.webp",
+      "dst": "02-Silvaner-2022.webp"
+    },
+    {
+      "src": "03_Silvaner_2022_Barrel_Fermented_01addc1e7f.webp",
+      "dst": "03-Silvaner-2022-Barrel-Fermented.webp"
+    },
+    {
+      "src": "03_Silvaner_2022_Barrel_Fermented_505ca7243c.webp",
+      "dst": "03-Silvaner-2022-Barrel-Fermented (2).webp"
+    },
+    {
+      "src": "03_Silvaner_2022_Barrel_Fermented_a5aaf46b23.webp",
+      "dst": "03-Silvaner-2022-Barrel-Fermented (3).webp"
+    },
+    {
+      "src": "0632ia7qvpbnncf2rdtc0371aua6i4q2_20fb4a70b1.webp",
+      "dst": "0632ia7qvpbnncf2rdtc0371aua6i4q2.webp"
+    },
+    {
+      "src": "075mjty781rmw0czc3ba7kc53w_preview_0_ezremove_a03c591e41.webp",
+      "dst": "075mjty781rmw0czc3ba7kc53w_preview_0-ezremove.webp"
+    },
+    {
+      "src": "114294_1_Photoroom_da9352acff.webp",
+      "dst": "114294_1-Photoroom.webp"
+    },
+    {
+      "src": "2_1ff7dd9f81.webp",
+      "dst": "2.webp"
+    },
+    {
+      "src": "2_4a0ff5c456.webp",
+      "dst": "2 (2).webp"
+    },
+    {
+      "src": "2_5e0e50a39a.webp",
+      "dst": "2 (3).webp"
+    },
+    {
+      "src": "2_6ca707efa4.webp",
+      "dst": "2 (4).webp"
+    },
+    {
+      "src": "2_8fdb34dcf3.webp",
+      "dst": "2 (5).webp"
+    },
+    {
+      "src": "2023g_Aya_Evolution_Pinot_noir_b850f06043.webp",
+      "dst": "2023г_Aya_Evolution_Pinot_noir.webp"
+    },
+    {
+      "src": "2024gu_Normal_Sh_T_Kaberene_Sovinon_suh_roz_burgundiya_0_75_44046e83c9.webp",
+      "dst": "2024гу Normal ШТ Каберене Совиньон  сух роз бургундия 0,75.webp"
+    },
+    {
+      "src": "2024gu_Normal_Sh_T_Kaberne_suhoe_krasnoe_0_75_4e3842e06a.webp",
+      "dst": "2024гу Normal ШТ Каберне сухое красное 0,75.webp"
+    },
+    {
+      "src": "2024gu_Normal_Sh_T_Krasnostop_suhoe_krasnoe_0_75_99318c8e15.webp",
+      "dst": "2024гу Normal ШТ Красностоп сухое красное 0,75.webp"
+    },
+    {
+      "src": "2024gu_Normal_Sh_T_Saperavi_suhoe_krasnoe_0_75_4b0f666d71.webp",
+      "dst": "2024гу Normal ШТ Саперави сухое красное 0,75.webp"
+    },
+    {
+      "src": "2024gu_Normal_Sh_T_Shardone_suhoe_beloe_0_75_a190db1db4.webp",
+      "dst": "2024гу Normal ШТ Шардоне сухое белое 0,75.webp"
+    },
+    {
+      "src": "20260617_070147_Photoroom_2bf16b8d06.webp",
+      "dst": "20260617_070147-Photoroom.webp"
+    },
+    {
+      "src": "20260617_071051_Photoroom_58ca3070a8.webp",
+      "dst": "20260617_071051-Photoroom.webp"
+    },
+    {
+      "src": "20260617_071733_Photoroom_31245772bb.webp",
+      "dst": "20260617_071733-Photoroom.webp"
+    },
+    {
+      "src": "20260617_072415_Photoroom_6dda2f8425.webp",
+      "dst": "20260617_072415-Photoroom.webp"
+    },
+    {
+      "src": "2202_v_UENI_49_2ae2376a1c.webp",
+      "dst": "2202_vUENI49.webp"
+    },
+    {
+      "src": "22_RA_11a_BWFX_8_Yu9_1775199820_d1ccb7706c.webp",
+      "dst": "22RA11aBWFX8Yu9_1775199820.webp"
+    },
+    {
+      "src": "2917_Is_MEB_Ew_05f10fa301.webp",
+      "dst": "2917_IsMEBEw.webp"
+    },
+    {
+      "src": "2919_Ktp_Yck_H_7dd7538fe4.webp",
+      "dst": "2919_KtpYckH.webp"
+    },
+    {
+      "src": "2920_t_IFZ_Zgl_88808d05fa.webp",
+      "dst": "2920_tIFZZgl.webp"
+    },
+    {
+      "src": "2922_l_Cf6_Bdm_213c0a3fbb.webp",
+      "dst": "2922_lCf6Bdm.webp"
+    },
+    {
+      "src": "2923_GVA_Ps_CA_no_bg_preview_carve_photos_4a01fd1119.webp",
+      "dst": "2923_GVAPsCA-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "2927_F6_GFXH_9_09971a59db.webp",
+      "dst": "2927_F6GFXH9.webp"
+    },
+    {
+      "src": "2934_gdn4e_Jx_261a22f964.webp",
+      "dst": "2934_gdn4eJx.webp"
+    },
+    {
+      "src": "2936_z_C6_X56_X_bbd70ec699.webp",
+      "dst": "2936_zC6X56X.webp"
+    },
+    {
+      "src": "2938_CG_6_Oxk_C_8ebbf0da39.webp",
+      "dst": "2938_CG6OxkC.webp"
+    },
+    {
+      "src": "2939_WV_4_G4x_P_1d07c0e491.webp",
+      "dst": "2939_WV4G4xP.webp"
+    },
+    {
+      "src": "2yfvayvay_83316bd121.webp",
+      "dst": "2ыфваываы.webp"
+    },
+    {
+      "src": "4285_eq_F1_Fau_no_bg_preview_carve_photos_6d7da0f321.webp",
+      "dst": "4285_eqF1Fau-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "4285_eq_F1_Fau_no_bg_preview_carve_photos_75f98bca1a.webp",
+      "dst": "4285_eqF1Fau-no-bg-preview (carve.photos) (2).webp"
+    },
+    {
+      "src": "4286_Ixm_F_Mpd_no_bg_preview_carve_photos_e9bc638816.webp",
+      "dst": "4286_IxmFMpd-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "4287_Y_Ch_P_Nz3_no_bg_preview_carve_photos_5f55816077.webp",
+      "dst": "4287_YChPNz3-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "4290_z_D_Kb_OVA_no_bg_preview_carve_photos_6bdfe80e27.webp",
+      "dst": "4290_zDKbOVA-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "4291_pif_Lu_Yu_no_bg_preview_carve_photos_d891f6036d.webp",
+      "dst": "4291_pifLuYu-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "4293_5v_Oij6_H_e1d1daa1cf.webp",
+      "dst": "4293_5vOij6H.webp"
+    },
+    {
+      "src": "4298_n_Wd2gfl_fc9d46eed2.webp",
+      "dst": "4298_nWd2gfl.webp"
+    },
+    {
+      "src": "4299_5o_I_Vt_UU_9348a5c313.webp",
+      "dst": "4299_5oIVtUU.webp"
+    },
+    {
+      "src": "4300_tl_K_Hp_Eg_0fa0eef9b4.webp",
+      "dst": "4300_tlKHpEg.webp"
+    },
+    {
+      "src": "4300_tl_K_Hp_Eg_58f660d670.webp",
+      "dst": "4300_tlKHpEg (2).webp"
+    },
+    {
+      "src": "4301_xc_Hycz_V_5f1c804393.webp",
+      "dst": "4301_xcHyczV.webp"
+    },
+    {
+      "src": "4302_K89cs_Mx_a2f8098739.webp",
+      "dst": "4302_K89csMx.webp"
+    },
+    {
+      "src": "4303_v_E_Ae_Fb_H_c2ae43e296.webp",
+      "dst": "4303_vEAeFbH.webp"
+    },
+    {
+      "src": "4308_TC_5bs_GE_232f37619b.webp",
+      "dst": "4308_TC5bsGE.webp"
+    },
+    {
+      "src": "4309_Xp_Hvu_QW_c001f686c0.webp",
+      "dst": "4309_XpHvuQW.webp"
+    },
+    {
+      "src": "4310_5n67_NVV_9e7031b185.webp",
+      "dst": "4310_5n67NVV.webp"
+    },
+    {
+      "src": "460110750287_no_bg_preview_carve_photos_d9a9b898cd.webp",
+      "dst": "460110750287-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "460110750288_no_bg_preview_carve_photos_613a90613e.webp",
+      "dst": "460110750288-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "460110750289_no_bg_preview_carve_photos_4b52546c83.webp",
+      "dst": "460110750289-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "460110750290_no_bg_preview_carve_photos_97c4b5c7e5.webp",
+      "dst": "460110750290-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "4826_N_Ndc2f_W_Photoroom_276188e83c.webp",
+      "dst": "4826_NNdc2fW-Photoroom.webp"
+    },
+    {
+      "src": "AV_AB_molodoe_polusuhoe_beloe_94421f365d.webp",
+      "dst": "AV. AB молодое, полусухое, белое.webp"
+    },
+    {
+      "src": "AV_AB_molodoe_suhoe_beloe_5e97393b71.webp",
+      "dst": "AV. AB молодое, сухое, белое.webp"
+    },
+    {
+      "src": "AYA_Mokap_apassimento_437849eda9.webp",
+      "dst": "AYA Мокап апассименто.webp"
+    },
+    {
+      "src": "AYA_Mokapy_igristoe_beloe_09976d020f.webp",
+      "dst": "AYA Мокапы игристое белое.webp"
+    },
+    {
+      "src": "AYA_Mokapy_igristoe_roze_e3c51b7973.webp",
+      "dst": "AYA Мокапы игристое розе.webp"
+    },
+    {
+      "src": "AYA_marquetry_cabernet_franc_2023_bottle_81526424ed.webp",
+      "dst": "AYA_marquetry_cabernet_franc_2023_bottle.webp"
+    },
+    {
+      "src": "AYA_marquetry_syrah_2023_bottle_90a876b523.webp",
+      "dst": "AYA_marquetry_syrah_2023_bottle.webp"
+    },
+    {
+      "src": "AYA_marquetry_syrah_merlot_cabernet_franc_2023_bottle_1174396457.webp",
+      "dst": "AYA_marquetry_syrah_merlot_cabernet_franc_2023_bottle.webp"
+    },
+    {
+      "src": "Abrau_Dyurso_Udelnoe_Vedomstvo_Imperatorskoe_beloe_polusladkoe_fac98a6538.webp",
+      "dst": "Абрау Дюрсо Удельное Ведомство Императорское белое полусладкое.webp"
+    },
+    {
+      "src": "Abrau_Dyurso_Udelnoe_vedomtsvo_bryut_80a96f319c.webp",
+      "dst": "Абрау Дюрсо Удельное ведомтсво брют.webp"
+    },
+    {
+      "src": "Abrau_Dyurso_Viktor_Dravini_bryut_4b532f42da.webp",
+      "dst": "Абрау Дюрсо Виктор Дравиньи брют.webp"
+    },
+    {
+      "src": "Abrau_Dyurso_fizz_bryut_2a15c7f74f.webp",
+      "dst": "Абрау Дюрсо физз брют.webp"
+    },
+    {
+      "src": "Abrau_Dyurso_fizz_polusladkoe_031d93d5e0.webp",
+      "dst": "Абрау Дюрсо физз полусладкое.webp"
+    },
+    {
+      "src": "Agora_Bastardo_59a04897ff.webp",
+      "dst": "Агора_Бастардо.webp"
+    },
+    {
+      "src": "Agora_Blek_Stoun_e98339ae1b.webp",
+      "dst": "Агора_Блэк Стоун.webp"
+    },
+    {
+      "src": "Agora_Kaberne_Sovinon_cf765cd22e.webp",
+      "dst": "Агора_Каберне Совиньон.webp"
+    },
+    {
+      "src": "Agora_Muskat_4030bf4725.webp",
+      "dst": "Агора_Мускат.webp"
+    },
+    {
+      "src": "Agora_Muskat_9e40e11a77.webp",
+      "dst": "Агора_Мускат (2).webp"
+    },
+    {
+      "src": "Agora_Muskat_d55b57a0af.webp",
+      "dst": "Агора_Мускат (3).webp"
+    },
+    {
+      "src": "Agora_Muskat_Chernyj_b3314704fa.webp",
+      "dst": "Агора_Мускат Черный.webp"
+    },
+    {
+      "src": "Agora_Pino_Nuar_e81246aa3a.webp",
+      "dst": "Агора_Пино Нуар.webp"
+    },
+    {
+      "src": "Agora_Rezerv_Yahting_Merlo_c83c62cf28.webp",
+      "dst": "Агора Резерв Яхтинг Мерло.webp"
+    },
+    {
+      "src": "Agora_Rezerv_Yahting_Pino_Gridzhio_5daf688202.webp",
+      "dst": "Агора Резерв Яхтинг Пино Гриджио_.webp"
+    },
+    {
+      "src": "Agora_Rezerv_Yahting_Shardone_836c91ea71.webp",
+      "dst": "Агора Резерв Яхтинг Шардоне.webp"
+    },
+    {
+      "src": "Agora_Rezerv_Yahting_Shiraz_efe299c1a7.webp",
+      "dst": "Агора Резерв Яхтинг Шираз.webp"
+    },
+    {
+      "src": "Agora_Rezerv_Yahting_Sovinon_kopiya_066436e3ad.webp",
+      "dst": "Агора Резерв Яхтинг Совиньон — копия.webp"
+    },
+    {
+      "src": "Agora_Rezerv_Yahting_Sovinon_kopiya_25525931ef.webp",
+      "dst": "Агора Резерв Яхтинг Совиньон — копия (2).webp"
+    },
+    {
+      "src": "Agora_Risling_1b886b07f8.webp",
+      "dst": "Агора_Рислинг.webp"
+    },
+    {
+      "src": "Agora_Saperavi_c472cc0afc.webp",
+      "dst": "Агора_Саперави.webp"
+    },
+    {
+      "src": "Agora_Shardone_4e9ddf9c52.webp",
+      "dst": "Агора_Шардоне.webp"
+    },
+    {
+      "src": "Agora_Sovinon_6b035f6913.webp",
+      "dst": "Агора_Совиньон.webp"
+    },
+    {
+      "src": "Alamak_bryut_beloe_2c9b3e074d.webp",
+      "dst": "Аламак брют белое.webp"
+    },
+    {
+      "src": "Aligote_Czitron_bel_suh_1cc2763d35.webp",
+      "dst": "Алиготе, Цитрон бел.сух.webp"
+    },
+    {
+      "src": "Aligote_Czitron_bel_suh_8bc8ca2832.webp",
+      "dst": "Алиготе, Цитрон бел.сух (2).webp"
+    },
+    {
+      "src": "Aligote_limitirovannaya_60fab8c449.webp",
+      "dst": "Алиготе_лимитированная.webp"
+    },
+    {
+      "src": "Alma_Velli_Lokantino_7ad51d416c.webp",
+      "dst": "Альма Вэлли Локантино.webp"
+    },
+    {
+      "src": "Amelia_22_png_e439aa8564.webp",
+      "dst": "Amelia 22_png.webp"
+    },
+    {
+      "src": "Amelia_23_89599a3948.webp",
+      "dst": "Amelia 23.webp"
+    },
+    {
+      "src": "Appassimento_cbbff6ab39.webp",
+      "dst": "Appassimento.webp"
+    },
+    {
+      "src": "Arie_2020_KFB_742c588475.webp",
+      "dst": "Arie 2020 KFB.webp"
+    },
+    {
+      "src": "Arie_2020_KFB_75504e4cd0.webp",
+      "dst": "Arie 2020 KFB (2).webp"
+    },
+    {
+      "src": "Arie_2020_WM_f96f943b9a.webp",
+      "dst": "Arie 2020 WM.webp"
+    },
+    {
+      "src": "Arie_reserva_4e284defd7.webp",
+      "dst": "Arie reserva.webp"
+    },
+    {
+      "src": "Aristov_Anima_milezimiato_bryut_4a887b783f.webp",
+      "dst": "Аристов Анима милезимиато брют.webp"
+    },
+    {
+      "src": "Aristov_Kyuve_Roze_Pino_2023_0_75l_bryut_Normal_Photoroom_cc598880d5.webp",
+      "dst": "(-)_Аристов Кюве Розе_Пино_2023_0,75л_брют Normal-Photoroom.webp"
+    },
+    {
+      "src": "Aristov_Kyuve_ekstra_bryut_Blan_de_Blan_18_MESI_2022_GU_Normal_fcdb509a54.webp",
+      "dst": "Аристов Кюве экстра брют Блан де Блан 18 MESI 2022ГУ Normal.webp"
+    },
+    {
+      "src": "Aristov_Kyuve_ekstra_bryut_Blan_de_Nuar_18_MESI_2022_GU_Normal_4a2bea6a3e.webp",
+      "dst": "Аристов Кюве экстра брют Блан де Нуар 18 MESI 2022ГУ Normal.webp"
+    },
+    {
+      "src": "B_Yr_Ab_T0x_R_Ed_Rg8j_1775199389_86635deb7f.webp",
+      "dst": "BYrAbT0xREdRg8j_1775199389.webp"
+    },
+    {
+      "src": "Balaklava_Muskat_beloe_polusladkoe_0e4a6563a4.webp",
+      "dst": "Балаклава Мускат белое полусладкое.webp"
+    },
+    {
+      "src": "Balaklava_belyj_bryut_fotor_bg_remover_2026012323611_f20c51312d.webp",
+      "dst": "Балаклава белый брют-fotor-bg-remover-2026012323611.webp"
+    },
+    {
+      "src": "Barhat_cd989f8325.webp",
+      "dst": "Бархат.webp"
+    },
+    {
+      "src": "Bastardo_terruarnoe_c692ff5ff0.webp",
+      "dst": "Бастардо терруарное.webp"
+    },
+    {
+      "src": "Bel_Lviczv_920970caba.webp",
+      "dst": "Бел.Львицв.webp"
+    },
+    {
+      "src": "Beloe_Polusladkoe_2024_6ac89014e4.webp",
+      "dst": "Белое Полусладкое_2024.webp"
+    },
+    {
+      "src": "Beloe_bryut_85d083f446.webp",
+      "dst": "Белое брют.webp"
+    },
+    {
+      "src": "Beloe_suhoe_MUSKAT_7b044897c5.webp",
+      "dst": "Белое сухое МУСКАТ.webp"
+    },
+    {
+      "src": "Beloe_suhoe_MUSKAT_acd23ecf92.webp",
+      "dst": "Белое сухое МУСКАТ (2).webp"
+    },
+    {
+      "src": "Blan_de_Blan_2d64f13a73.webp",
+      "dst": "Блан де Блан.webp"
+    },
+    {
+      "src": "Blan_de_Nuar_f3d5c90643.webp",
+      "dst": "Блан де Нуар.webp"
+    },
+    {
+      "src": "Blanc_de_noirs_brut_nature_030b095589.webp",
+      "dst": "Blanc de noirs brut nature.webp"
+    },
+    {
+      "src": "Bryut_beloe_fotor_bg_remover_20260123231541_242c08153f.webp",
+      "dst": "Брют белое-fotor-bg-remover-20260123231541.webp"
+    },
+    {
+      "src": "Bryut_rozovoe_011797b8f0.webp",
+      "dst": "Брют розовое.webp"
+    },
+    {
+      "src": "Bryut_rozovoe_0ab1422bb8.webp",
+      "dst": "Брют розовое (2).webp"
+    },
+    {
+      "src": "Bryut_rozovoe_201aa766b7.webp",
+      "dst": "Брют розовое (3).webp"
+    },
+    {
+      "src": "Bryut_rozovoe_6b02e13286.webp",
+      "dst": "Брют розовое (4).webp"
+    },
+    {
+      "src": "CANTIANI_Igrist_Brut_vid5_042026_kopiya_1b13527c60.webp",
+      "dst": "CANTIANI_Igrist_Brut_vid5_042026 копия.webp"
+    },
+    {
+      "src": "CANTIANI_Igristoe_Chardon_444h1200px_fa4fe5363b.webp",
+      "dst": "CANTIANI_Igristoe Chardon_444х1200px.webp"
+    },
+    {
+      "src": "CANTIANI_Igristoe_Riesl_vid_032025_kopiya_8150a5e627.webp",
+      "dst": "CANTIANI_Igristoe-Riesl_vid_032025 копия.webp"
+    },
+    {
+      "src": "CANTIANI_Igristoe_Rkats_vid_032025_kopiya_29e44021af.webp",
+      "dst": "CANTIANI_Igristoe Rkats_vid_032025 копия.webp"
+    },
+    {
+      "src": "CANTIANI_Igristoe_white_semi_444h1200px_2d2892b235.webp",
+      "dst": "CANTIANI_Igristoe white semi_444х1200px.webp"
+    },
+    {
+      "src": "Cantiani_Alig_Riesl_New_vid_042025_kopiya_fotor_bg_remover_20260821205234_286ee15115.webp",
+      "dst": "Cantiani-AligRiesl_New vid_042025 копия-fotor-bg-remover-20260821205234.webp"
+    },
+    {
+      "src": "Cantiani_Caber_Sauv_vid_042024_Photoroom_834a144a19.webp",
+      "dst": "Cantiani-CaberSauv_vid_042024-Photoroom.webp"
+    },
+    {
+      "src": "Cantiani_Merlot_vid_042024_189cdd1f9c.webp",
+      "dst": "Cantiani-Merlot_vid_042024.webp"
+    },
+    {
+      "src": "Cantiani_Reserve_1_e1bd881754.webp",
+      "dst": "Cantiani_Reserve (1).webp"
+    },
+    {
+      "src": "Cantiani_Riesl_New_vid_042025_kopiya_fotor_bg_remover_20260821201017_c6605edd27.webp",
+      "dst": "Cantiani-Riesl_New vid_042025 копия-fotor-bg-remover-20260821201017.webp"
+    },
+    {
+      "src": "Cantiani_Riesl_Rkats_New_vid_042025_kopiya_9745bc157c.webp",
+      "dst": "Cantiani-RieslRkats_New vid_042025 копия.webp"
+    },
+    {
+      "src": "Cantiani_Rkats_New_vid_042025_kopiya_fotor_bg_remover_20260821203120_9079733698.webp",
+      "dst": "Cantiani-Rkats_New vid_042025 копия-fotor-bg-remover-20260821203120.webp"
+    },
+    {
+      "src": "Caucasian_Dzharag_300681b16f.webp",
+      "dst": "Caucasian Джарагъ.webp"
+    },
+    {
+      "src": "Chateau_Tamagne_Eno_Traminer_i_Shardone_bbb5a80c54.webp",
+      "dst": "Chateau Tamagne Eno Траминер и Шардоне.webp"
+    },
+    {
+      "src": "Chateau_Tamagne_Eno_Traminer_i_Shardone_cf5472e5e0.webp",
+      "dst": "Chateau Tamagne Eno Траминер и Шардоне (2).webp"
+    },
+    {
+      "src": "Chernaya_Lvicza_d00f4b1f84.webp",
+      "dst": "Черная Львица.webp"
+    },
+    {
+      "src": "Czimlyanskoe_Bianka_beloe_04a59b0f1e.webp",
+      "dst": "Цимлянское Бианка белое .webp"
+    },
+    {
+      "src": "Czimlyanskoe_Risling_cea1a80937.webp",
+      "dst": "Цимлянское Рислинг.webp"
+    },
+    {
+      "src": "Czimlyanskoe_beloe_bryut_7d785ea2e3.webp",
+      "dst": "Цимлянское белое брют.webp"
+    },
+    {
+      "src": "Czimlyanskoe_beloe_polusladkoe_5c7026a82e.webp",
+      "dst": "Цимлянское белое полусладкое.webp"
+    },
+    {
+      "src": "Czimlyanskoe_kyuve_krasnoe_krasnostop_i_czimlyanskij_chernyj_d1e86bb6b6.webp",
+      "dst": "Цимлянское кюве красное красностоп и цимлянский черный.webp"
+    },
+    {
+      "src": "Czitron_Shard_p_sl_b94274915f.webp",
+      "dst": "Цитрон, Шард п.сл.webp"
+    },
+    {
+      "src": "Czitron_Sovinon_p_suh_f07f1d8280.webp",
+      "dst": "Цитрон, Совиньон п.сух.webp"
+    },
+    {
+      "src": "DI_CASPICO_Bd_B_51a07c38ef.webp",
+      "dst": "DI CASPICO_BdB.webp"
+    },
+    {
+      "src": "DI_CASPICO_Bd_B_b6d5b9772a.webp",
+      "dst": "DI CASPICO_BdB (2).webp"
+    },
+    {
+      "src": "DI_CASPICO_Bd_N_468dd912ff.webp",
+      "dst": "DI CASPICO_BdN.webp"
+    },
+    {
+      "src": "DI_CASPICO_Bd_N_b64caa3e83.webp",
+      "dst": "DI CASPICO_BdN (2).webp"
+    },
+    {
+      "src": "DJ_7074_done_c1541429c5.webp",
+      "dst": "DJ-7074-done_.webp"
+    },
+    {
+      "src": "DK_bel_bryut_88b2830c23.webp",
+      "dst": "ДК_бел_брют.webp"
+    },
+    {
+      "src": "DK_bel_eks_bryut_1ef4fd40dc.webp",
+      "dst": "ДК_бел_экс_брют.webp"
+    },
+    {
+      "src": "DK_bel_eks_bryut_cfd6153e9c.webp",
+      "dst": "ДК_бел_экс_брют (2).webp"
+    },
+    {
+      "src": "DK_bel_plsl_ebdebaedce.webp",
+      "dst": "ДК_бел_плсл.webp"
+    },
+    {
+      "src": "DK_bel_sovinon_105c5fad6a.webp",
+      "dst": "ДК_бел_совиньон.webp"
+    },
+    {
+      "src": "DNK_Alleliya_Merkotan2_3011aefe23.webp",
+      "dst": "ДНК Аллелия Меркотан2.webp"
+    },
+    {
+      "src": "DNK_Aura_Merkotan2_b358e92e8d.webp",
+      "dst": "ДНК Аура Меркотан2.webp"
+    },
+    {
+      "src": "DNK_Pokolenie_Merkotan2_5b589ac6e4.webp",
+      "dst": "ДНК Поколение Меркотан2.webp"
+    },
+    {
+      "src": "DSC_00836_4070f8fd2f.webp",
+      "dst": "DSC00836.webp"
+    },
+    {
+      "src": "DSC_00837_Photoroom_494c8f4098.webp",
+      "dst": "DSC00837-Photoroom.webp"
+    },
+    {
+      "src": "DSC_00839_Photoroom_418c4b31b3.webp",
+      "dst": "DSC00839-Photoroom.webp"
+    },
+    {
+      "src": "DSC_00840_Photoroom_13a0701346.webp",
+      "dst": "DSC00840-Photoroom.webp"
+    },
+    {
+      "src": "DSC_00842_e6a43cbc3d.webp",
+      "dst": "DSC00842.webp"
+    },
+    {
+      "src": "DSC_09166_cf6c3aaa12.webp",
+      "dst": "DSC09166.webp"
+    },
+    {
+      "src": "DSC_09170_a4e65f21e4.webp",
+      "dst": "DSC09170.webp"
+    },
+    {
+      "src": "DSC_09171_f04d8d1b64.webp",
+      "dst": "DSC09171.webp"
+    },
+    {
+      "src": "DSC_09173_4a9ff95cc2.webp",
+      "dst": "DSC09173.webp"
+    },
+    {
+      "src": "Daniel_2022_Koffmann_5bba62cc20.webp",
+      "dst": "Daniel 2022 Коффманн.webp"
+    },
+    {
+      "src": "David_2020_71f53fa374.webp",
+      "dst": "David 2020 .webp"
+    },
+    {
+      "src": "David_2021_65162f7033.webp",
+      "dst": "David 2021.webp"
+    },
+    {
+      "src": "David_22_b6377f7280.webp",
+      "dst": "David 22.webp"
+    },
+    {
+      "src": "Derbent_Vino_Fori_di_Mare_Di_Kaspiko_d67089804b.webp",
+      "dst": "Дербент Вино Фьори ди Маре Ди Каспико.webp"
+    },
+    {
+      "src": "Desono_Kaberne_Fran_d35065b98b.webp",
+      "dst": "Десоно_Каберне Фран.webp"
+    },
+    {
+      "src": "Desono_Kaberne_Sovinon_92912df82f.webp",
+      "dst": "Десоно_Каберне Совиньон.webp"
+    },
+    {
+      "src": "Desono_Merlo_8f58649b26.webp",
+      "dst": "Десоно_Мерло.webp"
+    },
+    {
+      "src": "Desono_Risling_b70f2d30ac.webp",
+      "dst": "Десоно_Рислинг.webp"
+    },
+    {
+      "src": "Desono_Rkacziteli_orandzh_a572c088a4.webp",
+      "dst": "Десоно_Ркацители орандж.webp"
+    },
+    {
+      "src": "Desono_Saperavi_606c582da8.webp",
+      "dst": "Десоно_Саперави.webp"
+    },
+    {
+      "src": "Desono_Saperavi_roze_a6f976b72e.webp",
+      "dst": "Десоно_Саперави_розе.webp"
+    },
+    {
+      "src": "Desono_Shardone_46ac5a58e0.webp",
+      "dst": "Десоно_Шардоне.webp"
+    },
+    {
+      "src": "Eleonora_0e3c405b09.webp",
+      "dst": "Eleonora.webp"
+    },
+    {
+      "src": "Endemy_Bianka_09f648c08e.webp",
+      "dst": "Эндемы Бианка.webp"
+    },
+    {
+      "src": "Endemy_Bianka_7cf66eca8c.webp",
+      "dst": "Эндемы Бианка (2).webp"
+    },
+    {
+      "src": "Endemy_Kaberne_Sovinon_4c5c1ced59.webp",
+      "dst": "Эндемы Каберне Совиньон.webp"
+    },
+    {
+      "src": "Endemy_Pino_Blan_8bad757c21.webp",
+      "dst": "Эндемы Пино Блан.webp"
+    },
+    {
+      "src": "Endemy_Pino_Blan_ffe6e9048b.webp",
+      "dst": "Эндемы Пино Блан (2).webp"
+    },
+    {
+      "src": "Endemy_Saperavi_e63474ff4b.webp",
+      "dst": "Эндемы Саперави.webp"
+    },
+    {
+      "src": "Extra_Brut_Rose_b02ec16ad0.webp",
+      "dst": "Extra Brut Rose.webp"
+    },
+    {
+      "src": "FDM_verde_white_027d700ffe.webp",
+      "dst": "FDM_verde_white.webp"
+    },
+    {
+      "src": "FDM_verde_white_4012edf5ad.webp",
+      "dst": "FDM_verde_white (2).webp"
+    },
+    {
+      "src": "Fanagoriya_beloe_polusladkoe_ona_skazala_da_5ed0a48dfd.webp",
+      "dst": "Фанагория белое полусладкое она сказала да.webp"
+    },
+    {
+      "src": "Fanagoriya_bryut_beloe_ona_skazala_da_7be00b028a.webp",
+      "dst": "Фанагория брют белое она сказала да.webp"
+    },
+    {
+      "src": "Fanagrriya_polusladkoe_30637d1cb8.webp",
+      "dst": "Фанагррия полусладкое.webp"
+    },
+    {
+      "src": "Frizante_beloe_suhoe_1efeefdc54.webp",
+      "dst": "Фризанте белое сухое.webp"
+    },
+    {
+      "src": "Frizante_beloe_suhoe_2f45164bc4.webp",
+      "dst": "Фризанте белое сухое (2).webp"
+    },
+    {
+      "src": "Frizante_beloe_suhoe_5f010ca86d.webp",
+      "dst": "Фризанте белое сухое (3).webp"
+    },
+    {
+      "src": "Frizante_beloe_suhoe_9e80c0345c.webp",
+      "dst": "Фризанте белое сухое (4).webp"
+    },
+    {
+      "src": "Frizante_krasnoe_polusladkoe_67706f9516.webp",
+      "dst": "Фризанте красное полусладкое.webp"
+    },
+    {
+      "src": "Frizante_krasnoe_polusladkoe_8ed00d7e13.webp",
+      "dst": "Фризанте красное полусладкое (2).webp"
+    },
+    {
+      "src": "Gai_Kodzor_Rusan_5381eb38cc.webp",
+      "dst": "Gai Kodzor Русан.webp"
+    },
+    {
+      "src": "Gai_Kodzor_Sovinon_blan_813e69be18.webp",
+      "dst": "Gai Kodzor Совиньон блан.webp"
+    },
+    {
+      "src": "Generated_Image_June_22_2026_10_44_PM_8cfe21d41e.webp",
+      "dst": "Generated Image June 22, 2026 - 10_44PM.webp"
+    },
+    {
+      "src": "Generated_Image_June_22_2026_10_44_PM_1_6fd1a74a1b.webp",
+      "dst": "Generated Image June 22, 2026 - 10_44PM (1).webp"
+    },
+    {
+      "src": "a_gordienko_m_nikolaev_pino_nuar_krasnoe_suhoe_135_660d8a5012.webp",
+      "dst": "a-gordienko-m-nikolaev-pino-nuar-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "a_gordienko_m_nikolaev_sira_nuvo_krasnoe_suhoe_115_3eff431cec.webp",
+      "dst": "a-gordienko-m-nikolaev-sira-nuvo-krasnoe-suhoe-115.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_durso_brut_rose_reserve_pino_nuar_beloe_bryut_12_bb364de705.webp",
+      "dst": "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_durso_reserve_brut_shardone_beloe_bryut_115_c2d789063b.webp",
+      "dst": "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_dyurso_pino_nuar_krasnoe_suhoe_13_2c1e6330fe.webp",
+      "dst": "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_estates_amurskiy_potapenko_krasnoe_suhoe_105_a70c9cabe2.webp",
+      "dst": "abrau-dyurso-abrau-estates-amurskiy-potapenko-krasnoe-suhoe-105.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_estates_beloe_shardone_suhoe_12_6c1aeb2039.webp",
+      "dst": "abrau-dyurso-abrau-estates-beloe-shardone-suhoe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_estates_dostoynyy_krasnoe_suhoe_135_a2b9e120e4.webp",
+      "dst": "abrau-dyurso-abrau-estates-dostoynyy-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_estates_kaberne_po_belomu_kaberne_sovinon_beloe_suhoe_105_a340de7dd3.webp",
+      "dst": "abrau-dyurso-abrau-estates-kaberne-po-belomu-kaberne-sovinon-beloe-suhoe-105.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_estates_krasnoe_kaberne_sovinon_suhoe_13_1770f5150f.webp",
+      "dst": "abrau-dyurso-abrau-estates-krasnoe-kaberne-sovinon-suhoe-13.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_estates_oranzh_tsitronnyy_magaracha_oranzhevoe_suhoe_105_95e00a834b.webp",
+      "dst": "abrau-dyurso-abrau-estates-oranzh-tsitronnyy-magaracha-oranzhevoe-suhoe-105.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_estates_roze_kaberne_sovinon_rozovoe_suhoe_12_416c8f123b.webp",
+      "dst": "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_kupazh_krasnyy_polsusladkoe_kaberne_sovinon_krasnoe_polusladkoe_11_291e93ae8d.webp",
+      "dst": "abrau-dyurso-abrau-kupazh-krasnyy-polsusladkoe-kaberne-sovinon-krasnoe-polusladkoe-11.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_kupazh_svetlyy_suhoe_shardone_beloe_125_b60d4bb639.webp",
+      "dst": "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125.webp"
+    },
+    {
+      "src": "abrau_dyurso_abrau_kupazh_tyomnyy_suhoe_kaberne_sovinon_krasnoe_13_a9c6a97e9b.webp",
+      "dst": "abrau-dyurso-abrau-kupazh-tyomnyy-suhoe-kaberne-sovinon-krasnoe-13.webp"
+    },
+    {
+      "src": "abrau_dyurso_aleksandr_ii_magnum_shardone_beloe_bryut_125_256840c1d1.webp",
+      "dst": "abrau-dyurso-aleksandr-ii-magnum-shardone-beloe-bryut-125.webp"
+    },
+    {
+      "src": "abrau_dyurso_az_abrau_bayanshira_beloe_suhoe_12_50e16ea5d5.webp",
+      "dst": "abrau-dyurso-az-abrau-bayanshira-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_az_abrau_madrasa_krasnoe_suhoe_14_a2a0b9e8a3.webp",
+      "dst": "abrau-dyurso-az-abrau-madrasa-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "abrau_dyurso_brut_dor_blanc_de_blancs_shardone_beloe_bryut_125_cf97076f41.webp",
+      "dst": "abrau-dyurso-brut-dor-blanc-de-blancs-shardone-beloe-bryut-125.webp"
+    },
+    {
+      "src": "abrau_dyurso_brut_dor_blanc_de_blancs_shardone_igristoe_bryut_beloe_12_792f571be3.webp",
+      "dst": "abrau-dyurso-brut-dor-blanc-de-blancs-shardone-igristoe-bryut-beloe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_brut_dor_blanc_de_noirs_pino_nuar_beloe_bryut_125_2d16522a48.webp",
+      "dst": "abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-beloe-bryut-125.webp"
+    },
+    {
+      "src": "abrau_dyurso_brut_dor_blanc_de_noirs_pino_nuar_igristoe_bryut_beloe_115_d3fbb6965d.webp",
+      "dst": "abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-igristoe-bryut-beloe-115.webp"
+    },
+    {
+      "src": "abrau_dyurso_brut_dor_riesling_risling_beloe_bryut_12_45b9c81ea5.webp",
+      "dst": "abrau-dyurso-brut-dor-riesling-risling-beloe-bryut-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_brut_dor_rose_pino_nuar_rozovoe_bryut_12_8b5bd155e6.webp",
+      "dst": "abrau-dyurso-brut-dor-rose-pino-nuar-rozovoe-bryut-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_femme_dabrau_amurskiy_potapenko_krasnoe_suhoe_107_d599cb8a22.webp",
+      "dst": "abrau-dyurso-femme-dabrau-amurskiy-potapenko-krasnoe-suhoe-107.webp"
+    },
+    {
+      "src": "abrau_dyurso_imperatorskoe_bryut_shardone_beloe_12_d6c7ebb073.webp",
+      "dst": "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_imperatorskoe_polusladkoe_shardone_beloe_12_956aaee80d.webp",
+      "dst": "abrau-dyurso-imperatorskoe-polusladkoe-shardone-beloe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_imperatorskoe_polusuhoe_shardone_beloe_12_51385573f2.webp",
+      "dst": "abrau-dyurso-imperatorskoe-polusuhoe-shardone-beloe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_imperial_brut_lart_nouveau_shardone_beloe_bryut_105_71076b0053.webp",
+      "dst": "abrau-dyurso-imperial-brut-lart-nouveau-shardone-beloe-bryut-105.webp"
+    },
+    {
+      "src": "abrau_dyurso_imperial_brut_rose_pino_nuar_rozovoe_bryut_12_3eafe20e40.webp",
+      "dst": "abrau-dyurso-imperial-brut-rose-pino-nuar-rozovoe-bryut-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_imperial_brut_vintage_shardone_beloe_bryut_12_8f6dbe7a71.webp",
+      "dst": "abrau-dyurso-imperial-brut-vintage-shardone-beloe-bryut-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_imperial_kyuve_pino_nuar_igristoe_bryut_rozovoe_125_99fe198335.webp",
+      "dst": "abrau-dyurso-imperial-kyuve-pino-nuar-igristoe-bryut-rozovoe-125.webp"
+    },
+    {
+      "src": "abrau_dyurso_kaberne_sovinon_krasnoe_suhoe_vyderzhannoe_125_b9410efa7a.webp",
+      "dst": "abrau-dyurso-kaberne-sovinon-krasnoe-suhoe-vyderzhannoe-125.webp"
+    },
+    {
+      "src": "abrau_dyurso_pino_nuar_krasnoe_suhoe_125_529987dabf.webp",
+      "dst": "abrau-dyurso-pino-nuar-krasnoe-suhoe-125.webp"
+    },
+    {
+      "src": "abrau_dyurso_pino_nuar_krasnoe_suhoe_vyderzhannoe_12_e7055f24aa.webp",
+      "dst": "abrau-dyurso-pino-nuar-krasnoe-suhoe-vyderzhannoe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_risling_beloe_suhoe_12_dea6af4677.webp",
+      "dst": "abrau-dyurso-risling-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_risling_beloe_suhoe_vyderzhannoe_13_3d81416050.webp",
+      "dst": "abrau-dyurso-risling-beloe-suhoe-vyderzhannoe-13.webp"
+    },
+    {
+      "src": "abrau_dyurso_russkoe_igristoe_koshernoe_bryut_shardone_beloe_13_8b9ee7f9fe.webp",
+      "dst": "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13.webp"
+    },
+    {
+      "src": "abrau_dyurso_russkoe_igristoe_koshernoe_polusladkoe_shardone_beloe_12_cce09fd580.webp",
+      "dst": "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_russkoe_igristoe_polusladkoe_krasnoe_kaberne_sovinon_12_d7c8d1c042.webp",
+      "dst": "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_russkoe_igristoe_polusladkoe_shardone_beloe_12_a8752d67f6.webp",
+      "dst": "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_russkoe_igristoe_polusuhoe_rozovoe_pino_nuar_12_dafb6d988e.webp",
+      "dst": "abrau-dyurso-russkoe-igristoe-polusuhoe-rozovoe-pino-nuar-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_russkoe_igristoe_polusuhoe_shardone_beloe_12_1dd99a0a33.webp",
+      "dst": "abrau-dyurso-russkoe-igristoe-polusuhoe-shardone-beloe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_shardone_beloe_suhoe_12_9e3d40dd34.webp",
+      "dst": "abrau-dyurso-shardone-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_shardone_beloe_suhoe_vyderzhannoe_13_3fdd6c2c92.webp",
+      "dst": "abrau-dyurso-shardone-beloe-suhoe-vyderzhannoe-13.webp"
+    },
+    {
+      "src": "abrau_dyurso_spumante_bryut_roze_shardone_igristoe_bryut_rozovoe_12_36f26aa26f.webp",
+      "dst": "abrau-dyurso-spumante-bryut-roze-shardone-igristoe-bryut-rozovoe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_victor_dravigny_brut_rose_pino_nuar_rozovoe_bryut_12_c7199512eb.webp",
+      "dst": "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_victor_dravigny_brut_shardone_beloe_bryut_12_4ab7b05e3d.webp",
+      "dst": "abrau-dyurso-victor-dravigny-brut-shardone-beloe-bryut-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_victor_dravigny_extra_brut_shardone_beloe_bryut_125_86dc223df3.webp",
+      "dst": "abrau-dyurso-victor-dravigny-extra-brut-shardone-beloe-bryut-125.webp"
+    },
+    {
+      "src": "abrau_dyurso_victor_dravigny_koshernoe_bryut_shardone_beloe_125_662e4e2b51.webp",
+      "dst": "abrau-dyurso-victor-dravigny-koshernoe-bryut-shardone-beloe-125.webp"
+    },
+    {
+      "src": "abrau_dyurso_victor_dravigny_krasnoe_polusladkoe_kaberne_sovinon_125_f0e4d2775c.webp",
+      "dst": "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125.webp"
+    },
+    {
+      "src": "abrau_dyurso_victor_dravigny_polusladkoe_sovinon_blan_beloe_12_ec087df76c.webp",
+      "dst": "abrau-dyurso-victor-dravigny-polusladkoe-sovinon-blan-beloe-12.webp"
+    },
+    {
+      "src": "abrau_dyurso_victor_dravigny_polusuhoe_pino_blan_beloe_12_7b6de7aca6.webp",
+      "dst": "abrau-dyurso-victor-dravigny-polusuhoe-pino-blan-beloe-12.webp"
+    },
+    {
+      "src": "agora_winery_cuvee_pino_gridzhio_shardone_bryut_beloe_igristoe_bryut_beloe_125_16b20c89df.webp",
+      "dst": "agora-winery-cuvee-pino-gridzhio-shardone-bryut-beloe-igristoe-bryut-beloe-125.webp"
+    },
+    {
+      "src": "agora_winery_cuvee_pino_nuar_shardone_bryut_rozovoe_igristoe_bryut_rozovoe_125_c2b30c8f55.webp",
+      "dst": "agora-winery-cuvee-pino-nuar-shardone-bryut-rozovoe-igristoe-bryut-rozovoe-125.webp"
+    },
+    {
+      "src": "agrolayn_heritage_dg_skin_contact_red_saperavi_krasnoe_suhoe_13_88fc4bc8a1.webp",
+      "dst": "agrolayn-heritage-dg-skin-contact-red-saperavi-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "agrolayn_heritage_dg_skin_contact_rkatsiteli_rkatsiteli_beloe_suhoe_12_3e44c13a6f.webp",
+      "dst": "agrolayn-heritage-dg-skin-contact-rkatsiteli-rkatsiteli-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "agrolayn_heritage_dg_skin_contact_rkatsiteli_rkatsiteli_krasnoe_suhoe_12_a5576a9dd5.webp",
+      "dst": "agrolayn-heritage-dg-skin-contact-rkatsiteli-rkatsiteli-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "agrolayn_lame_du_vin_saperavi_krasnoe_suhoe_13_5ede20a1fd.webp",
+      "dst": "agrolayn-lame-du-vin-saperavi-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_aleatico_rose_aleatiko_rozovoe_suhoe_125_2fca230608.webp",
+      "dst": "agrolayn-mountain-eagle-aleatico-rose-aleatiko-rozovoe-suhoe-125.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_cabernet_sauvignon_kaberne_sovinon_krasnoe_suhoe_135_c2ea2996ff.webp",
+      "dst": "agrolayn-mountain-eagle-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_chardonnay_shardone_beloe_suhoe_12_787345e979.webp",
+      "dst": "agrolayn-mountain-eagle-chardonnay-shardone-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_marselan_marselan_krasnoe_suhoe_13_918dcc5044.webp",
+      "dst": "agrolayn-mountain-eagle-marselan-marselan-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_muscat_muskat_beloe_suhoe_125_1592a7a3e1.webp",
+      "dst": "agrolayn-mountain-eagle-muscat-muskat-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_pedro_ximenez_pedro_himenes_beloe_suhoe_11_f778a838b5.webp",
+      "dst": "agrolayn-mountain-eagle-pedro-ximenez-pedro-himenes-beloe-suhoe-11.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_saperavi_saperavi_krasnoe_suhoe_135_6d3f5cfe1e.webp",
+      "dst": "agrolayn-mountain-eagle-saperavi-saperavi-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_sauvignon_blanc_sovinon_blan_beloe_suhoe_125_4e32ec4820.webp",
+      "dst": "agrolayn-mountain-eagle-sauvignon-blanc-sovinon-blan-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_semillon_semilon_beloe_suhoe_11_6f41e3735a.webp",
+      "dst": "agrolayn-mountain-eagle-semillon-semilon-beloe-suhoe-11.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_traminer_traminer_beloe_suhoe_12_15d07ae704.webp",
+      "dst": "agrolayn-mountain-eagle-traminer-traminer-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_viognier_vione_beloe_suhoe_115_841c23d57a.webp",
+      "dst": "agrolayn-mountain-eagle-viognier-vione-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "agrolayn_mountain_eagle_white_blend_vione_beloe_suhoe_115_30af9f7827.webp",
+      "dst": "agrolayn-mountain-eagle-white-blend-vione-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "agrolayn_vexillum_blanc_de_blancs_shardone_igristoe_bryut_beloe_115_95d59e344a.webp",
+      "dst": "agrolayn-vexillum-blanc-de-blancs-shardone-igristoe-bryut-beloe-115.webp"
+    },
+    {
+      "src": "agrolayn_vexillum_blanc_de_noirs_pino_nuar_igristoe_bryut_beloe_12_82c19c7b32.webp",
+      "dst": "agrolayn-vexillum-blanc-de-noirs-pino-nuar-igristoe-bryut-beloe-12.webp"
+    },
+    {
+      "src": "alma_valley_alma_graviti_pino_nuar_merlo_kaberne_sovinon_krasnoe_suhoe_14_aed5a84143.webp",
+      "dst": "alma-valley-alma-graviti-pino-nuar-merlo-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "alma_valley_graviti_kaberne_sovinon_krasnoe_suhoe_15_018520df79.webp",
+      "dst": "alma-valley-graviti-kaberne-sovinon-krasnoe-suhoe-15.webp"
+    },
+    {
+      "src": "alma_valley_graviti_pino_blan_beloe_suhoe_135_78180c873a.webp",
+      "dst": "alma-valley-graviti-pino-blan-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "alma_valley_kaberne_fran_krasnoe_suhoe_145_f987d71edd.webp",
+      "dst": "alma-valley-kaberne-fran-krasnoe-suhoe-145.webp"
+    },
+    {
+      "src": "alma_valley_kaberne_fran_rezerv_krasnoe_suhoe_15_6ef14d79ec.webp",
+      "dst": "alma-valley-kaberne-fran-rezerv-krasnoe-suhoe-15.webp"
+    },
+    {
+      "src": "alma_valley_kaberne_sovinon_rezerv_krasnoe_suhoe_15_58f5256504.webp",
+      "dst": "alma-valley-kaberne-sovinon-rezerv-krasnoe-suhoe-15.webp"
+    },
+    {
+      "src": "alma_valley_kokur_beloe_suhoe_14_b8bafe9cd7.webp",
+      "dst": "alma-valley-kokur-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "alma_valley_kolombar_beloe_polusuhoe_135_c5b227e252.webp",
+      "dst": "alma-valley-kolombar-beloe-polusuhoe-135.webp"
+    },
+    {
+      "src": "alma_valley_merlo_krasnoe_suhoe_13_51d2488815.webp",
+      "dst": "alma-valley-merlo-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "alma_valley_merlo_rezerv_krasnoe_suhoe_15_6f1a4e1e17.webp",
+      "dst": "alma-valley-merlo-rezerv-krasnoe-suhoe-15.webp"
+    },
+    {
+      "src": "alma_valley_merlo_rezerv_krasnoe_suhoe_vyderzhannoe_14_ea3e8292cb.webp",
+      "dst": "alma-valley-merlo-rezerv-krasnoe-suhoe-vyderzhannoe-14.webp"
+    },
+    {
+      "src": "alma_valley_petit_arvin_beloe_suhoe_13_863e81595b.webp",
+      "dst": "alma-valley-petit-arvin-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "alma_valley_pino_blan_beloe_suhoe_14_8798dea7ca.webp",
+      "dst": "alma-valley-pino-blan-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "alma_valley_pino_blan_rezerv_beloe_suhoe_14_1be9ab6c2a.webp",
+      "dst": "alma-valley-pino-blan-rezerv-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "alma_valley_pino_gri_beloe_polusuhoe_15_4e288bc898.webp",
+      "dst": "alma-valley-pino-gri-beloe-polusuhoe-15.webp"
+    },
+    {
+      "src": "alma_valley_pino_nuar_beloe_ekstra_bryut_115_e3cb51cf8f.webp",
+      "dst": "alma-valley-pino-nuar-beloe-ekstra-bryut-115.webp"
+    },
+    {
+      "src": "alma_valley_pino_nuar_krasnoe_suhoe_13_a898042e38.webp",
+      "dst": "alma-valley-pino-nuar-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "alma_valley_pino_nuar_rezerv_krasnoe_suhoe_14_c3c0dc1cc6.webp",
+      "dst": "alma-valley-pino-nuar-rezerv-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "alma_valley_rislaner_beloe_polusladkoe_125_01d472fe7c.webp",
+      "dst": "alma-valley-rislaner-beloe-polusladkoe-125.webp"
+    },
+    {
+      "src": "alma_valley_risling_beloe_polusuhoe_125_88fc981d53.webp",
+      "dst": "alma-valley-risling-beloe-polusuhoe-125.webp"
+    },
+    {
+      "src": "alma_valley_semilon_beloe_suhoe_135_12953499e0.webp",
+      "dst": "alma-valley-semilon-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "alma_valley_shardone_beloe_suhoe_135_c577ccd0a1.webp",
+      "dst": "alma-valley-shardone-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "alma_valley_shardone_rezerv_beloe_suhoe_14_e93f9dbbf9.webp",
+      "dst": "alma-valley-shardone-rezerv-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "alma_valley_shardone_rezerv_beloe_suhoe_vyderzhannoe_135_3c92719654.webp",
+      "dst": "alma-valley-shardone-rezerv-beloe-suhoe-vyderzhannoe-135.webp"
+    },
+    {
+      "src": "alma_valley_shiraz_krasnoe_suhoe_13_cac190e3fc.webp",
+      "dst": "alma-valley-shiraz-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "alma_valley_shiraz_sira_rezerv_krasnoe_suhoe_14_8929b4c449.webp",
+      "dst": "alma-valley-shiraz-sira-rezerv-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "alma_valley_solntse_vozduh_vinograd_kokur_beloe_polusladkoe_13_e1b2a15be1.webp",
+      "dst": "alma-valley-solntse-vozduh-vinograd-kokur-beloe-polusladkoe-13.webp"
+    },
+    {
+      "src": "alma_valley_solntse_vozduh_vinograd_merlo_krasnoe_polusladkoe_14_6111b648a4.webp",
+      "dst": "alma-valley-solntse-vozduh-vinograd-merlo-krasnoe-polusladkoe-14.webp"
+    },
+    {
+      "src": "alma_valley_solntse_vozduh_vinograd_shardone_beloe_polusuhoe_13_532db72561.webp",
+      "dst": "alma-valley-solntse-vozduh-vinograd-shardone-beloe-polusuhoe-13.webp"
+    },
+    {
+      "src": "alma_valley_solntse_vozduh_vinograd_sira_shiraz_krasnoe_polusuhoe_135_7cd3395fb2.webp",
+      "dst": "alma-valley-solntse-vozduh-vinograd-sira-shiraz-krasnoe-polusuhoe-135.webp"
+    },
+    {
+      "src": "alma_valley_solntse_vozduh_vinograd_sira_shiraz_rozovoe_polusladkoe_12_ace425804f.webp",
+      "dst": "alma-valley-solntse-vozduh-vinograd-sira-shiraz-rozovoe-polusladkoe-12.webp"
+    },
+    {
+      "src": "alma_valley_sovinon_blan_beloe_suhoe_14_a30a0144ff.webp",
+      "dst": "alma-valley-sovinon-blan-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "alma_valley_sovinon_blan_rezerv_beloe_suhoe_14_67049e90d5.webp",
+      "dst": "alma-valley-sovinon-blan-rezerv-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "alma_valley_tba_sovinon_sovinon_blan_beloe_sladkoe_75_571c20333f.webp",
+      "dst": "alma-valley-tba-sovinon-sovinon-blan-beloe-sladkoe-75.webp"
+    },
+    {
+      "src": "alma_valley_tempranilo_krasnoe_suhoe_13_9f66826c6d.webp",
+      "dst": "alma-valley-tempranilo-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "alma_valley_tempranilo_rezerv_krasnoe_suhoe_14_36d4dbc6c0.webp",
+      "dst": "alma-valley-tempranilo-rezerv-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "alma_valley_traminer_beloe_suhoe_125_535f55a570.webp",
+      "dst": "alma-valley-traminer-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "andryus_yutsis_muscat_blanc_muskat_beloe_suhoe_112_efea231a5f.webp",
+      "dst": "andryus-yutsis-muscat-blanc-muskat-beloe-suhoe-112.webp"
+    },
+    {
+      "src": "andryus_yutsis_muskat_blan_vione_beloe_suhoe_117_67d4906ed6.webp",
+      "dst": "andryus-yutsis-muskat-blan-vione-beloe-suhoe-117.webp"
+    },
+    {
+      "src": "andryus_yutsis_orange_vermentino_beloe_suhoe_112_656c4e7348.webp",
+      "dst": "andryus-yutsis-orange-vermentino-beloe-suhoe-112.webp"
+    },
+    {
+      "src": "andryus_yutsis_organic_syrah_sira_krasnoe_suhoe_135_7e2b3955da.webp",
+      "dst": "andryus-yutsis-organic-syrah-sira-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "andryus_yutsis_organik_risling_beloe_suhoe_115_6eb74add89.webp",
+      "dst": "andryus-yutsis-organik-risling-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "andryus_yutsis_pino_nuar_krasnoe_suhoe_12_bf6b9d813b.webp",
+      "dst": "andryus-yutsis-pino-nuar-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "andryus_yutsis_pinot_grigio_pino_gri_beloe_suhoe_125_62e4b88fbe.webp",
+      "dst": "andryus-yutsis-pinot-grigio-pino-gri-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "andryus_yutsis_risling_beloe_suhoe_12_a00be531c0.webp",
+      "dst": "andryus-yutsis-risling-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "andryus_yutsis_shenen_blan_beloe_suhoe_12_88fa29c996.webp",
+      "dst": "andryus-yutsis-shenen-blan-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "andryus_yutsis_vione_beloe_suhoe_112_3dcc463d21.webp",
+      "dst": "andryus-yutsis-vione-beloe-suhoe-112.webp"
+    },
+    {
+      "src": "aromatnoe_malbek_rezerv_krasnoe_suhoe_vyderzhannoe_125_d2e32af939.webp",
+      "dst": "aromatnoe-malbek-rezerv-krasnoe-suhoe-vyderzhannoe-125.webp"
+    },
+    {
+      "src": "aromatnoe_shenen_blan_beloe_suhoe_13_292ec223ed.webp",
+      "dst": "aromatnoe-shenen-blan-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "artvin_kaberne_sovinon_grand_rezerv_krasnoe_suhoe_13_501fa25679.webp",
+      "dst": "artvin-kaberne-sovinon-grand-rezerv-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "artvin_odesskiy_chernyy_rezerv_krasnoe_suhoe_13_4531c8f1c7.webp",
+      "dst": "artvin-odesskiy-chernyy-rezerv-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "aya_organic_wine_vineyards_blush_1_sira_petnat_ekstra_bryut_rozovyy_135_33ab300ffe.webp",
+      "dst": "aya-organic-wine-vineyards-blush-1-sira-petnat-ekstra-bryut-rozovyy-135.webp"
+    },
+    {
+      "src": "aya_organic_wine_vineyards_blush_2_merlo_petnat_ekstra_bryut_rozovyy_135_ed87f553c8.webp",
+      "dst": "aya-organic-wine-vineyards-blush-2-merlo-petnat-ekstra-bryut-rozovyy-135.webp"
+    },
+    {
+      "src": "aya_organic_wine_vineyards_blush_3_kaberne_fran_petnat_ekstra_bryut_rozovyy_132_a094099a22.webp",
+      "dst": "aya-organic-wine-vineyards-blush-3-kaberne-fran-petnat-ekstra-bryut-rozovyy-132.webp"
+    },
+    {
+      "src": "aya_organic_wine_vineyards_blush_4_pino_nuar_petnat_ekstra_bryut_krasnyy_129_26041a124c.webp",
+      "dst": "aya-organic-wine-vineyards-blush-4-pino-nuar-petnat-ekstra-bryut-krasnyy-129.webp"
+    },
+    {
+      "src": "aya_organic_wine_vineyards_evolution_chardonnay_shardone_beloe_suhoe_124_e03dd6e444.webp",
+      "dst": "aya-organic-wine-vineyards-evolution-chardonnay-shardone-beloe-suhoe-124.webp"
+    },
+    {
+      "src": "aya_organic_wine_vineyards_evolution_pinot_noir_pino_nuar_krasnoe_suhoe_125_b0f9aa751e.webp",
+      "dst": "aya-organic-wine-vineyards-evolution-pinot-noir-pino-nuar-krasnoe-suhoe-125.webp"
+    },
+    {
+      "src": "aya_organic_wine_vineyards_purity_in_merlot_merlo_rozovoe_suhoe_134_9e5858ac67.webp",
+      "dst": "aya-organic-wine-vineyards-purity-in-merlot-merlo-rozovoe-suhoe-134.webp"
+    },
+    {
+      "src": "aya_organic_wine_vineyards_purity_in_syrah_sira_krasnoe_suhoe_146_1d4164b8db.webp",
+      "dst": "aya-organic-wine-vineyards-purity-in-syrah-sira-krasnoe-suhoe-146.webp"
+    },
+    {
+      "src": "aya_organic_wine_vineyards_purity_in_syrah_sira_rozovoe_suhoe_132_56159ed421.webp",
+      "dst": "aya-organic-wine-vineyards-purity-in-syrah-sira-rozovoe-suhoe-132.webp"
+    },
+    {
+      "src": "aya_organic_wine_vineyards_purity_in_trinity_pino_nuar_rozovoe_suhoe_13_a16516170d.webp",
+      "dst": "aya-organic-wine-vineyards-purity-in-trinity-pino-nuar-rozovoe-suhoe-13.webp"
+    },
+    {
+      "src": "bakla_vines_kaberne_fran_krasnoe_suhoe_143_eb045e6d5d.webp",
+      "dst": "bakla-vines-kaberne-fran-krasnoe-suhoe-143.webp"
+    },
+    {
+      "src": "bakla_vines_kangun_beloe_suhoe_12_6f20bb8dda.webp",
+      "dst": "bakla-vines-kangun-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "bakla_vines_kangun_oranzh_beloe_suhoe_119_f52f04331a.webp",
+      "dst": "bakla-vines-kangun-oranzh-beloe-suhoe-119.webp"
+    },
+    {
+      "src": "bakla_vines_kangun_ps_beloe_suhoe_128_213dcbb9eb.webp",
+      "dst": "bakla-vines-kangun-ps-beloe-suhoe-128.webp"
+    },
+    {
+      "src": "bakla_vines_pino_nuar_krasnoe_suhoe_125_da1c7fdac6.webp",
+      "dst": "bakla-vines-pino-nuar-krasnoe-suhoe-125.webp"
+    },
+    {
+      "src": "bakla_vines_risling_beloe_polusuhoe_125_1b541a1b1c.webp",
+      "dst": "bakla-vines-risling-beloe-polusuhoe-125.webp"
+    },
+    {
+      "src": "bakla_vines_sira_krasnoe_suhoe_135_1d09e35f1b.webp",
+      "dst": "bakla-vines-sira-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "bakla_vines_tsitron_krymskiy_tsitronnyy_magaracha_beloe_suhoe_118_3e272f0bb2.webp",
+      "dst": "bakla-vines-tsitron-krymskiy-tsitronnyy-magaracha-beloe-suhoe-118.webp"
+    },
+    {
+      "src": "balet_blan_7c53c7fcdb.webp",
+      "dst": "балет блан.webp"
+    },
+    {
+      "src": "bel_plsl_16457d7b78.webp",
+      "dst": "бел плсл.webp"
+    },
+    {
+      "src": "belbek_aligote_beloe_suhoe_125_3994f84c11.webp",
+      "dst": "belbek-aligote-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "belbek_belbek_fiolent_muskat_beloe_polusladkoe_125_a8f84e49d2.webp",
+      "dst": "belbek-belbek-fiolent-muskat-beloe-polusladkoe-125.webp"
+    },
+    {
+      "src": "belbek_belbek_kaberne_fran_krasnoe_suhoe_13_1dc81c94ac.webp",
+      "dst": "belbek-belbek-kaberne-fran-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "belbek_belbek_meritazh_kaberne_sovinon_krasnoe_suhoe_135_3ac532f36b.webp",
+      "dst": "belbek-belbek-meritazh-kaberne-sovinon-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "belbek_belbek_merlo_krasnoe_suhoe_129_721da2ee04.webp",
+      "dst": "belbek-belbek-merlo-krasnoe-suhoe-129.webp"
+    },
+    {
+      "src": "belbek_belbek_muskat_beloe_suhoe_128_630defdbb3.webp",
+      "dst": "belbek-belbek-muskat-beloe-suhoe-128.webp"
+    },
+    {
+      "src": "belbek_belbek_pino_nuar_krasnoe_suhoe_13_f1519564c9.webp",
+      "dst": "belbek-belbek-pino-nuar-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "belbek_belbek_pti_verdo_krasnoe_suhoe_121_40c032fb64.webp",
+      "dst": "belbek-belbek-pti-verdo-krasnoe-suhoe-121.webp"
+    },
+    {
+      "src": "belbek_belbek_risling_beloe_suhoe_128_cb6f66781a.webp",
+      "dst": "belbek-belbek-risling-beloe-suhoe-128.webp"
+    },
+    {
+      "src": "belbek_belbek_risling_rezerv_beloe_suhoe_13_618fbe6775.webp",
+      "dst": "belbek-belbek-risling-rezerv-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "belbek_belbek_rkatsiteli_barrik_beloe_suhoe_13_44d3a11b2f.webp",
+      "dst": "belbek-belbek-rkatsiteli-barrik-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "belbek_belbek_roze_pino_nuar_rozovoe_suhoe_129_051d90b1ff.webp",
+      "dst": "belbek-belbek-roze-pino-nuar-rozovoe-suhoe-129.webp"
+    },
+    {
+      "src": "belbek_belbek_sandzhoveze_krasnoe_suhoe_138_9bf09c1a82.webp",
+      "dst": "belbek-belbek-sandzhoveze-krasnoe-suhoe-138.webp"
+    },
+    {
+      "src": "belbek_belbek_saperavi_rezerv_krasnoe_suhoe_14_d920558ff2.webp",
+      "dst": "belbek-belbek-saperavi-rezerv-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "belbek_belbek_sira_krasnoe_suhoe_132_e2a205e856.webp",
+      "dst": "belbek-belbek-sira-krasnoe-suhoe-132.webp"
+    },
+    {
+      "src": "belbek_beloe_suhoe_kaberne_sovinon_krasnoe_suhoe_14_82f8b0eda2.webp",
+      "dst": "belbek-beloe-suhoe-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "belbek_kaberne_fran_krasnoe_suhoe_134_bb8ab4763e.webp",
+      "dst": "belbek-kaberne-fran-krasnoe-suhoe-134.webp"
+    },
+    {
+      "src": "belbek_kaberne_sovinon_krasnoe_suhoe_138_96f7db37a0.webp",
+      "dst": "belbek-kaberne-sovinon-krasnoe-suhoe-138.webp"
+    },
+    {
+      "src": "belbek_kokur_kokur_belyy_beloe_suhoe_13_ac497b5531.webp",
+      "dst": "belbek-kokur-kokur-belyy-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "belbek_meritazh_kaberne_sovinon_krasnoe_suhoe_136_b0152ba5c6.webp",
+      "dst": "belbek-meritazh-kaberne-sovinon-krasnoe-suhoe-136.webp"
+    },
+    {
+      "src": "belbek_merlo_krasnoe_suhoe_13_62ef7bfee8.webp",
+      "dst": "belbek-merlo-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "belbek_muskat_muskat_belyy_beloe_suhoe_127_d8229478b6.webp",
+      "dst": "belbek-muskat-muskat-belyy-beloe-suhoe-127.webp"
+    },
+    {
+      "src": "belbek_muskat_oranzh_muskat_belyy_oranzhevoe_suhoe_125_15ac5f6bc6.webp",
+      "dst": "belbek-muskat-oranzh-muskat-belyy-oranzhevoe-suhoe-125.webp"
+    },
+    {
+      "src": "belbek_pino_mene_krasnoe_suhoe_128_e2f0538eec.webp",
+      "dst": "belbek-pino-mene-krasnoe-suhoe-128.webp"
+    },
+    {
+      "src": "belbek_pino_nuar_krasnoe_suhoe_133_a2cb505435.webp",
+      "dst": "belbek-pino-nuar-krasnoe-suhoe-133.webp"
+    },
+    {
+      "src": "belbek_pino_nuar_rezerv_krasnoe_suhoe_135_7e9ad8a8e2.webp",
+      "dst": "belbek-pino-nuar-rezerv-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "belbek_pino_nuar_roze_rozovoe_suhoe_115_19d98fb390.webp",
+      "dst": "belbek-pino-nuar-roze-rozovoe-suhoe-115.webp"
+    },
+    {
+      "src": "belbek_risling_pozdniy_sbor_risling_reynskiy_beloe_sladkoe_117_02352777b6.webp",
+      "dst": "belbek-risling-pozdniy-sbor-risling-reynskiy-beloe-sladkoe-117.webp"
+    },
+    {
+      "src": "belbek_risling_risling_reynskiy_beloe_suhoe_12_8eaeddd994.webp",
+      "dst": "belbek-risling-risling-reynskiy-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "belbek_rkatsiteli_barrik_beloe_suhoe_13_42076e5365.webp",
+      "dst": "belbek-rkatsiteli-barrik-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "belbek_rkatsiteli_beloe_suhoe_13_72dc1f9029.webp",
+      "dst": "belbek-rkatsiteli-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "belbek_roze_sira_rozovoe_suhoe_125_2131a8be30.webp",
+      "dst": "belbek-roze-sira-rozovoe-suhoe-125.webp"
+    },
+    {
+      "src": "belbek_sandzhoveze_krasnoe_suhoe_14_a0ba68a6c3.webp",
+      "dst": "belbek-sandzhoveze-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "belbek_saperavi_krasnoe_suhoe_137_469b436cb9.webp",
+      "dst": "belbek-saperavi-krasnoe-suhoe-137.webp"
+    },
+    {
+      "src": "belbek_saperavi_rezerv_krasnoe_suhoe_14_c9a3cc2e46.webp",
+      "dst": "belbek-saperavi-rezerv-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "belbek_semilon_rezerv_beloe_suhoe_127_64909a173d.webp",
+      "dst": "belbek-semilon-rezerv-beloe-suhoe-127.webp"
+    },
+    {
+      "src": "belbek_sira_rezerv_krasnoe_suhoe_132_ad3192b478.webp",
+      "dst": "belbek-sira-rezerv-krasnoe-suhoe-132.webp"
+    },
+    {
+      "src": "belbek_sovinon_blan_beloe_suhoe_12_f6ebdcced9.webp",
+      "dst": "belbek-sovinon-blan-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "belbek_zakat_merlo_sira_krasnoe_suhoe_132_1a2112ceb7.webp",
+      "dst": "belbek-zakat-merlo-sira-krasnoe-suhoe-132.webp"
+    },
+    {
+      "src": "belmas_winery_cabernet_franc_belmas_kaberne_fran_krasnoe_suhoe_14_ce15b611a1.webp",
+      "dst": "belmas-winery-cabernet-franc-belmas-kaberne-fran-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "belmas_winery_cabernet_sauvignon_rose_belmas_kaberne_sovinon_rozovoe_suhoe_13_d837f5aa21.webp",
+      "dst": "belmas-winery-cabernet-sauvignon-rose-belmas-kaberne-sovinon-rozovoe-suhoe-13.webp"
+    },
+    {
+      "src": "belmas_winery_cf_kaberne_fran_krasnoe_suhoe_14_b3b0ea3baf.webp",
+      "dst": "belmas-winery-cf-kaberne-fran-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "belmas_winery_malbec_katya_belmas_malbek_rozovoe_suhoe_11_77522b0de4.webp",
+      "dst": "belmas-winery-malbec-katya-belmas-malbek-rozovoe-suhoe-11.webp"
+    },
+    {
+      "src": "belmas_winery_malbec_katya_malbek_rozovoe_suhoe_129_a3e291a903.webp",
+      "dst": "belmas-winery-malbec-katya-malbek-rozovoe-suhoe-129.webp"
+    },
+    {
+      "src": "belmas_winery_pg_pino_gri_beloe_suhoe_125_8b94234880.webp",
+      "dst": "belmas-winery-pg-pino-gri-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "belmas_winery_pino_nuar_krasnoe_suhoe_135_ea70d5c59b.webp",
+      "dst": "belmas-winery-pino-nuar-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "belmas_winery_pinot_gris_belmas_pino_gri_beloe_suhoe_122_1fe1641b7c.webp",
+      "dst": "belmas-winery-pinot-gris-belmas-pino-gri-beloe-suhoe-122.webp"
+    },
+    {
+      "src": "belmas_winery_pn_pino_nuar_krasnoe_suhoe_135_f23c819c6d.webp",
+      "dst": "belmas-winery-pn-pino-nuar-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "belmas_winery_riesling_belmas_risling_beloe_suhoe_135_f64f3944b9.webp",
+      "dst": "belmas-winery-riesling-belmas-risling-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "belmas_winery_riesling_katya_belmas_risling_beloe_suhoe_125_43237968a1.webp",
+      "dst": "belmas-winery-riesling-katya-belmas-risling-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "belmas_winery_riesling_katya_risling_beloe_suhoe_12_f09b143381.webp",
+      "dst": "belmas-winery-riesling-katya-risling-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "belmas_winery_risling_beloe_suhoe_135_50cbb379a8.webp",
+      "dst": "belmas-winery-risling-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "belmas_winery_sauvignon_blanc_belmas_sovinon_blan_beloe_suhoe_13_8043c6c433.webp",
+      "dst": "belmas-winery-sauvignon-blanc-belmas-sovinon-blan-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "belmas_winery_sauvignon_blanc_katya_belmas_sovinon_blan_beloe_suhoe_115_0d366fd128.webp",
+      "dst": "belmas-winery-sauvignon-blanc-katya-belmas-sovinon-blan-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "belmas_winery_sauvignon_blanc_katya_sovinon_blan_beloe_suhoe_115_f45cba05c3.webp",
+      "dst": "belmas-winery-sauvignon-blanc-katya-sovinon-blan-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "belmas_winery_syrah_katya_belmas_sira_krasnoe_suhoe_125_53ec9045d4.webp",
+      "dst": "belmas-winery-syrah-katya-belmas-sira-krasnoe-suhoe-125.webp"
+    },
+    {
+      "src": "belmas_winery_syrah_katya_sira_krasnoe_suhoe_125_63523e8e71.webp",
+      "dst": "belmas-winery-syrah-katya-sira-krasnoe-suhoe-125.webp"
+    },
+    {
+      "src": "belmas_winery_vi_vione_beloe_suhoe_122_30cc36164c.webp",
+      "dst": "belmas-winery-vi-vione-beloe-suhoe-122.webp"
+    },
+    {
+      "src": "belmas_winery_viogner_katya_vione_beloe_suhoe_135_400b1034b7.webp",
+      "dst": "belmas-winery-viogner-katya-vione-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "belmas_winery_viognier_belmas_vione_beloe_suhoe_122_555561eab4.webp",
+      "dst": "belmas-winery-viognier-belmas-vione-beloe-suhoe-122.webp"
+    },
+    {
+      "src": "belmas_winery_viognier_katya_belmas_vione_beloe_suhoe_135_9ae123fee2.webp",
+      "dst": "belmas-winery-viognier-katya-belmas-vione-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "bez_fona_no_bg_preview_carve_photos_d1b6f3d608.webp",
+      "dst": "без фона-no-bg-preview (carve.photos).webp"
+    },
+    {
+      "src": "blagolyubov_muskat_ottonel_beloe_suhoe_125_32dd0cb4e6.webp",
+      "dst": "blagolyubov-muskat-ottonel-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "blagolyubov_sibirkovyy_beloe_suhoe_115_9194769ec7.webp",
+      "dst": "blagolyubov-sibirkovyy-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "blagolyubov_sovinon_blan_beloe_suhoe_125_c0d0a71248.webp",
+      "dst": "blagolyubov-sovinon-blan-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "blagolyubov_stanichnoe_stanichnyy_beloe_suhoe_12_eef92e6059.webp",
+      "dst": "blagolyubov-stanichnoe-stanichnyy-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "bogovich_wine_vineyard_faina_sovinon_zelenyy_beloe_suhoe_113_8384005071.webp",
+      "dst": "bogovich-wine-vineyard-faina-sovinon-zelenyy-beloe-suhoe-113.webp"
+    },
+    {
+      "src": "bogovich_wine_vineyard_kaberne_fran_krasnoe_suhoe_135_5882f6ad55.webp",
+      "dst": "bogovich-wine-vineyard-kaberne-fran-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "bogovich_wine_vineyard_kaberne_sovinon_krasnoe_suhoe_125_9316654ea1.webp",
+      "dst": "bogovich-wine-vineyard-kaberne-sovinon-krasnoe-suhoe-125.webp"
+    },
+    {
+      "src": "bogovich_wine_vineyard_klaret_pino_nuar_krasnoe_suhoe_119_77d8d4b842.webp",
+      "dst": "bogovich-wine-vineyard-klaret-pino-nuar-krasnoe-suhoe-119.webp"
+    },
+    {
+      "src": "bogovich_wine_vineyard_klassika_pino_nuar_krasnoe_suhoe_125_5e73a1cf19.webp",
+      "dst": "bogovich-wine-vineyard-klassika-pino-nuar-krasnoe-suhoe-125.webp"
+    },
+    {
+      "src": "bogovich_wine_vineyard_merlo_krasnoe_suhoe_14_6e030dc0f1.webp",
+      "dst": "bogovich-wine-vineyard-merlo-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "bogovich_wine_vineyard_muskat_oranzh_muskat_belyy_beloe_suhoe_125_959036a2e8.webp",
+      "dst": "bogovich-wine-vineyard-muskat-oranzh-muskat-belyy-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "bogovich_wine_vineyard_pino_nuar_2_krasnoe_suhoe_12_ddfd0f7952.webp",
+      "dst": "bogovich-wine-vineyard-pino-nuar-2-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "bogovich_wine_vineyard_pino_nuar_krasnoe_suhoe_125_1146574e01.webp",
+      "dst": "bogovich-wine-vineyard-pino-nuar-krasnoe-suhoe-125.webp"
+    },
+    {
+      "src": "bogovich_wine_vineyard_rkatsiteli_oranzh_beloe_suhoe_125_451f042270.webp",
+      "dst": "bogovich-wine-vineyard-rkatsiteli-oranzh-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "bottle_01_Chardonnay_3f2618d7aa.webp",
+      "dst": "bottle-01-Chardonnay.webp"
+    },
+    {
+      "src": "bottle_02_Cabernet_Franc_ec42fb71c4.webp",
+      "dst": "bottle-02-Cabernet_Franc.webp"
+    },
+    {
+      "src": "bottle_04_Pinot_Grigio_746de452f7.webp",
+      "dst": "bottle-04-Pinot_Grigio.webp"
+    },
+    {
+      "src": "bottle_06_Silvaner_a23d302323.webp",
+      "dst": "bottle-06-Silvaner.webp"
+    },
+    {
+      "src": "bottle_07_Glera_c501ac35b9.webp",
+      "dst": "bottle-07-Glera.webp"
+    },
+    {
+      "src": "cd3690e22dc2df799a4db8b857e74d37_9ca346a575.webp",
+      "dst": "cd3690e22dc2df799a4db8b857e74d37.webp"
+    },
+    {
+      "src": "cellar_master_malvaziya_beloe_suhoe_13_3214f361ad.webp",
+      "dst": "cellar-master-malvaziya-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "cellar_master_sandzhoveze_krasnoe_suhoe_125_3851d0eaae.webp",
+      "dst": "cellar-master-sandzhoveze-krasnoe-suhoe-125.webp"
+    },
+    {
+      "src": "chateau_andre_aligote_beloe_suhoe_13_c3d34b9641.webp",
+      "dst": "chateau-andre-aligote-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_andre_gryuner_beloe_suhoe_13_c15d8162b2.webp",
+      "dst": "chateau-andre-gryuner-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_andre_kaberne_fran_krasnoe_suhoe_14_e070a8fb44.webp",
+      "dst": "chateau-andre-kaberne-fran-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_andre_kaberne_sovinon_krasnoe_suhoe_13_38b93a343b.webp",
+      "dst": "chateau-andre-kaberne-sovinon-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_andre_mado_pino_nuar_rozovoe_suhoe_13_6412ac00e9.webp",
+      "dst": "chateau-andre-mado-pino-nuar-rozovoe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_andre_merlo_krasnoe_suhoe_14_ac531c264e.webp",
+      "dst": "chateau-andre-merlo-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_andre_pino_gri_beloe_suhoe_14_6dc42ba55b.webp",
+      "dst": "chateau-andre-pino-gri-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_andre_pino_nuar_krasnoe_suhoe_14_2f54e79838.webp",
+      "dst": "chateau-andre-pino-nuar-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_andre_pino_nuar_roze_rozovoe_suhoe_13_d662df99bd.webp",
+      "dst": "chateau-andre-pino-nuar-roze-rozovoe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_andre_risling_beloe_suhoe_13_cacac269cf.webp",
+      "dst": "chateau-andre-risling-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_andre_shardone_beloe_suhoe_13_daddc9dfbf.webp",
+      "dst": "chateau-andre-shardone-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_andre_sovinon_blan_beloe_suhoe_13_fb031c925c.webp",
+      "dst": "chateau-andre-sovinon-blan-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_andre_traminer_beloe_suhoe_135_56ed4fb5e5.webp",
+      "dst": "chateau-andre-traminer-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "chateau_andre_tsvaygelt_roze_rozovoe_suhoe_13_f31bcaba87.webp",
+      "dst": "chateau-andre-tsvaygelt-roze-rozovoe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_andre_tsvaygelt_tsvaygelt_tamanskiy_rozovoe_suhoe_13_43d1400cf7.webp",
+      "dst": "chateau-andre-tsvaygelt-tsvaygelt-tamanskiy-rozovoe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_cachalot_muskat_blan_muskat_belyy_beloe_suhoe_117_d2969be524.webp",
+      "dst": "chateau-cachalot-muskat-blan-muskat-belyy-beloe-suhoe-117.webp"
+    },
+    {
+      "src": "chateau_cachalot_pino_nuar_krasnoe_suhoe_12_baf40bf4e8.webp",
+      "dst": "chateau-cachalot-pino-nuar-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "chateau_cachalot_risling_beloe_suhoe_115_f258cd3856.webp",
+      "dst": "chateau-cachalot-risling-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "chateau_cachalot_shenen_blan_beloe_suhoe_113_f51452cd7b.webp",
+      "dst": "chateau-cachalot-shenen-blan-beloe-suhoe-113.webp"
+    },
+    {
+      "src": "chateau_cachalot_sira_krasnoe_suhoe_12_dce15be016.webp",
+      "dst": "chateau-cachalot-sira-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "chateau_cachalot_vione_beloe_suhoe_112_fe94c08087.webp",
+      "dst": "chateau-cachalot-vione-beloe-suhoe-112.webp"
+    },
+    {
+      "src": "chateau_de_talu_blan_semilon_beloe_suhoe_127_93430db9c7.webp",
+      "dst": "chateau-de-talu-blan-semilon-beloe-suhoe-127.webp"
+    },
+    {
+      "src": "chateau_de_talu_enolog_kaberne_sovinon_krasnoe_suhoe_15_a5c6b551a6.webp",
+      "dst": "chateau-de-talu-enolog-kaberne-sovinon-krasnoe-suhoe-15.webp"
+    },
+    {
+      "src": "chateau_de_talu_kaberne_fran_rezerv_krasnoe_suhoe_13_6dc8dcf2ec.webp",
+      "dst": "chateau-de-talu-kaberne-fran-rezerv-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_de_talu_kaberne_sovinon_rezerv_krasnoe_suhoe_14_6106a6f6b0.webp",
+      "dst": "chateau-de-talu-kaberne-sovinon-rezerv-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_de_talu_klere_sira_rozovoe_suhoe_136_2bf038e641.webp",
+      "dst": "chateau-de-talu-klere-sira-rozovoe-suhoe-136.webp"
+    },
+    {
+      "src": "chateau_de_talu_krasnostop_rezerv_krasnostop_anapskiy_krasnoe_suhoe_137_bcb15093c2.webp",
+      "dst": "chateau-de-talu-krasnostop-rezerv-krasnostop-anapskiy-krasnoe-suhoe-137.webp"
+    },
+    {
+      "src": "chateau_de_talu_kupazh_132_kaberne_sovinon_krasnoe_suhoe_146_d0f33c3c98.webp",
+      "dst": "chateau-de-talu-kupazh-132-kaberne-sovinon-krasnoe-suhoe-146.webp"
+    },
+    {
+      "src": "chateau_de_talu_merlo_rezerv_krasnoe_suhoe_14_d84b50e282.webp",
+      "dst": "chateau-de-talu-merlo-rezerv-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_de_talu_muskat_beloe_suhoe_13_c31a9ba7de.webp",
+      "dst": "chateau-de-talu-muskat-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_de_talu_roze_kaberne_sovinon_rozovoe_suhoe_14_034e61a253.webp",
+      "dst": "chateau-de-talu-roze-kaberne-sovinon-rozovoe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_de_talu_ruzh_kaberne_sovinon_krasnoe_suhoe_14_4bdd4b0a4f.webp",
+      "dst": "chateau-de-talu-ruzh-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_de_talu_shardone_rezerv_beloe_suhoe_13_d15ce11b77.webp",
+      "dst": "chateau-de-talu-shardone-rezerv-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_de_talu_shiraz_rezerv_sira_krasnoe_suhoe_14_86dc2c7da7.webp",
+      "dst": "chateau-de-talu-shiraz-rezerv-sira-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_de_talu_uroki_frantsuzskogo_kaberne_fran_krasnoe_suhoe_14_742f3fe735.webp",
+      "dst": "chateau-de-talu-uroki-frantsuzskogo-kaberne-fran-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_de_talu_uroki_frantsuzskogo_kaberne_sovinon_krasnoe_suhoe_14_026f1c021d.webp",
+      "dst": "chateau-de-talu-uroki-frantsuzskogo-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_de_talu_uroki_frantsuzskogo_krasnostop_krasnostop_anapskiy_krasnoe_suhoe_145_a9d5ec3ff6.webp",
+      "dst": "chateau-de-talu-uroki-frantsuzskogo-krasnostop-krasnostop-anapskiy-krasnoe-suhoe-145.webp"
+    },
+    {
+      "src": "chateau_de_talu_uroki_frantsuzskogo_merlo_krasnoe_suhoe_147_2d728f9e11.webp",
+      "dst": "chateau-de-talu-uroki-frantsuzskogo-merlo-krasnoe-suhoe-147.webp"
+    },
+    {
+      "src": "chateau_de_talu_uroki_frantsuzskogo_shardone_beloe_suhoe_124_70debdc553.webp",
+      "dst": "chateau-de-talu-uroki-frantsuzskogo-shardone-beloe-suhoe-124.webp"
+    },
+    {
+      "src": "chateau_de_talu_uroki_frantsuzskogo_sira_krasnoe_suhoe_13_333740f907.webp",
+      "dst": "chateau-de-talu-uroki-frantsuzskogo-sira-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "chateau_de_talu_uroki_frantsuzskogo_sovinon_blan_beloe_suhoe_115_19393490fe.webp",
+      "dst": "chateau-de-talu-uroki-frantsuzskogo-sovinon-blan-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "chateau_de_talu_yuzhnaya_vertikal_kaberne_fran_krasnoe_suhoe_142_eb282f09b8.webp",
+      "dst": "chateau-de-talu-yuzhnaya-vertikal-kaberne-fran-krasnoe-suhoe-142.webp"
+    },
+    {
+      "src": "chateau_de_talu_yuzhnaya_vertikal_kaberne_fran_premium_krasnoe_suhoe_143_fe11f85d85.webp",
+      "dst": "chateau-de-talu-yuzhnaya-vertikal-kaberne-fran-premium-krasnoe-suhoe-143.webp"
+    },
+    {
+      "src": "chateau_de_talu_yuzhnaya_vertikal_kaberne_fran_rezerv_krasnoe_suhoe_146_9ed8edf81c.webp",
+      "dst": "chateau-de-talu-yuzhnaya-vertikal-kaberne-fran-rezerv-krasnoe-suhoe-146.webp"
+    },
+    {
+      "src": "chateau_le_grand_vostock_krasnostop_rezerv_krasnoe_suhoe_vyderzhannoe_145_a04e866765.webp",
+      "dst": "chateau-le-grand-vostock-krasnostop-rezerv-krasnoe-suhoe-vyderzhannoe-145.webp"
+    },
+    {
+      "src": "chateau_le_grand_vostock_kyuve_karsov_rezerv_shardone_beloe_suhoe_14_ff996271bf.webp",
+      "dst": "chateau-le-grand-vostock-kyuve-karsov-rezerv-shardone-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "chateau_le_grand_vostock_pino_nuar_rezerv_krasnoe_suhoe_vyderzhannoe_14_16df8a8740.webp",
+      "dst": "chateau-le-grand-vostock-pino-nuar-rezerv-krasnoe-suhoe-vyderzhannoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_aligote_aligote_beloe_suhoe_125_77b160f87a.webp",
+      "dst": "chteau-le-grand-vostock-aligote-aligote-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_aligote_reserve_aligote_beloe_suhoe_13_bd611c7154.webp",
+      "dst": "chteau-le-grand-vostock-aligote-reserve-aligote-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_cabernet_franc_reserve_kaberne_fran_krasnoe_suhoe_14_dc58d3d0de.webp",
+      "dst": "chteau-le-grand-vostock-cabernet-franc-reserve-kaberne-fran-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_cabernet_sauvignon_kaberne_sovinon_krasnoe_suhoe_14_1006ebb20a.webp",
+      "dst": "chteau-le-grand-vostock-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_cabernet_sauvignon_reserve_kaberne_sovinon_krasnoe_suhoe_14_f13c051af7.webp",
+      "dst": "chteau-le-grand-vostock-cabernet-sauvignon-reserve-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_cadet_karsov_shardone_beloe_suhoe_135_e1a7aa1ea3.webp",
+      "dst": "chteau-le-grand-vostock-cadet-karsov-shardone-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_chardonnay_reserve_shardone_beloe_suhoe_14_ba03055c10.webp",
+      "dst": "chteau-le-grand-vostock-chardonnay-reserve-shardone-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_chardonnay_shardone_beloe_suhoe_14_42eb2dde28.webp",
+      "dst": "chteau-le-grand-vostock-chardonnay-shardone-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_cuvee_karsov_reserve_shardone_beloe_suhoe_14_d5479420dd.webp",
+      "dst": "chteau-le-grand-vostock-cuvee-karsov-reserve-shardone-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_fagotine_pino_gri_beloe_polusladkoe_105_03a77419a2.webp",
+      "dst": "chteau-le-grand-vostock-fagotine-pino-gri-beloe-polusladkoe-105.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_fagotine_pino_gri_rozovoe_polusladkoe_11_674bd59659.webp",
+      "dst": "chteau-le-grand-vostock-fagotine-pino-gri-rozovoe-polusladkoe-11.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_grand_karsov_shardone_beloe_suhoe_14_89c8c2d86d.webp",
+      "dst": "chteau-le-grand-vostock-grand-karsov-shardone-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_krasnostop_reserve_krasnostop_krasnoe_suhoe_14_6f2c655629.webp",
+      "dst": "chteau-le-grand-vostock-krasnostop-reserve-krasnostop-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_le_chene_royal_reserve_merlo_krasnoe_suhoe_145_3a1ec8fdfa.webp",
+      "dst": "chteau-le-grand-vostock-le-chene-royal-reserve-merlo-krasnoe-suhoe-145.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_merlot_merlo_krasnoe_suhoe_14_b7ff8ad6c4.webp",
+      "dst": "chteau-le-grand-vostock-merlot-merlo-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_merlot_reserve_merlo_krasnoe_suhoe_145_56be446fbd.webp",
+      "dst": "chteau-le-grand-vostock-merlot-reserve-merlo-krasnoe-suhoe-145.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_pinot_gris_reserve_pino_gri_beloe_suhoe_135_92e725d8d8.webp",
+      "dst": "chteau-le-grand-vostock-pinot-gris-reserve-pino-gri-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_pinot_gris_rose_reserve_pino_gri_rozovoe_suhoe_14_7accd7f3e7.webp",
+      "dst": "chteau-le-grand-vostock-pinot-gris-rose-reserve-pino-gri-rozovoe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_pinot_noir_reserve_pino_nuar_krasnoe_suhoe_135_06d37ba366.webp",
+      "dst": "chteau-le-grand-vostock-pinot-noir-reserve-pino-nuar-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_sauvignon_blanc_reserve_sovinon_blan_beloe_suhoe_14_76f3ec9fa3.webp",
+      "dst": "chteau-le-grand-vostock-sauvignon-blanc-reserve-sovinon-blan-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_sauvignon_blanc_sovinon_blan_beloe_suhoe_14_1d0d531b62.webp",
+      "dst": "chteau-le-grand-vostock-sauvignon-blanc-sovinon-blan-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "chteau_le_grand_vostock_vostock_blanc_sovinon_blan_beloe_suhoe_135_5964579dc4.webp",
+      "dst": "chteau-le-grand-vostock-vostock-blanc-sovinon-blan-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "cloudy_winery_dubrovskiy_bordeaux_blend_kaberne_fran_krasnoe_suhoe_14_f6e9762007.webp",
+      "dst": "cloudy-winery-dubrovskiy-bordeaux-blend-kaberne-fran-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "cloudy_winery_dubrovskiy_orange_rkatsiteli_beloe_suhoe_125_4f9572c38b.webp",
+      "dst": "cloudy-winery-dubrovskiy-orange-rkatsiteli-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "cloudy_winery_krash_cabernet_sauvignon_kaberne_sovinon_krasnoe_suhoe_14_7de40e47b0.webp",
+      "dst": "cloudy-winery-krash-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "cloudy_winery_krash_super_bryut_shardone_beloe_ekstra_bryut_85_82cb8d2e04.webp",
+      "dst": "cloudy-winery-krash-super-bryut-shardone-beloe-ekstra-bryut-85.webp"
+    },
+    {
+      "src": "cloudy_winery_plohaya_devochka_pryanyy_blend_byanka_beloe_suhoe_125_ee12b511d9.webp",
+      "dst": "cloudy-winery-plohaya-devochka-pryanyy-blend-byanka-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "cloudy_winery_plohaya_devochka_pryanyy_traminer_traminer_beloe_suhoe_12_3160b1b322.webp",
+      "dst": "cloudy-winery-plohaya-devochka-pryanyy-traminer-traminer-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "cloudy_winery_plohaya_devochka_sochnyy_pino_noir_pino_nuar_krasnoe_suhoe_12_60e37c5c3b.webp",
+      "dst": "cloudy-winery-plohaya-devochka-sochnyy-pino-noir-pino-nuar-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "cock_test_belle_kyuve_1_blanc_de_blancs_shardone_igristoe_ekstra_bryut_beloe_12_ca089c6b08.webp",
+      "dst": "cock-test-belle-kyuve-1-blanc-de-blancs-shardone-igristoe-ekstra-bryut-beloe-12.webp"
+    },
+    {
+      "src": "cock_test_belle_kyuve_2_blan_de_nuar_pino_mene_igristoe_ekstra_bryut_beloe_12_8d6ef280c1.webp",
+      "dst": "cock-test-belle-kyuve-2-blan-de-nuar-pino-mene-igristoe-ekstra-bryut-beloe-12.webp"
+    },
+    {
+      "src": "cock_test_belle_kyuve_5_roze_shardone_igristoe_ekstra_bryut_rozovoe_12_98ac397fd8.webp",
+      "dst": "cock-test-belle-kyuve-5-roze-shardone-igristoe-ekstra-bryut-rozovoe-12.webp"
+    },
+    {
+      "src": "convertio_in_L1002571_8cf9459a5e.webp",
+      "dst": "convertio.in_L1002571_.webp"
+    },
+    {
+      "src": "convertio_in_L1002577_1_5c9f9c2c38.webp",
+      "dst": "convertio.in_L1002577_ (1).webp"
+    },
+    {
+      "src": "convertio_in_L1002577_1_8ca44facec.webp",
+      "dst": "convertio.in_L1002577_ (1) (2).webp"
+    },
+    {
+      "src": "convertio_in_Risling_vint_a2d3227b38.webp",
+      "dst": "convertio.in_Рислинг винт.webp"
+    },
+    {
+      "src": "convertio_in_Risling_vint_eeb3d3e63c.webp",
+      "dst": "convertio.in_Рислинг винт (2).webp"
+    },
+    {
+      "src": "cu3xjk4e93p2zxvazyl9c3jlidfny9ub_cf6ed0e9b3.webp",
+      "dst": "cu3xjk4e93p2zxvazyl9c3jlidfny9ub.webp"
+    },
+    {
+      "src": "d4r5_D_Od_P_Tc8okf5_1775202663_1519904964.webp",
+      "dst": "d4r5DOdPTc8okf5_1775202663.webp"
+    },
+    {
+      "src": "dacha_serdyuka_kazache_krasnostop_zolotovskiy_krasnoe_suhoe_135_4d9bef956f.webp",
+      "dst": "dacha-serdyuka-kazache-krasnostop-zolotovskiy-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "dacha_serdyuka_porechnoe_kaberne_sovinon_krasnoe_suhoe_13_da7ab3daa7.webp",
+      "dst": "dacha-serdyuka-porechnoe-kaberne-sovinon-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "dacha_serdyuka_saperavi_saperavi_severnyy_krasnoe_suhoe_14_f1b30ba078.webp",
+      "dst": "dacha-serdyuka-saperavi-saperavi-severnyy-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "dacha_serdyuka_sibirkovyy_beloe_suhoe_135_c7ad6452b8.webp",
+      "dst": "dacha-serdyuka-sibirkovyy-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "dacha_serdyuka_sibirkovyy_oranzh_beloe_suhoe_135_5f7489325e.webp",
+      "dst": "dacha-serdyuka-sibirkovyy-oranzh-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "daniel_21_5adfb4086e.webp",
+      "dst": "daniel 21.webp"
+    },
+    {
+      "src": "denisov_winery_assamblyazh_rubin_golodrigi_rozovoe_suhoe_12_0cb8d3dedd.webp",
+      "dst": "denisov-winery-assamblyazh-rubin-golodrigi-rozovoe-suhoe-12.webp"
+    },
+    {
+      "src": "denisov_winery_petnat_risling_petnat_ekstra_bryut_belyy_10_8ac6c27fa7.webp",
+      "dst": "denisov-winery-petnat-risling-petnat-ekstra-bryut-belyy-10.webp"
+    },
+    {
+      "src": "denisov_winery_petnat_rkatsiteli_petnat_ekstra_bryut_belyy_107_5da935c18a.webp",
+      "dst": "denisov-winery-petnat-rkatsiteli-petnat-ekstra-bryut-belyy-107.webp"
+    },
+    {
+      "src": "denisov_winery_petnat_saperavi_severnyy_petnat_ekstra_bryut_rozovyy_105_4689f0cb14.webp",
+      "dst": "denisov-winery-petnat-saperavi-severnyy-petnat-ekstra-bryut-rozovyy-105.webp"
+    },
+    {
+      "src": "denisov_winery_petnat_tsitron_risling_tsitronnyy_magaracha_petnat_ekstra_bryut_belyy_102_8f425093ef.webp",
+      "dst": "denisov-winery-petnat-tsitron-risling-tsitronnyy-magaracha-petnat-ekstra-bryut-belyy-102.webp"
+    },
+    {
+      "src": "denisov_winery_pino_nuar_rozovoe_suhoe_125_ad6a3633ed.webp",
+      "dst": "denisov-winery-pino-nuar-rozovoe-suhoe-125.webp"
+    },
+    {
+      "src": "denisov_winery_pino_nuar_shardone_ekstra_bryut_igristoe_ekstra_bryut_beloe_125_43d45643b9.webp",
+      "dst": "denisov-winery-pino-nuar-shardone-ekstra-bryut-igristoe-ekstra-bryut-beloe-125.webp"
+    },
+    {
+      "src": "denisov_winery_risling_beloe_suhoe_115_3963e7c359.webp",
+      "dst": "denisov-winery-risling-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "denisov_winery_rkatsiteli_beloe_suhoe_112_ed8e9acfcd.webp",
+      "dst": "denisov-winery-rkatsiteli-beloe-suhoe-112.webp"
+    },
+    {
+      "src": "denisov_winery_sovinon_blan_beloe_suhoe_115_7ed31606ab.webp",
+      "dst": "denisov-winery-sovinon-blan-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "denisov_winery_tsitron_oranzh_tsitronnyy_magaracha_oranzhevoe_suhoe_105_3d8bed58d0.webp",
+      "dst": "denisov-winery-tsitron-oranzh-tsitronnyy-magaracha-oranzhevoe-suhoe-105.webp"
+    },
+    {
+      "src": "denisov_winery_tsitron_tsitronnyy_magaracha_beloe_suhoe_112_6a56776856.webp",
+      "dst": "denisov-winery-tsitron-tsitronnyy-magaracha-beloe-suhoe-112.webp"
+    },
+    {
+      "src": "derbent_vino_desono_risling_ekstra_bryut_beloe_105_125_724cf52ff8.webp",
+      "dst": "derbent-vino-desono-risling-ekstra-bryut-beloe-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_desono_sovinon_ekstra_bryut_sovinon_blan_beloe_105_125_756134dcb1.webp",
+      "dst": "derbent-vino-desono-sovinon-ekstra-bryut-sovinon-blan-beloe-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_fiori_di_mare_verde_avgustin_rozovoe_polusuhoe_10_e9fa99da2f.webp",
+      "dst": "derbent-vino-di-kaspiko-fiori-di-mare-verde-avgustin-rozovoe-polusuhoe-10.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_kaberne_sovinon_krasnoe_suhoe_135_cb62d5c61d.webp",
+      "dst": "derbent-vino-di-kaspiko-kaberne-sovinon-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_merlo_krasnoe_polusladkoe_11_fe0af35587.webp",
+      "dst": "derbent-vino-di-kaspiko-merlo-krasnoe-polusladkoe-11.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_merlo_krasnoe_suhoe_13_955108cf50.webp",
+      "dst": "derbent-vino-di-kaspiko-merlo-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_risling_beloe_suhoe_12_4811c15318.webp",
+      "dst": "derbent-vino-di-kaspiko-risling-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_rkatsiteli_beloe_polusladkoe_11_0f1d01c9b8.webp",
+      "dst": "derbent-vino-di-kaspiko-rkatsiteli-beloe-polusladkoe-11.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_rkatsiteli_beloe_suhoe_12_bb2cf4506e.webp",
+      "dst": "derbent-vino-di-kaspiko-rkatsiteli-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_roze_shardone_rozovoe_suhoe_12_9bae135964.webp",
+      "dst": "derbent-vino-di-kaspiko-roze-shardone-rozovoe-suhoe-12.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_saperavi_krasnoe_suhoe_13_753016cd3a.webp",
+      "dst": "derbent-vino-di-kaspiko-saperavi-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_shardone_beloe_bryut_105_125_4d786338c5.webp",
+      "dst": "derbent-vino-di-kaspiko-shardone-beloe-bryut-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_di_kaspiko_shardone_beloe_suhoe_125_f909d0b705.webp",
+      "dst": "derbent-vino-di-kaspiko-shardone-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "derbent_vino_endemy_aligote_beloe_bryut_105_125_9c9d02efb2.webp",
+      "dst": "derbent-vino-endemy-aligote-beloe-bryut-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_endemy_kaberne_fran_krasnoe_suhoe_13_6351c14f55.webp",
+      "dst": "derbent-vino-endemy-kaberne-fran-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "derbent_vino_endemy_kaberne_sovinon_rozovoe_bryut_105_125_2b46752cd4.webp",
+      "dst": "derbent-vino-endemy-kaberne-sovinon-rozovoe-bryut-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_endemy_merlo_krasnoe_suhoe_13_36ebced038.webp",
+      "dst": "derbent-vino-endemy-merlo-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "derbent_vino_endemy_pino_nuar_rozovoe_bryut_105_125_d889dc6335.webp",
+      "dst": "derbent-vino-endemy-pino-nuar-rozovoe-bryut-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_endemy_risling_beloe_bryut_105_125_ab6f76cf0a.webp",
+      "dst": "derbent-vino-endemy-risling-beloe-bryut-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_endemy_saperavi_krasnoe_suhoe_13_1e6d4109d5.webp",
+      "dst": "derbent-vino-endemy-saperavi-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "derbent_vino_endemy_shardone_beloe_bryut_105_125_0050dd60c9.webp",
+      "dst": "derbent-vino-endemy-shardone-beloe-bryut-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_endemy_shardone_beloe_suhoe_13_62a14e694a.webp",
+      "dst": "derbent-vino-endemy-shardone-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "derbent_vino_endemy_sovinon_beloe_bryut_105_125_7117449f6c.webp",
+      "dst": "derbent-vino-endemy-sovinon-beloe-bryut-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_graf_vorontsov_beloe_polusladkoe_sovinon_blan_105_125_5bcfddfbc1.webp",
+      "dst": "derbent-vino-graf-vorontsov-beloe-polusladkoe-sovinon-blan-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_graf_vorontsov_bryut_beloe_sovinon_blan_105_125_75497fccb3.webp",
+      "dst": "derbent-vino-graf-vorontsov-bryut-beloe-sovinon-blan-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_graf_vorontsov_bryut_rozovoe_pervenets_magaracha_105_125_080d855e21.webp",
+      "dst": "derbent-vino-graf-vorontsov-bryut-rozovoe-pervenets-magaracha-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_kavkazian_dzharauli_moldova_krasnoe_polusladkoe_11_79f7379ec0.webp",
+      "dst": "derbent-vino-kavkazian-dzharauli-moldova-krasnoe-polusladkoe-11.webp"
+    },
+    {
+      "src": "derbent_vino_kavkazian_merlo_krasnoe_polusladkoe_105_125_d2973b5f66.webp",
+      "dst": "derbent-vino-kavkazian-merlo-krasnoe-polusladkoe-105-125.webp"
+    },
+    {
+      "src": "derbent_vino_kavkazian_rkatsiteli_beloe_suhoe_12_88da97ff68.webp",
+      "dst": "derbent-vino-kavkazian-rkatsiteli-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "derbent_vino_kavkazian_saperavi_krasnoe_suhoe_105_125_f6bb126efc.webp",
+      "dst": "derbent-vino-kavkazian-saperavi-krasnoe-suhoe-105-125.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_alkomishka_malbek_krasnoe_suhoe_123_edeea28c08.webp",
+      "dst": "domaine-de-la-vivandiere-alkomishka-malbek-krasnoe-suhoe-123.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_krasnostop_roze_rozovoe_suhoe_134_065e0d758d.webp",
+      "dst": "domaine-de-la-vivandiere-krasnostop-roze-rozovoe-suhoe-134.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_malbec_vivandiere_roze_malbek_rozovoe_suhoe_125_882f670a7d.webp",
+      "dst": "domaine-de-la-vivandiere-malbec-vivandiere-roze-malbek-rozovoe-suhoe-125.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_pino_nuar_roze_rozovoe_suhoe_122_48ffea282d.webp",
+      "dst": "domaine-de-la-vivandiere-pino-nuar-roze-rozovoe-suhoe-122.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_risling_beloe_suhoe_122_68ba0c1792.webp",
+      "dst": "domaine-de-la-vivandiere-risling-beloe-suhoe-122.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_senso_roze_rozovoe_suhoe_126_1beb87273d.webp",
+      "dst": "domaine-de-la-vivandiere-senso-roze-rozovoe-suhoe-126.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_sibirkovyy_fresh_beloe_suhoe_125_39e6be90f5.webp",
+      "dst": "domaine-de-la-vivandiere-sibirkovyy-fresh-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_sibirkovyy_sur_lies_beloe_suhoe_121_536caa1f6a.webp",
+      "dst": "domaine-de-la-vivandiere-sibirkovyy-sur-lies-beloe-suhoe-121.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_tsimlyanskiy_chyornyy_ctes_du_don_tsimlyanskiy_chernyy_rozovoe_suhoe_134_1114a4a7ac.webp",
+      "dst": "domaine-de-la-vivandiere-tsimlyanskiy-chyornyy-ctes-du-don-tsimlyanskiy-chernyy-rozovoe-suhoe-134.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_vn_beloe_aligote_beloe_suhoe_131_5d98fba99a.webp",
+      "dst": "domaine-de-la-vivandiere-vn-beloe-aligote-beloe-suhoe-131.webp"
+    },
+    {
+      "src": "domaine_de_la_vivandiere_vn_krasnoe_pino_nuar_krasnoe_suhoe_12_22b28437fb.webp",
+      "dst": "domaine-de-la-vivandiere-vn-krasnoe-pino-nuar-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "domaine_lipko_blaufrankisch_domaine_lipko_blaufrankish_krasnoe_suhoe_136_440af9a034.webp",
+      "dst": "domaine-lipko-blaufrankisch-domaine-lipko-blaufrankish-krasnoe-suhoe-136.webp"
+    },
+    {
+      "src": "domaine_lipko_blaufrankish_krasnoe_suhoe_126_e33253850f.webp",
+      "dst": "domaine-lipko-blaufrankish-krasnoe-suhoe-126.webp"
+    },
+    {
+      "src": "domaine_lipko_kaberne_sovinon_merlo_pomeste_trenzina_krasnoe_suhoe_15_aa953b6231.webp",
+      "dst": "domaine-lipko-kaberne-sovinon-merlo-pomeste-trenzina-krasnoe-suhoe-15.webp"
+    },
+    {
+      "src": "domaine_lipko_muskat_pomeste_trenzina_muskat_belyy_beloe_suhoe_119_f53581d3d0.webp",
+      "dst": "domaine-lipko-muskat-pomeste-trenzina-muskat-belyy-beloe-suhoe-119.webp"
+    },
+    {
+      "src": "domaine_lipko_penpalo_cabernet_sauvignon_domaine_lipko_kaberne_sovinon_krasnoe_suhoe_14_49831aa29f.webp",
+      "dst": "domaine-lipko-penpalo-cabernet-sauvignon-domaine-lipko-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "domaine_lipko_penpalo_chardonnay_domaine_lipko_shardone_beloe_suhoe_122_84467c3576.webp",
+      "dst": "domaine-lipko-penpalo-chardonnay-domaine-lipko-shardone-beloe-suhoe-122.webp"
+    },
+    {
+      "src": "domaine_lipko_penpalo_kaberne_sovinon_krasnoe_suhoe_14_669809a88b.webp",
+      "dst": "domaine-lipko-penpalo-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "domaine_lipko_petit_verdot_domaine_lipko_pti_verdo_krasnoe_suhoe_14_d4fda4146c.webp",
+      "dst": "domaine-lipko-petit-verdot-domaine-lipko-pti-verdo-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "domaine_lipko_pino_nuar_krasnoe_suhoe_12_645408d2e3.webp",
+      "dst": "domaine-lipko-pino-nuar-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "domaine_lipko_pinot_noir_domaine_lipko_pino_nuar_krasnoe_suhoe_133_a7c8791c9f.webp",
+      "dst": "domaine-lipko-pinot-noir-domaine-lipko-pino-nuar-krasnoe-suhoe-133.webp"
+    },
+    {
+      "src": "domaine_lipko_pti_verdo_krasnoe_suhoe_14_155eed96cb.webp",
+      "dst": "domaine-lipko-pti-verdo-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "domaine_lipko_riesling_m_domaine_lipko_risling_beloe_suhoe_102_aac6eaf2b0.webp",
+      "dst": "domaine-lipko-riesling-m-domaine-lipko-risling-beloe-suhoe-102.webp"
+    },
+    {
+      "src": "domaine_lipko_risling_beloe_polusuhoe_124_221fa1bd0b.webp",
+      "dst": "domaine-lipko-risling-beloe-polusuhoe-124.webp"
+    },
+    {
+      "src": "domaine_lipko_roze_sira_rozovoe_suhoe_135_32069a0e89.webp",
+      "dst": "domaine-lipko-roze-sira-rozovoe-suhoe-135.webp"
+    },
+    {
+      "src": "domaine_lipko_sauvignon_blanc_domaine_lipko_sovinon_blan_beloe_suhoe_118_3466c4862b.webp",
+      "dst": "domaine-lipko-sauvignon-blanc-domaine-lipko-sovinon-blan-beloe-suhoe-118.webp"
+    },
+    {
+      "src": "domaine_lipko_sovinon_blan_beloe_suhoe_118_239115924a.webp",
+      "dst": "domaine-lipko-sovinon-blan-beloe-suhoe-118.webp"
+    },
+    {
+      "src": "domaine_lipko_syrah_domaine_lipko_sira_krasnoe_suhoe_14_4a737361dc.webp",
+      "dst": "domaine-lipko-syrah-domaine-lipko-sira-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "domaine_lipko_white_blend_lipko_muskat_belyy_beloe_polusuhoe_115_0ffe4c6cf6.webp",
+      "dst": "domaine-lipko-white-blend-lipko-muskat-belyy-beloe-polusuhoe-115.webp"
+    },
+    {
+      "src": "domaine_lipko_white_blend_muskat_beloe_polusuhoe_12_19ac7b503b.webp",
+      "dst": "domaine-lipko-white-blend-muskat-beloe-polusuhoe-12.webp"
+    },
+    {
+      "src": "domaine_lipko_white_blend_tsitronnyy_magaracha_beloe_suhoe_115_24011764ba.webp",
+      "dst": "domaine-lipko-white-blend-tsitronnyy-magaracha-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "donskoe_vinodelcheskoe_hozyaystvo_elbuzd_kaberne_fran_krasnoe_suhoe_13_2f331c5376.webp",
+      "dst": "donskoe-vinodelcheskoe-hozyaystvo-elbuzd-kaberne-fran-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "donskoe_vinodelcheskoe_hozyaystvo_elbuzd_merlo_krasnoe_suhoe_13_261ddc4f01.webp",
+      "dst": "donskoe-vinodelcheskoe-hozyaystvo-elbuzd-merlo-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "donskoe_vinodelcheskoe_hozyaystvo_elbuzd_pino_nuar_krasnoe_suhoe_13_fe1f143b4b.webp",
+      "dst": "donskoe-vinodelcheskoe-hozyaystvo-elbuzd-pino-nuar-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "donskoe_vinodelcheskoe_hozyaystvo_elbuzd_risling_beloe_suhoe_12_c5359f598b.webp",
+      "dst": "donskoe-vinodelcheskoe-hozyaystvo-elbuzd-risling-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "donskoe_vinodelcheskoe_hozyaystvo_elbuzd_shardone_beloe_suhoe_13_4dc735a9ed.webp",
+      "dst": "donskoe-vinodelcheskoe-hozyaystvo-elbuzd-shardone-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "donskoe_vinodelcheskoe_hozyaystvo_elbuzd_sovinon_blan_beloe_suhoe_12_1e0d005870.webp",
+      "dst": "donskoe-vinodelcheskoe-hozyaystvo-elbuzd-sovinon-blan-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "dubinin_winery_merlo_roze_rozovoe_suhoe_125_7a5b91f610.webp",
+      "dst": "dubinin-winery-merlo-roze-rozovoe-suhoe-125.webp"
+    },
+    {
+      "src": "dubinin_winery_pino_nuar_bryut_roze_igristoe_ekstra_bryut_rozovoe_125_f445b9db8a.webp",
+      "dst": "dubinin-winery-pino-nuar-bryut-roze-igristoe-ekstra-bryut-rozovoe-125.webp"
+    },
+    {
+      "src": "dubinin_winery_risling_beloe_suhoe_12_7ac8ef3e5f.webp",
+      "dst": "dubinin-winery-risling-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "dubinin_winery_roze_kaberne_fran_rozovoe_suhoe_13_d7bb0abe34.webp",
+      "dst": "dubinin-winery-roze-kaberne-fran-rozovoe-suhoe-13.webp"
+    },
+    {
+      "src": "dubinin_winery_saperavi_fresh_krasnoe_suhoe_135_ed1dd0f8f4.webp",
+      "dst": "dubinin-winery-saperavi-fresh-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "dubinin_winery_sovinon_blan_beloe_suhoe_12_18c78bf838.webp",
+      "dst": "dubinin-winery-sovinon-blan-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "dva_serdtsa_arinarnoa_kaberne_sovinon_krasnoe_suhoe_135_047c8cca68.webp",
+      "dst": "dva-serdtsa-arinarnoa-kaberne-sovinon-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "dva_serdtsa_kaberne_fran_krasnoe_suhoe_14_3cd97c037a.webp",
+      "dst": "dva-serdtsa-kaberne-fran-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "dva_serdtsa_kokur_beloe_suhoe_125_2a62b6715b.webp",
+      "dst": "dva-serdtsa-kokur-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "dva_serdtsa_muskat_muskat_belyy_beloe_polusuhoe_12_812f13f41a.webp",
+      "dst": "dva-serdtsa-muskat-muskat-belyy-beloe-polusuhoe-12.webp"
+    },
+    {
+      "src": "dva_serdtsa_muskat_suhoy_muskat_belyy_beloe_suhoe_12_904721b94a.webp",
+      "dst": "dva-serdtsa-muskat-suhoy-muskat-belyy-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "dva_serdtsa_rozovoe_kaberne_sovinon_rozovoe_suhoe_13_43d6654ff9.webp",
+      "dst": "dva-serdtsa-rozovoe-kaberne-sovinon-rozovoe-suhoe-13.webp"
+    },
+    {
+      "src": "dva_serdtsa_saperavi_krasnoe_suhoe_135_58815e0ac2.webp",
+      "dst": "dva-serdtsa-saperavi-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "dva_serdtsa_vione_beloe_suhoe_125_2e3fcdb2b9.webp",
+      "dst": "dva-serdtsa-vione-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "e7b5c9242252ee908c6a7f883415bf51_859cbd72e2.webp",
+      "dst": "e7b5c9242252ee908c6a7f883415bf51.webp"
+    },
+    {
+      "src": "ec2082cwb8d2y4rf36x235pckozylfad_9994a4e28f.webp",
+      "dst": "ec2082cwb8d2y4rf36x235pckozylfad.webp"
+    },
+    {
+      "src": "esse_blanc_de_noirs_pino_nuar_igristoe_ekstra_bryut_beloe_115_c951557140.webp",
+      "dst": "esse-blanc-de-noirs-pino-nuar-igristoe-ekstra-bryut-beloe-115.webp"
+    },
+    {
+      "src": "esse_brut_cuvee_prestige_shardone_igristoe_ekstra_bryut_beloe_115_8e21ee1279.webp",
+      "dst": "esse-brut-cuvee-prestige-shardone-igristoe-ekstra-bryut-beloe-115.webp"
+    },
+    {
+      "src": "esse_brut_zero_dosage_shardone_igristoe_ekstra_bryut_beloe_12_23c5b934ee.webp",
+      "dst": "esse-brut-zero-dosage-shardone-igristoe-ekstra-bryut-beloe-12.webp"
+    },
+    {
+      "src": "esse_brut_zero_dosage_shardone_igristoe_ekstra_bryut_beloe_135_b40ec10218.webp",
+      "dst": "esse-brut-zero-dosage-shardone-igristoe-ekstra-bryut-beloe-135.webp"
+    },
+    {
+      "src": "esse_chenin_blanc_shenen_blan_beloe_suhoe_12_d814751e86.webp",
+      "dst": "esse-chenin-blanc-shenen-blan-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_demi_sec_muscat_nectar_muskat_belyy_igristoe_ekstra_bryut_beloe_115_dd78fd153c.webp",
+      "dst": "esse-demi-sec-muscat-nectar-muskat-belyy-igristoe-ekstra-bryut-beloe-115.webp"
+    },
+    {
+      "src": "esse_dolinnoe_cabernet_franc_kaberne_fran_krasnoe_suhoe_13_0390d0284a.webp",
+      "dst": "esse-dolinnoe-cabernet-franc-kaberne-fran-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "esse_dolinnoe_chrdvnr_shardone_beloe_suhoe_13_f8c0b600ad.webp",
+      "dst": "esse-dolinnoe-chrdvnr-shardone-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "esse_esse_grand_cuvee_60_shardone_igristoe_ekstra_bryut_beloe_115_20c6d7a318.webp",
+      "dst": "esse-esse-grand-cuvee-60-shardone-igristoe-ekstra-bryut-beloe-115.webp"
+    },
+    {
+      "src": "esse_esse_millesime_brut_zero_dosage_shardone_igristoe_ekstra_bryut_beloe_115_0cfef302b3.webp",
+      "dst": "esse-esse-millesime-brut-zero-dosage-shardone-igristoe-ekstra-bryut-beloe-115.webp"
+    },
+    {
+      "src": "esse_esse_rose_zero_dosage_shardone_igristoe_ekstra_bryut_rozovoe_115_24439839bf.webp",
+      "dst": "esse-esse-rose-zero-dosage-shardone-igristoe-ekstra-bryut-rozovoe-115.webp"
+    },
+    {
+      "src": "esse_esse_shardone_beloe_suhoe_125_a64096d1a1.webp",
+      "dst": "esse-esse-shardone-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "esse_esse_sira_krasnoe_suhoe_12_d542214070.webp",
+      "dst": "esse-esse-sira-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_gevyurtstraminer_beloe_suhoe_12_c0993e07dc.webp",
+      "dst": "esse-gevyurtstraminer-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_kaberne_fran_krasnoe_suhoe_13_458f9c63ca.webp",
+      "dst": "esse-kaberne-fran-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "esse_kaberne_otbornoe_kaberne_sovinon_krasnoe_suhoe_12_1f8b96ac79.webp",
+      "dst": "esse-kaberne-otbornoe-kaberne-sovinon-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_kaberne_sovinon_krasnoe_suhoe_14_2536b9976e.webp",
+      "dst": "esse-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "esse_mama_marselan_krasnoe_suhoe_115_13668d8525.webp",
+      "dst": "esse-mama-marselan-krasnoe-suhoe-115.webp"
+    },
+    {
+      "src": "esse_mama_marselan_krasnoe_suhoe_135_5fef596cdc.webp",
+      "dst": "esse-mama-marselan-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "esse_merlo_krasnoe_suhoe_135_efd9f63edb.webp",
+      "dst": "esse-merlo-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "esse_merlo_otbornoe_krasnoe_suhoe_13_eda65be34f.webp",
+      "dst": "esse-merlo-otbornoe-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "esse_muskat_belyy_beloe_suhoe_135_446d285a06.webp",
+      "dst": "esse-muskat-belyy-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "esse_muskat_muskat_belyy_beloe_suhoe_115_48469f1962.webp",
+      "dst": "esse-muskat-muskat-belyy-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "esse_muskat_muskat_belyy_igristoe_ekstra_bryut_beloe_115_f176ce3718.webp",
+      "dst": "esse-muskat-muskat-belyy-igristoe-ekstra-bryut-beloe-115.webp"
+    },
+    {
+      "src": "esse_muskat_oranzh_muskat_belyy_beloe_suhoe_115_8221306c48.webp",
+      "dst": "esse-muskat-oranzh-muskat-belyy-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "esse_nectar_muscat_muskat_belyy_igristoe_polusuhoe_beloe_12_5b5a2eb0f1.webp",
+      "dst": "esse-nectar-muscat-muskat-belyy-igristoe-polusuhoe-beloe-12.webp"
+    },
+    {
+      "src": "esse_odessa_black_odesskiy_chernyy_krasnoe_suhoe_12_0708fdaee7.webp",
+      "dst": "esse-odessa-black-odesskiy-chernyy-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_petit_verdot_pti_verdo_krasnoe_suhoe_13_cd1d881696.webp",
+      "dst": "esse-petit-verdot-pti-verdo-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "esse_pino_gri_beloe_suhoe_12_8bf3160446.webp",
+      "dst": "esse-pino-gri-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_pino_gri_beloe_suhoe_135_914856d918.webp",
+      "dst": "esse-pino-gri-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "esse_pino_gri_blash_rozovoe_suhoe_125_b69f532199.webp",
+      "dst": "esse-pino-gri-blash-rozovoe-suhoe-125.webp"
+    },
+    {
+      "src": "esse_pino_gri_blush_rozovoe_suhoe_115_6dbb8b61f3.webp",
+      "dst": "esse-pino-gri-blush-rozovoe-suhoe-115.webp"
+    },
+    {
+      "src": "esse_pino_nuar_krasnoe_suhoe_115_469fd883e6.webp",
+      "dst": "esse-pino-nuar-krasnoe-suhoe-115.webp"
+    },
+    {
+      "src": "esse_prirodno_polusladkoe_beloe_risling_beloe_polusladkoe_125_727390d43b.webp",
+      "dst": "esse-prirodno-polusladkoe-beloe-risling-beloe-polusladkoe-125.webp"
+    },
+    {
+      "src": "esse_prirodno_polusladkoe_krasnoe_merlo_krasnoe_polusladkoe_13_df0166b111.webp",
+      "dst": "esse-prirodno-polusladkoe-krasnoe-merlo-krasnoe-polusladkoe-13.webp"
+    },
+    {
+      "src": "esse_ridicule_sira_krasnoe_suhoe_125_6a621251f5.webp",
+      "dst": "esse-ridicule-sira-krasnoe-suhoe-125.webp"
+    },
+    {
+      "src": "esse_risling_beloe_suhoe_115_56a1b754fc.webp",
+      "dst": "esse-risling-beloe-suhoe-115.webp"
+    },
+    {
+      "src": "esse_rkatsiteli_beloe_suhoe_125_4f094ac315.webp",
+      "dst": "esse-rkatsiteli-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "esse_rkatsiteli_oranzh_beloe_suhoe_12_1c6512e2ab.webp",
+      "dst": "esse-rkatsiteli-oranzh-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_rkatsiteli_syur_li_beloe_suhoe_125_2f0b000796.webp",
+      "dst": "esse-rkatsiteli-syur-li-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "esse_rose_cuvee_prestige_pino_nuar_igristoe_bryut_rozovoe_115_725db31aa4.webp",
+      "dst": "esse-rose-cuvee-prestige-pino-nuar-igristoe-bryut-rozovoe-115.webp"
+    },
+    {
+      "src": "esse_rose_cuvee_prestige_pino_nuar_igristoe_bryut_rozovoe_13_606b304d1d.webp",
+      "dst": "esse-rose-cuvee-prestige-pino-nuar-igristoe-bryut-rozovoe-13.webp"
+    },
+    {
+      "src": "esse_rose_sira_rozovoe_suhoe_12_f4150d71ea.webp",
+      "dst": "esse-rose-sira-rozovoe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_roze_kaberne_sovinon_rozovoe_suhoe_135_f6a387d48c.webp",
+      "dst": "esse-roze-kaberne-sovinon-rozovoe-suhoe-135.webp"
+    },
+    {
+      "src": "esse_rubinovyy_rubinovyy_magaracha_krasnoe_suhoe_12_0570a9069b.webp",
+      "dst": "esse-rubinovyy-rubinovyy-magaracha-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_sangiovese_sandzhoveze_krasnoe_suhoe_135_cc1e0cdca2.webp",
+      "dst": "esse-sangiovese-sandzhoveze-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "esse_saperavi_heaven_krasnoe_suhoe_13_759445e79f.webp",
+      "dst": "esse-saperavi-heaven-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "esse_saperavi_krasnoe_suhoe_13_52697406ad.webp",
+      "dst": "esse-saperavi-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "esse_shardone_otbornoe_beloe_suhoe_12_3b070fa772.webp",
+      "dst": "esse-shardone-otbornoe-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_shenen_blan_beloe_suhoe_13_98cc04b8dc.webp",
+      "dst": "esse-shenen-blan-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "esse_sovinon_blan_beloe_suhoe_12_399b808abd.webp",
+      "dst": "esse-sovinon-blan-beloe-suhoe-12.webp"
+    },
+    {
+      "src": "esse_sovinon_blan_fyume_beloe_suhoe_128_a32349f7e3.webp",
+      "dst": "esse-sovinon-blan-fyume-beloe-suhoe-128.webp"
+    },
+    {
+      "src": "esse_vione_beloe_suhoe_13_aec36b710c.webp",
+      "dst": "esse-vione-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "evolution_rose_pinot_noir_2024_c3fc4a172a.webp",
+      "dst": "evolution_rose_pinot_noir 2024.webp"
+    },
+    {
+      "src": "f804754fa9ae3bf4c674ad5d82e86b14_d9b6930374.webp",
+      "dst": "f804754fa9ae3bf4c674ad5d82e86b14.webp"
+    },
+    {
+      "src": "fanagoriya_100_ottenkov_krasnogo_kaberne_kaberne_sovinon_krasnoe_suhoe_135_ad8495191f.webp",
+      "dst": "fanagoriya-100-ottenkov-krasnogo-kaberne-kaberne-sovinon-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_100_ottenkov_krasnogo_pino_nuar_krasnoe_suhoe_vyderzhannoe_135_12baf813ea.webp",
+      "dst": "fanagoriya-100-ottenkov-krasnogo-pino-nuar-krasnoe-suhoe-vyderzhannoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_100_ottenkov_krasnogo_saperavi_krasnoe_suhoe_14_fa242e130a.webp",
+      "dst": "fanagoriya-100-ottenkov-krasnogo-saperavi-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "fanagoriya_100_ottenkov_shardone_beloe_suhoe_14_dd14e33b83.webp",
+      "dst": "fanagoriya-100-ottenkov-shardone-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "fanagoriya_101_ottenok_krasnogo_kaberne_kaberne_sovinon_krasnoe_suhoe_14_98c670a6a1.webp",
+      "dst": "fanagoriya-101-ottenok-krasnogo-kaberne-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "fanagoriya_101_ottenok_krasnogo_pino_nuar_krasnoe_suhoe_135_62be6e1c10.webp",
+      "dst": "fanagoriya-101-ottenok-krasnogo-pino-nuar-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_101_ottenok_krasnogo_saperavi_krasnoe_suhoe_14_4716c6d770.webp",
+      "dst": "fanagoriya-101-ottenok-krasnogo-saperavi-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "fanagoriya_5_elements_bryut_beloe_pino_gri_igristoe_bryut_beloe_125_d7497bb817.webp",
+      "dst": "fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125.webp"
+    },
+    {
+      "src": "fanagoriya_5_elements_bryut_rozovoe_saperavi_igristoe_bryut_rozovoe_125_89ce2d6975.webp",
+      "dst": "fanagoriya-5-elements-bryut-rozovoe-saperavi-igristoe-bryut-rozovoe-125.webp"
+    },
+    {
+      "src": "fanagoriya_alta_qortis_saperavi_krasnoe_suhoe_145_cd395bc533.webp",
+      "dst": "fanagoriya-alta-qortis-saperavi-krasnoe-suhoe-145.webp"
+    },
+    {
+      "src": "fanagoriya_alveus_ultra_cuvee_brut_shardone_beloe_bryut_12_b29ade1dcd.webp",
+      "dst": "fanagoriya-alveus-ultra-cuvee-brut-shardone-beloe-bryut-12.webp"
+    },
+    {
+      "src": "fanagoriya_alveus_ultra_cuvee_bryut_rozovoe_merlo_igristoe_bryut_rozovoe_12_a23595c6d7.webp",
+      "dst": "fanagoriya-alveus-ultra-cuvee-bryut-rozovoe-merlo-igristoe-bryut-rozovoe-12.webp"
+    },
+    {
+      "src": "fanagoriya_alveus_ultra_cuvee_ekstra_bryut_beloe_risling_reynskiy_12_d3eb10a98a.webp",
+      "dst": "fanagoriya-alveus-ultra-cuvee-ekstra-bryut-beloe-risling-reynskiy-12.webp"
+    },
+    {
+      "src": "fanagoriya_alveus_ultra_cuvee_ekstra_bryut_rozovoe_merlo_12_dda03da431.webp",
+      "dst": "fanagoriya-alveus-ultra-cuvee-ekstra-bryut-rozovoe-merlo-12.webp"
+    },
+    {
+      "src": "fanagoriya_blanc_de_blancs_shardone_igristoe_bryut_beloe_12_4071ae25d5.webp",
+      "dst": "fanagoriya-blanc-de-blancs-shardone-igristoe-bryut-beloe-12.webp"
+    },
+    {
+      "src": "fanagoriya_blanc_de_noir_mene_extra_brut_2019_pino_nuar_beloe_ekstra_bryut_12_cf7fa4159c.webp",
+      "dst": "fanagoriya-blanc-de-noir-mene-extra-brut-2019-pino-nuar-beloe-ekstra-bryut-12.webp"
+    },
+    {
+      "src": "fanagoriya_blanc_de_noirs_mene_pino_mene_igristoe_ekstra_bryut_beloe_12_6cd37dc5ac.webp",
+      "dst": "fanagoriya-blanc-de-noirs-mene-pino-mene-igristoe-ekstra-bryut-beloe-12.webp"
+    },
+    {
+      "src": "fanagoriya_brule_cabernet_franc_polusuhoe_rozovoe_kaberne_fran_12_08e20da65a.webp",
+      "dst": "fanagoriya-brule-cabernet-franc-polusuhoe-rozovoe-kaberne-fran-12.webp"
+    },
+    {
+      "src": "fanagoriya_brule_cabernet_sauvignon_polusladkoe_krasnoe_kaberne_sovinon_125_da8519f333.webp",
+      "dst": "fanagoriya-brule-cabernet-sauvignon-polusladkoe-krasnoe-kaberne-sovinon-125.webp"
+    },
+    {
+      "src": "fanagoriya_brule_cuve_brut_rozovoe_merlo_igristoe_bryut_rozovoe_12_af9727f341.webp",
+      "dst": "fanagoriya-brule-cuve-brut-rozovoe-merlo-igristoe-bryut-rozovoe-12.webp"
+    },
+    {
+      "src": "fanagoriya_brule_frizzante_brut_beloe_pino_nuar_bryut_115_b4234dae19.webp",
+      "dst": "fanagoriya-brule-frizzante-brut-beloe-pino-nuar-bryut-115.webp"
+    },
+    {
+      "src": "fanagoriya_brule_frizzante_brut_rozovoe_merlo_igristoe_bryut_rozovoe_115_84079e9350.webp",
+      "dst": "fanagoriya-brule-frizzante-brut-rozovoe-merlo-igristoe-bryut-rozovoe-115.webp"
+    },
+    {
+      "src": "fanagoriya_brule_frizzante_polusladkoe_beloe_pino_nuar_11_ddb87e2e2b.webp",
+      "dst": "fanagoriya-brule-frizzante-polusladkoe-beloe-pino-nuar-11.webp"
+    },
+    {
+      "src": "fanagoriya_brule_muscat_ottonel_brut_muskat_ottonel_beloe_polusladkoe_12_cdfd9c20be.webp",
+      "dst": "fanagoriya-brule-muscat-ottonel-brut-muskat-ottonel-beloe-polusladkoe-12.webp"
+    },
+    {
+      "src": "fanagoriya_brule_muscat_ottonel_polusladkoe_muskat_ottonel_beloe_115_833e252321.webp",
+      "dst": "fanagoriya-brule-muscat-ottonel-polusladkoe-muskat-ottonel-beloe-115.webp"
+    },
+    {
+      "src": "fanagoriya_brule_saperavi_saperavi_igristoe_sladkoe_krasnoe_bryut_125_433b942aaa.webp",
+      "dst": "fanagoriya-brule-saperavi-saperavi-igristoe-sladkoe-krasnoe-bryut-125.webp"
+    },
+    {
+      "src": "fanagoriya_brule_sauvignon_blanc_brut_sovinon_blan_beloe_bryut_12_27b65a0309.webp",
+      "dst": "fanagoriya-brule-sauvignon-blanc-brut-sovinon-blan-beloe-bryut-12.webp"
+    },
+    {
+      "src": "fanagoriya_cru_lermont_cabernet_franc_kaberne_fran_krasnoe_suhoe_13_ef61ceeb84.webp",
+      "dst": "fanagoriya-cru-lermont-cabernet-franc-kaberne-fran-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_cru_lermont_cabernet_sauvignon_kaberne_sovinon_krasnoe_suhoe_13_a5a169ea47.webp",
+      "dst": "fanagoriya-cru-lermont-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_cru_lermont_chardonnay_shardone_beloe_suhoe_14_435c653682.webp",
+      "dst": "fanagoriya-cru-lermont-chardonnay-shardone-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "fanagoriya_cru_lermont_merlo_merlo_krasnoe_suhoe_14_15ccd6560f.webp",
+      "dst": "fanagoriya-cru-lermont-merlo-merlo-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "fanagoriya_cru_lermont_petit_verdot_pti_verdo_krasnoe_suhoe_13_83618460e6.webp",
+      "dst": "fanagoriya-cru-lermont-petit-verdot-pti-verdo-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_cru_lermont_pinot_noir_pino_nuar_krasnoe_suhoe_13_b8a0b0efab.webp",
+      "dst": "fanagoriya-cru-lermont-pinot-noir-pino-nuar-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_cru_lermont_rubinovyy_magaracha_krasnoe_suhoe_13_7011e81450.webp",
+      "dst": "fanagoriya-cru-lermont-rubinovyy-magaracha-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_cru_lermont_saperavi_saperavi_krasnoe_suhoe_135_d3b22976a5.webp",
+      "dst": "fanagoriya-cru-lermont-saperavi-saperavi-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_dekanter_chardonnay_2020_shardone_beloe_suhoe_135_b72982bc7e.webp",
+      "dst": "fanagoriya-dekanter-chardonnay-2020-shardone-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_dekanter_formula_q_kaberne_sovinon_krasnoe_suhoe_135_f3b19bcb8e.webp",
+      "dst": "fanagoriya-dekanter-formula-q-kaberne-sovinon-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_dekanter_kaberne_fran_2019_krasnoe_suhoe_13_0b28b4ba5d.webp",
+      "dst": "fanagoriya-dekanter-kaberne-fran-2019-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_dekanter_kaberne_sovinon_2018_krasnoe_suhoe_14_fefe5a3d2b.webp",
+      "dst": "fanagoriya-dekanter-kaberne-sovinon-2018-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "fanagoriya_dekanter_merlo_2018_krasnoe_suhoe_14_5bd81e96ca.webp",
+      "dst": "fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "fanagoriya_dekanter_pino_nuar_2020_krasnoe_suhoe_135_7e07c8dd79.webp",
+      "dst": "fanagoriya-dekanter-pino-nuar-2020-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_dekanter_riesling_2020_risling_reynskiy_beloe_suhoe_13_501205987a.webp",
+      "dst": "fanagoriya-dekanter-riesling-2020-risling-reynskiy-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_dekanter_rkatsiteli_2019_beloe_suhoe_135_e7a61d6050.webp",
+      "dst": "fanagoriya-dekanter-rkatsiteli-2019-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_dekanter_saperavi_2017_krasnoe_suhoe_135_1eb1ee94fa.webp",
+      "dst": "fanagoriya-dekanter-saperavi-2017-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_fanagoria_extra_brut_rose_2019_pino_nuar_igristoe_bryut_rozovoe_ekstra_bryut_12_aef88041a9.webp",
+      "dst": "fanagoriya-fanagoria-extra-brut-rose-2019-pino-nuar-igristoe-bryut-rozovoe-ekstra-bryut-12.webp"
+    },
+    {
+      "src": "fanagoriya_fanagoriya_blanc_de_blancs_beloe_iz_belogo_shardone_igristoe_bryut_beloe_11_13_2387906571.webp",
+      "dst": "fanagoriya-fanagoriya-blanc-de-blancs-beloe-iz-belogo-shardone-igristoe-bryut-beloe-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_fanagoriya_blanc_de_noirs_beloe_iz_chyornogo_merlo_igristoe_bryut_beloe_11_13_a4d16b3226.webp",
+      "dst": "fanagoriya-fanagoriya-blanc-de-noirs-beloe-iz-chyornogo-merlo-igristoe-bryut-beloe-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_fanagoriya_bryut_beloe_sovinon_blan_igristoe_bryut_beloe_11_13_3b08e056cc.webp",
+      "dst": "fanagoriya-fanagoriya-bryut-beloe-sovinon-blan-igristoe-bryut-beloe-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_fanagoriya_bryut_rozovoe_sovinon_blan_igristoe_bryut_rozovoe_11_13_88695c0088.webp",
+      "dst": "fanagoriya-fanagoriya-bryut-rozovoe-sovinon-blan-igristoe-bryut-rozovoe-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_fanagoriya_polusladkoe_rozovoe_sovinon_blan_krasnoe_11_13_f19a8f122b.webp",
+      "dst": "fanagoriya-fanagoriya-polusladkoe-rozovoe-sovinon-blan-krasnoe-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_fanagoriya_rose_de_noirs_roze_de_nuar_merlo_igristoe_bryut_rozovoe_11_13_b3db75f16b.webp",
+      "dst": "fanagoriya-fanagoriya-rose-de-noirs-roze-de-nuar-merlo-igristoe-bryut-rozovoe-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_fanagoriya_sakra_sennoy_krasnostop_krasnoe_suhoe_135_f22347e4bd.webp",
+      "dst": "fanagoriya-fanagoriya-sakra-sennoy-krasnostop-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_formula_q_kaberne_sovinon_krasnoe_suhoe_vyderzhannoe_135_9d678f8cd7.webp",
+      "dst": "fanagoriya-formula-q-kaberne-sovinon-krasnoe-suhoe-vyderzhannoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_formula_q_saperavi_krasnoe_suhoe_135_3ac72505f2.webp",
+      "dst": "fanagoriya-formula-q-saperavi-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_ice_wine_kaberne_kaberne_sovinon_krasnoe_sladkoe_11_d0c08332e8.webp",
+      "dst": "fanagoriya-ice-wine-kaberne-kaberne-sovinon-krasnoe-sladkoe-11.webp"
+    },
+    {
+      "src": "fanagoriya_ice_wine_merlo_rozovoe_sladkoe_10_f04efb1e6f.webp",
+      "dst": "fanagoriya-ice-wine-merlo-rozovoe-sladkoe-10.webp"
+    },
+    {
+      "src": "fanagoriya_ice_wine_risling_tihoe_beloe_sladkoe_10_fd6aaba610.webp",
+      "dst": "fanagoriya-ice-wine-risling-tihoe-beloe-sladkoe-10.webp"
+    },
+    {
+      "src": "fanagoriya_ice_wine_saperavi_tihoe_krasnoe_sladkoe_10_9c41c0131c.webp",
+      "dst": "fanagoriya-ice-wine-saperavi-tihoe-krasnoe-sladkoe-10.webp"
+    },
+    {
+      "src": "fanagoriya_ledyanoe_vino_muskat_muskat_ottonel_beloe_sladkoe_11_b8c2ae7315.webp",
+      "dst": "fanagoriya-ledyanoe-vino-muskat-muskat-ottonel-beloe-sladkoe-11.webp"
+    },
+    {
+      "src": "fanagoriya_par_amour_pervenets_magaracha_beloe_polusladkoe_105_125_937ddaffd1.webp",
+      "dst": "fanagoriya-par-amour-pervenets-magaracha-beloe-polusladkoe-105-125.webp"
+    },
+    {
+      "src": "fanagoriya_par_amour_pervenets_magaracha_beloe_polusuhoe_105_125_6db75a4f18.webp",
+      "dst": "fanagoriya-par-amour-pervenets-magaracha-beloe-polusuhoe-105-125.webp"
+    },
+    {
+      "src": "fanagoriya_par_amour_pervenets_magaracha_rozovoe_polusuhoe_105_125_861e969490.webp",
+      "dst": "fanagoriya-par-amour-pervenets-magaracha-rozovoe-polusuhoe-105-125.webp"
+    },
+    {
+      "src": "fanagoriya_par_amour_rubin_golodrigi_krasnoe_polusladkoe_105_125_7e0aec2668.webp",
+      "dst": "fanagoriya-par-amour-rubin-golodrigi-krasnoe-polusladkoe-105-125.webp"
+    },
+    {
+      "src": "fanagoriya_pelle_calda_saperavi_krasnoe_suhoe_155_9c9a89ab23.webp",
+      "dst": "fanagoriya-pelle-calda-saperavi-krasnoe-suhoe-155.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_blanc_de_blancs_2017_shardone_igristoe_bryut_beloe_12_1cb2145fb9.webp",
+      "dst": "fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_blanc_de_blancs_ekstra_bryut_2019_shardone_beloe_11_13_8a2416fff5.webp",
+      "dst": "fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_blanc_de_noirs_meunier_ekstra_bryut_2019_mene_beloe_11_13_5e42a8faca.webp",
+      "dst": "fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_brut_2014_shardone_igristoe_bryut_beloe_12_9cc32014b2.webp",
+      "dst": "fanagoriya-primum-alveus-brut-2014-shardone-igristoe-bryut-beloe-12.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_brut_2016_shardone_igristoe_bryut_beloe_12_003b2ef29a.webp",
+      "dst": "fanagoriya-primum-alveus-brut-2016-shardone-igristoe-bryut-beloe-12.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_brut_2017_shardone_igristoe_bryut_beloe_12_40dd626204.webp",
+      "dst": "fanagoriya-primum-alveus-brut-2017-shardone-igristoe-bryut-beloe-12.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_brut_2021_shardone_beloe_bryut_11_13_0f4e9e5d49.webp",
+      "dst": "fanagoriya-primum-alveus-brut-2021-shardone-beloe-bryut-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_bryut_2019_pino_nuar_igristoe_bryut_rozovoe_11_13_85e68acaf3.webp",
+      "dst": "fanagoriya-primum-alveus-bryut-2019-pino-nuar-igristoe-bryut-rozovoe-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_ekstra_bryut_2017_pino_nuar_beloe_11_13_278cb95a09.webp",
+      "dst": "fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_extra_brut_2014_pino_nuar_beloe_bryut_12_06194497ba.webp",
+      "dst": "fanagoriya-primum-alveus-extra-brut-2014-pino-nuar-beloe-bryut-12.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_extra_brut_2016_shardone_beloe_bryut_12_b865355639.webp",
+      "dst": "fanagoriya-primum-alveus-extra-brut-2016-shardone-beloe-bryut-12.webp"
+    },
+    {
+      "src": "fanagoriya_primum_alveus_extra_brut_rose_2014_pino_nuar_rozovoe_bryut_12_05917c9a77.webp",
+      "dst": "fanagoriya-primum-alveus-extra-brut-rose-2014-pino-nuar-rozovoe-bryut-12.webp"
+    },
+    {
+      "src": "fanagoriya_q_blanc_sovinon_blan_beloe_suhoe_14_0f9d610da3.webp",
+      "dst": "fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14.webp"
+    },
+    {
+      "src": "fanagoriya_q_bordeaux_blend_kaberne_sovinon_krasnoe_suhoe_135_ab9142098e.webp",
+      "dst": "fanagoriya-q-bordeaux-blend-kaberne-sovinon-krasnoe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_rose_kaberne_fran_rozovoe_suhoe_13_516a037cf7.webp",
+      "dst": "fanagoriya-rose-kaberne-fran-rozovoe-suhoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_rose_kaberne_sovinon_rozovoe_polusuhoe_13_93945d7963.webp",
+      "dst": "fanagoriya-rose-kaberne-sovinon-rozovoe-polusuhoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_rose_saperavi_rozovoe_polusuhoe_125_79cbdac8e3.webp",
+      "dst": "fanagoriya-rose-saperavi-rozovoe-polusuhoe-125.webp"
+    },
+    {
+      "src": "fanagoriya_rs_noir_saperavi_krasnoe_polusladkoe_125_9b8002f11a.webp",
+      "dst": "fanagoriya-rs-noir-saperavi-krasnoe-polusladkoe-125.webp"
+    },
+    {
+      "src": "fanagoriya_saqra_saperavi_krasnoe_suhoe_vyderzhannoe_135_2bf601b1e4.webp",
+      "dst": "fanagoriya-saqra-saperavi-krasnoe-suhoe-vyderzhannoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_solera_moscatel_oro_muskat_ottonel_beloe_suhoe_16_9b53f1b676.webp",
+      "dst": "fanagoriya-solera-moscatel-oro-muskat-ottonel-beloe-suhoe-16.webp"
+    },
+    {
+      "src": "fanagoriya_solera_porto_negro_saperavi_krasnoe_suhoe_15_da8532cb52.webp",
+      "dst": "fanagoriya-solera-porto-negro-saperavi-krasnoe-suhoe-15.webp"
+    },
+    {
+      "src": "fanagoriya_solera_rkatsiteli_ambra_rkatsiteli_beloe_suhoe_15_e7d1b39f59.webp",
+      "dst": "fanagoriya-solera-rkatsiteli-ambra-rkatsiteli-beloe-suhoe-15.webp"
+    },
+    {
+      "src": "fanagoriya_solera_saperavi_ruby_saperavi_krasnoe_suhoe_16_12e48bf206.webp",
+      "dst": "fanagoriya-solera-saperavi-ruby-saperavi-krasnoe-suhoe-16.webp"
+    },
+    {
+      "src": "fanagoriya_sur_lie_chardonnay_shardone_beloe_suhoe_135_03450c562d.webp",
+      "dst": "fanagoriya-sur-lie-chardonnay-shardone-beloe-suhoe-135.webp"
+    },
+    {
+      "src": "fanagoriya_sur_lie_clairet_saperavi_krasnoe_suhoe_13_793f3ddcad.webp",
+      "dst": "fanagoriya-sur-lie-clairet-saperavi-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_sur_lie_vi_vi_aligote_beloe_suhoe_125_389d32e07e.webp",
+      "dst": "fanagoriya-sur-lie-vi-vi-aligote-beloe-suhoe-125.webp"
+    },
+    {
+      "src": "fanagoriya_tochka_saperavi_krasnoe_suhoe_14_85b003f862.webp",
+      "dst": "fanagoriya-tochka-saperavi-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "fanagoriya_velvet_season_muskat_ottonel_beloe_sladkoe_13_737d19601c.webp",
+      "dst": "fanagoriya-velvet-season-muskat-ottonel-beloe-sladkoe-13.webp"
+    },
+    {
+      "src": "fanagoriya_velvet_season_risling_beloe_sladkoe_12_3dae247160.webp",
+      "dst": "fanagoriya-velvet-season-risling-beloe-sladkoe-12.webp"
+    },
+    {
+      "src": "fanagoriya_zelyonoe_vino_risling_tsitronnyy_magaracha_beloe_polusuhoe_11_e4de13ab6b.webp",
+      "dst": "fanagoriya-zelyonoe-vino-risling-tsitronnyy-magaracha-beloe-polusuhoe-11.webp"
+    },
+    {
+      "src": "fanagoriya_zelyonoe_vino_risling_tsitronnyy_magaracha_merlo_rozovoe_polusuhoe_11_b750443919.webp",
+      "dst": "fanagoriya-zelyonoe-vino-risling-tsitronnyy-magaracha-merlo-rozovoe-polusuhoe-11.webp"
+    },
+    {
+      "src": "ferrum_winery_apollinary_merlo_krasnoe_suhoe_13_335c7ed476.webp",
+      "dst": "ferrum-winery-apollinary-merlo-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "ferrum_winery_kaberne_fran_krasnoe_suhoe_12_9890e1cced.webp",
+      "dst": "ferrum-winery-kaberne-fran-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "ferrum_winery_merlot_merlo_krasnoe_suhoe_13_bb60771e4b.webp",
+      "dst": "ferrum-winery-merlot-merlo-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "ferrum_winery_pinot_noir_pino_nuar_rozovoe_suhoe_13_a5380de052.webp",
+      "dst": "ferrum-winery-pinot-noir-pino-nuar-rozovoe-suhoe-13.webp"
+    },
+    {
+      "src": "ferrum_winery_riesling_risling_reynskiy_beloe_suhoe_11_9421a33d82.webp",
+      "dst": "ferrum-winery-riesling-risling-reynskiy-beloe-suhoe-11.webp"
+    },
+    {
+      "src": "ferrum_winery_sabernet_sauvignon_cabernet_franc_kaberne_sovinon_krasnoe_suhoe_12_89900c9039.webp",
+      "dst": "ferrum-winery-sabernet-sauvignon-cabernet-franc-kaberne-sovinon-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "ferrum_winery_sabernet_sauvignon_kaberne_sovinon_krasnoe_suhoe_14_462b926187.webp",
+      "dst": "ferrum-winery-sabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-14.webp"
+    },
+    {
+      "src": "ferrum_winery_saperavi_saperavi_krasnoe_suhoe_12_38db68708e.webp",
+      "dst": "ferrum-winery-saperavi-saperavi-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "ferrum_winery_sovinon_blan_blush_beloe_suhoe_104_f62ecc27db.webp",
+      "dst": "ferrum-winery-sovinon-blan-blush-beloe-suhoe-104.webp"
+    },
+    {
+      "src": "fp_ZE_Jh_YZ_Pst_BYLV_1775199670_92154c67f4.webp",
+      "dst": "fpZEJhYZPstBYLV_1775199670.webp"
+    },
+    {
+      "src": "gavras_areni_krasnoe_suhoe_13_52b40d0436.webp",
+      "dst": "gavras-areni-krasnoe-suhoe-13.webp"
+    },
+    {
+      "src": "gavras_chardonnay_shardone_beloe_suhoe_13_c69d79ea2c.webp",
+      "dst": "gavras-chardonnay-shardone-beloe-suhoe-13.webp"
+    },
+    {
+      "src": "gavras_levokumskiy_krasnoe_suhoe_12_48b24ef5e2.webp",
+      "dst": "gavras-levokumskiy-krasnoe-suhoe-12.webp"
+    },
+    {
+      "src": "gavras_masour_murvedr_rozovoe_suhoe_12_9a98bd2fb0.webp",
+      "dst": "gavras-masour-murvedr-rozovoe-suhoe-12.webp"
+    },
+    {
+      "src": "gavras_sira_krasnoe_suhoe_135_2d49e01dbe.webp",
+      "dst": "gavras-sira-krasnoe-suhoe-135.webp"
+    }
+  ]
+}
