@@ -1,0 +1,188 @@
+.page {
+  padding: env(safe-area-inset-top) 24px 0;
+  max-width: 1200px;
+  margin: auto;
+}
+.back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  background: none;
+  border: 0;
+  padding: 10px 0;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 20px;
+}
+.hero {
+  text-align: center;
+}
+.title {
+  padding-top: 25px;
+}
+.title h1 {
+  font-size: 36px;
+  margin-bottom: 14px;
+}
+.title p {
+  color: var(--accent);
+  font-size: 15px;
+}
+.bottle {
+  height: 454px;
+  width: 100%;
+  margin: 12px auto 18px;
+  max-width: 460px;
+  display: grid;
+  place-items: center;
+}
+.meta {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 0 30px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.meta span {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 6px 12px;
+}
+.characteristics {
+  background: var(--cream);
+  border-radius: 24px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 26px 16px;
+}
+.feature {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  grid-column: 1/-1;
+}
+.feature img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.feature span,
+.fact span {
+  font-size: 12px;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 4px;
+}
+.feature strong,
+.fact strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.fact {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.description,
+.pairings,
+.similar,
+.ratingSection {
+  margin-top: 42px;
+}
+.description > p:last-child {
+  line-height: 1.75;
+  font-size: 15px;
+  color: var(--muted);
+}
+.description h2,
+.pairings h2 {
+  margin-bottom: 16px;
+}
+.pairings > p {
+  font-size: 14px;
+}
+.pairings > div {
+  display: grid;
+  gap: 8px;
+}
+.pairings button {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--cream);
+  border: 0;
+  border-radius: 18px;
+  padding: 12px 16px;
+  text-align: left;
+  min-height: 76px;
+}
+.pairings button img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+.pairings button span {
+  flex: 1;
+  font-size: 14px;
+}
+.pairings button svg {
+  color: var(--accent);
+}
+.pairingImage {
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
+  display: block;
+  margin: 20px auto;
+}
+.disclaimer {
+  margin-top: 32px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.ratingSection {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 24px;
+}
+.ratingSection h2 {
+  font-size: 24px;
+}
+@media (min-width: 768px) {
+  .page main {
+    max-width: 760px;
+    margin: auto;
+  }
+  .hero {
+    max-width: 620px;
+    margin: auto;
+  }
+  .bottle {
+    height: 540px;
+  }
+  .characteristics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .feature {
+    grid-column: auto;
+  }
+  .pairings > div {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .pairings button {
+    flex-direction: column;
+    text-align: center;
+  }
+  .pairings button svg {
+    display: none;
+  }
+  .similar :global(.grid) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+}

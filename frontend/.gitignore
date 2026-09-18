@@ -1,0 +1,7 @@
+node_modules/
+dist/
+references/
+test-results/
+playwright-report/
+.env.local
+*.tsbuildinfo

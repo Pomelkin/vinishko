@@ -1,0 +1,74 @@
+.sheet {
+  position: fixed;
+  inset: auto 0 0;
+  width: 100%;
+  max-width: 620px;
+  max-height: min(78dvh, 820px);
+  margin: 0 auto;
+  border: 0;
+  border-radius: 28px 28px 0 0;
+  padding: 0;
+  background: var(--background);
+  color: var(--ink);
+  overflow: hidden;
+  box-shadow: 0 -8px 50px #20161320;
+  animation: appear 0.22s ease-out;
+}
+.sheet[open] {
+  display: flex;
+  flex-direction: column;
+}
+.sheet::backdrop {
+  background: #17131035;
+}
+.handle {
+  height: 28px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  cursor: grab;
+}
+.handle span {
+  width: 40px;
+  height: 4px;
+  border-radius: 8px;
+  background: #ccc2bb;
+}
+.close {
+  position: absolute;
+  right: 12px;
+  top: 20px;
+  z-index: 2;
+  background: var(--background);
+}
+.content {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 24px 28px;
+  min-height: 0;
+  scrollbar-width: thin;
+}
+.footer {
+  padding: 14px 24px max(20px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--background);
+}
+.footer button {
+  width: 100%;
+}
+@keyframes appear {
+  from {
+    transform: translateY(50px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
