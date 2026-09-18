@@ -82,7 +82,10 @@ def original_names() -> dict[str, str]:
     """Текущее имя файла -> исходное имя из strapi-дампа."""
     dst2src = {}
     if JOURNAL.exists():
-        dst2src = {r["dst"]: r["src"] for r in json.loads(JOURNAL.read_text())["renames"]}
+        dst2src = {
+            r["dst"]: r["src"]
+            for r in json.loads(JOURNAL.read_text(encoding="utf-8"))["renames"]
+        }
     return {f: dst2src.get(f, f) for f in os.listdir(IMG_DIR) if not f.startswith(".")}
 
 
@@ -186,7 +189,7 @@ def main() -> int:
                        | {f for fs in link["by_slug_name"].values() for f in fs})
     free_files = sorted(set(orig) - set(ref_files))
 
-    # одно изображение — несколько позиций: физически неразличимые карточки
+    # один файл — несколько позиций: коллизии привязки либо алиасы одного объекта
     digest = {f: hashlib.sha256((IMG_DIR / f).read_bytes()).hexdigest() for f in ref_files}
     slug_files = collections.defaultdict(set)
     for src in (link["by_photo_name"], link["by_slug_name"]):
@@ -197,6 +200,21 @@ def main() -> int:
         for f in files:
             by_digest[digest[f]].add(slug)
     shared = {k: sorted(v) for k, v in by_digest.items() if len(v) > 1}
+
+    # Object-level audit uses one authoritative reference: explicit photo name first,
+    # filename-to-slug only as a fallback.  The union above is retained to account for
+    # every file, but it creates two avoidable collision groups.
+    preferred_slug_files = {
+        slug: (link["by_photo_name"].get(slug) or link["by_slug_name"].get(slug) or [])
+        for slug in catalog
+    }
+    preferred_by_digest = collections.defaultdict(set)
+    for slug, files in preferred_slug_files.items():
+        for filename in files[:1]:
+            preferred_by_digest[digest[filename]].add(slug)
+    preferred_shared = {
+        key: sorted(slugs) for key, slugs in preferred_by_digest.items() if len(slugs) > 1
+    }
 
     coverage_by_winery = collections.defaultdict(lambda: [0, 0])
     coverage_by_region = collections.defaultdict(lambda: [0, 0])
@@ -235,8 +253,12 @@ def main() -> int:
             "extra_hits_from_loose_matching": link["loose_extra_hits"],
             "reference_files": len(ref_files),
             "unrelated_files": len(free_files),
-            "images_shared_by_several_slugs": len(shared),
-            "slugs_on_shared_images": len({s for v in shared.values() for s in v}),
+            "shared_digest_groups_union_linking": len(shared),
+            "slugs_in_shared_groups_union_linking": len({s for v in shared.values() for s in v}),
+            "shared_digest_groups_preferred_linking": len(preferred_shared),
+            "slugs_in_shared_groups_preferred_linking": len({
+                slug for slugs in preferred_shared.values() for slug in slugs
+            }),
             "wineries_fully_uncovered": sum(1 for a, b in coverage_by_winery.values() if a == 0),
             "wineries_fully_covered": sum(1 for a, b in coverage_by_winery.values() if b == 0),
         },

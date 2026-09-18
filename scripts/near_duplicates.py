@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Исследование near-duplicates Каталога: кто на кого похож и чем именно различается.
+"""Legacy-скрининг near-duplicate-кандидатов на уровне файлов Эталонов.
 
-Отвечает на вопрос «а бывают ли позиции, которые вообще нечем развести»: считает
-текстовые группы (одна серия/линейка), группы «один Эталон на несколько slug»
-и визуальную близость Эталонов, а для похожих пар меряет, какая доля бутылки
-различается и где эта разница физически находится.
+Считает текстовые группы, общий файл и визуальную близость, затем локализует пиксельную
+разницу. Эти метрики не определяют идентичность вина: свет, кроп и новый рендер дают большую
+разницу даже для того же объекта. Итоговую object-level классификацию выполняет
+``semantic_near_duplicates.py``.
 
     python3 scripts/near_duplicates.py              # текстовый отчёт
     python3 scripts/near_duplicates.py --json       # машинный формат
     python3 scripts/near_duplicates.py --no-visual  # только текстовые группы, без Pillow/numpy
 
-Все цифры в docs/NEAR_DUPLICATES.md получены этим скриптом. Служит и модулем:
-scripts/collect_near_duplicates.py берёт отсюда группировку и метрики.
+Служит генератором кандидатов и модулем для ``collect_near_duplicates.py``. Итоговые цифры
+в ``docs/NEAR_DUPLICATES.md`` получены ``semantic_near_duplicates.py``.
 
 Требуется Pillow и numpy (`python3 -m pip install --cert /etc/ssl/cert.pem numpy`)
 для визуальной части; текстовая работает без них.
@@ -285,7 +285,7 @@ def compare_pair(bank: ImageBank, file_a: str, file_b: str) -> dict:
 
 
 RELATION_LABELS = {
-    "same_file": "один и тот же файл — картинкой не разводятся в принципе",
+    "same_file": "одни байты рендера — об идентичности физического объекта не свидетельствует",
     "pixel_identical": "разные файлы, но ни одной различающей детали",
     "micro_diff": "различие < 0.5% площади бутылки (надпись, год)",
     "small_diff": "различие < 2% площади (строка текста, поясок этикетки)",
@@ -480,7 +480,7 @@ def print_report(state: dict, report: dict) -> None:
     print(f"  позиций в Каталоге                {report['catalog_size']}")
     print(f"  из них с Эталоном                 {report['slugs_with_reference']}")
 
-    section("A. ОДИН ЭТАЛОН НА НЕСКОЛЬКО ПОЗИЦИЙ — картинкой не разводятся")
+    section("A. ОДИН ФАЙЛ НА НЕСКОЛЬКО ПОЗИЦИЙ — алиас либо коллизия данных")
     a = report["A_one_image_many_slugs"]
     print(f"  групп {a['groups']}, позиций {a['slugs']}; одна винодельня {a['same_winery']}, "
           f"разные {a['cross_winery']}, разный цвет вина {a['different_category']}")

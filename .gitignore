@@ -217,6 +217,10 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-data/
 img/
 near_duplicates/
+dev/
+data/strapi/catalog_dataset.report.json
+data/strapi/strapi_output0709.csv
+
+.DS_Store

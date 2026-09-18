@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Раскладывает near-duplicates Каталога по папкам, чтобы посмотреть их глазами.
+"""Раскладывает near-duplicate-кандидатов по папкам для object-level просмотра.
 
 Группировку и метрики берёт из scripts/near_duplicates.py, сам занимается только
 раскладкой: на каждую группу — своя папка с нормализованными бутылками, коллажем
 и кропом той детали, которая пару различает.
+
+Папки не являются готовой разметкой: разные фото одного вина и коллизии Эталонов здесь
+намеренно остаются кандидатами. Финальные классы задаёт ``semantic_near_duplicates.py``.
 
     python3 scripts/collect_near_duplicates.py --force
     python3 scripts/collect_near_duplicates.py --out /tmp/nd --width 800
@@ -42,7 +45,7 @@ import near_duplicates as nd  # noqa: E402
 
 TYPE_DIRS = {
     "A_one_image_many_slugs": ("A-one-image-many-slugs",
-                               "A. Один Эталон на несколько позиций — картинкой не разводятся"),
+                               "A. Один файл на несколько позиций — алиас либо коллизия"),
     "B_same_series": ("B-same-series", "B. Одна серия у одного производителя"),
     "C_visually_close": ("C-visually-close", "C. Визуально близкие Эталоны вне одной серии"),
 }
@@ -131,7 +134,7 @@ def describe_difference(pair: dict) -> str:
     """Одной строкой: чем пара реально отличается."""
     relation = pair.get("relation")
     if relation == "same_file":
-        return "один и тот же файл на обе позиции — различий нет в принципе"
+        return "одни байты рендера на обе позиции — объектный вывод требует проверки"
     if relation == "pixel_identical":
         return "разные файлы, но ни одной различающей детали выше шума перекодирования"
     bands = pair.get("bands") or []

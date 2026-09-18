@@ -14,10 +14,14 @@
 никакого fuzzy: файл, для которого нет точного совпадения, не трогается —
 части эталонов в дампе просто нет.
 
-По умолчанию — сухой прогон. Реальное переименование включается флагом --apply;
-он же пишет журнал (--journal), по которому переименование откатывается --revert.
+По умолчанию — сухой прогон. Скрипт идемпотентен: при повторном запуске он читает
+существующий журнал, узнаёт уже переименованные файлы и не добавляет новые суффиксы.
+Реальное переименование включается флагом --apply; журнал накапливает исходное имя
+каждого файла и не теряется при повторном запуске. Неоднозначные ключи пропускаются,
+а не исправляются через ``setdefault``.
 
     python3 scripts/rename_img_to_csv_names.py                 # что будет сделано
+    python3 scripts/rename_img_to_csv_names.py --check         # проверить идемпотентность
     python3 scripts/rename_img_to_csv_names.py --apply         # переименовать
     python3 scripts/rename_img_to_csv_names.py --revert scripts/rename_journal.json
 """
@@ -90,9 +94,14 @@ def sanitize(name: str) -> str:
     return unicodedata.normalize("NFC", name).replace("/", "_").replace("\0", "")
 
 
-def load_catalog(csv_path: Path) -> dict[str, str]:
-    """Ключ сопоставления → «Название фото» (именно оно станет именем файла)."""
-    catalog: dict[str, str] = {}
+def load_catalog(csv_path: Path) -> dict[str, list[str]]:
+    """Ключ сопоставления → все уникальные значения «Название фото».
+
+    Обычно значений одно. Если будущий дамп даст одному Strapi-ключу разные
+    имена, неоднозначность должна быть видна вызывающему коду: молча брать
+    первую строку здесь нельзя.
+    """
+    grouped: dict[str, set[str]] = defaultdict(set)
     with csv_path.open(newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
         if PHOTO_COLUMN not in (reader.fieldnames or []):
@@ -103,31 +112,86 @@ def load_catalog(csv_path: Path) -> dict[str, str]:
                 continue
             key = name_to_slug(os.path.splitext(photo)[0])
             if key:
-                catalog.setdefault(key, photo)
-    return catalog
+                grouped[key].add(photo)
+    return {key: sorted(values) for key, values in grouped.items()}
 
 
-def plan_renames(img_dir: Path, catalog: dict[str, str]) -> tuple[list[dict], list[str]]:
-    """Возвращает (план переименований, список файлов без совпадения)."""
+def journal_sources(journal_path: Path) -> dict[str, str]:
+    """Текущее имя → самое первое имя файла в сыром Strapi-дампе."""
+    if not journal_path.exists():
+        return {}
+    payload = json.loads(journal_path.read_text(encoding="utf-8"))
+    return {record["dst"]: record["src"] for record in payload.get("renames", [])}
+
+
+def remove_copy_suffix(stem: str) -> str:
+    """Remove only the deterministic `` (N)`` suffix made by this script."""
+    return re.sub(r" \(\d+\)$", "", stem)
+
+
+def plan_renames(
+    img_dir: Path,
+    catalog: dict[str, list[str]],
+    journal_path: Path = DEFAULT_JOURNAL,
+) -> tuple[list[dict], list[str], list[dict]]:
+    """Return a safe, idempotent plan, unmatched files and ambiguities."""
     files = sorted(p.name for p in img_dir.iterdir() if p.is_file() and not p.name.startswith("."))
+    origins = journal_sources(journal_path)
 
-    by_key: dict[str, list[str]] = defaultdict(list)
+    by_target: dict[str, list[str]] = defaultdict(list)
     unmatched: list[str] = []
+    ambiguous: list[dict] = []
     for filename in files:
-        stem, _ = os.path.splitext(filename)
-        key = strip_hash(stem)
-        if key in catalog:
-            by_key[key].append(filename)
-        else:
+        source_stem = strip_hash(os.path.splitext(origins.get(filename, filename))[0])
+        display_stem = remove_copy_suffix(os.path.splitext(filename)[0])
+        possible_keys = [source_stem, name_to_slug(display_stem)]
+        key = next((candidate for candidate in possible_keys if candidate in catalog), None)
+        if key is None:
             unmatched.append(filename)
+            continue
+
+        targets = catalog[key]
+        if len(targets) == 1:
+            by_target[targets[0]].append(filename)
+            continue
+
+        # A current human-readable filename can disambiguate a future key
+        # collision.  A raw hashed filename cannot, so it is safely skipped.
+        matching_targets = [
+            target for target in targets
+            if os.path.splitext(sanitize(target))[0].casefold() == display_stem.casefold()
+        ]
+        if len(matching_targets) == 1:
+            by_target[matching_targets[0]].append(filename)
+        else:
+            ambiguous.append({"file": filename, "key": key, "targets": targets})
 
     existing = set(files)
     taken: set[str] = set()
     plan: list[dict] = []
-    for key in sorted(by_key):
-        photo_name = catalog[key]
+    for photo_name in sorted(by_target):
         target_stem, target_ext = os.path.splitext(sanitize(photo_name))
-        for index, filename in enumerate(by_key[key]):
+        group_files = sorted(by_target[photo_name])
+
+        # Keep already valid target names in place. This is the key to an
+        # idempotent second run and also preserves old duplicate numbering.
+        remaining = []
+        for filename in group_files:
+            stem, _ = os.path.splitext(filename)
+            base = remove_copy_suffix(stem)
+            if base.casefold() == target_stem.casefold():
+                taken.add(filename)
+                copy_match = re.search(r" \((\d+)\)$", stem)
+                plan.append({
+                    "src": filename,
+                    "dst": filename,
+                    "csv_name": photo_name,
+                    "duplicate_index": int(copy_match.group(1)) - 1 if copy_match else 0,
+                })
+            else:
+                remaining.append(filename)
+
+        for filename in remaining:
             # Расширение берём фактическое: в дампе встречаются .jpg/.png там,
             # где CSV обещает .webp. Совпадает в подавляющем большинстве случаев.
             src_ext = os.path.splitext(filename)[1] or target_ext
@@ -135,7 +199,7 @@ def plan_renames(img_dir: Path, catalog: dict[str, str]) -> tuple[list[dict], li
             # Один ключ может быть у нескольких загрузок (разный hex) — второй
             # и далее получают детерминированный суффикс, чтобы ничего не потерять.
             bump = 2
-            while candidate in taken or (candidate in existing and candidate != filename):
+            while candidate in taken or (candidate in existing and candidate not in group_files):
                 candidate = f"{target_stem} ({bump}){src_ext}"
                 bump += 1
             taken.add(candidate)
@@ -144,10 +208,10 @@ def plan_renames(img_dir: Path, catalog: dict[str, str]) -> tuple[list[dict], li
                     "src": filename,
                     "dst": candidate,
                     "csv_name": photo_name,
-                    "duplicate_index": index,
+                    "duplicate_index": bump - 2 if bump > 2 else 0,
                 }
             )
-    return plan, unmatched
+    return sorted(plan, key=lambda item: item["src"]), unmatched, ambiguous
 
 
 def apply_renames(img_dir: Path, plan: list[dict]) -> list[dict]:
@@ -173,6 +237,25 @@ def apply_renames(img_dir: Path, plan: list[dict]) -> list[dict]:
     return done
 
 
+def merge_journal(journal_path: Path, done: list[dict]) -> list[dict]:
+    """Preserve raw origins while advancing their current destination names."""
+    previous = []
+    if journal_path.exists():
+        previous = json.loads(journal_path.read_text(encoding="utf-8")).get("renames", [])
+    moved = {record["src"]: record["dst"] for record in done}
+    merged = []
+    known_current = set()
+    for record in previous:
+        current = record["dst"]
+        final = moved.get(current, current)
+        merged.append({"src": record["src"], "dst": final})
+        known_current.add(current)
+    for record in done:
+        if record["src"] not in known_current:
+            merged.append(record)
+    return sorted(merged, key=lambda record: (record["src"], record["dst"]))
+
+
 def revert(img_dir: Path, journal_path: Path) -> int:
     records = json.loads(journal_path.read_text(encoding="utf-8"))["renames"]
     reverted = 0
@@ -195,6 +278,7 @@ def main() -> int:
     parser.add_argument("--csv", type=Path, default=DEFAULT_CSV, help="дамп Strapi (CSV)")
     parser.add_argument("--img-dir", type=Path, default=DEFAULT_IMG_DIR, help="каталог с файлами дампа")
     parser.add_argument("--apply", action="store_true", help="выполнить переименование (по умолчанию сухой прогон)")
+    parser.add_argument("--check", action="store_true", help="ошибка, если нужны переименования или есть неоднозначность")
     parser.add_argument("--journal", type=Path, default=DEFAULT_JOURNAL, help="куда писать журнал переименований")
     parser.add_argument("--revert", type=Path, metavar="JOURNAL", help="откатить переименование по журналу")
     parser.add_argument("--limit", type=int, default=20, help="сколько строк плана показать (0 — все)")
@@ -209,30 +293,51 @@ def main() -> int:
         return 0
 
     catalog = load_catalog(args.csv)
-    plan, unmatched = plan_renames(args.img_dir, catalog)
-    total_files = len(plan) + len(unmatched)
+    plan, unmatched, ambiguous = plan_renames(args.img_dir, catalog, args.journal)
+    total_files = len(plan) + len(unmatched) + len(ambiguous)
+    changes = [item for item in plan if item["src"] != item["dst"]]
 
-    shown = plan if args.limit == 0 else plan[: args.limit]
+    shown = changes if args.limit == 0 else changes[: args.limit]
     for item in shown:
         mark = " [дубль]" if item["duplicate_index"] else ""
         print(f"{item['src']}  ->  {item['dst']}{mark}")
-    if len(shown) < len(plan):
-        print(f"... и ещё {len(plan) - len(shown)} (--limit 0, чтобы показать все)")
+    if len(shown) < len(changes):
+        print(f"... и ещё {len(changes) - len(shown)} (--limit 0, чтобы показать все)")
 
     print()
-    print(f"CSV: уникальных «Название фото» — {len(catalog)}")
+    print(f"CSV: уникальных «Название фото» — {sum(len(values) for values in catalog.values())}")
     print(f"Файлов в каталоге: {total_files}")
     print(f"Сопоставлено: {len(plan)}")
+    print(f"Уже названы правильно: {len(plan) - len(changes)}")
+    print(f"Нужно переименовать: {len(changes)}")
+    print(f"Неоднозначных (безопасно пропущены): {len(ambiguous)}")
     print(f"Без совпадения (останутся как есть): {len(unmatched)}")
+
+    if args.check:
+        if changes or ambiguous:
+            print("\nПроверка не пройдена: состояние не идемпотентно или есть неоднозначные ключи.", file=sys.stderr)
+            return 1
+        print("\nПроверка пройдена: повторный запуск ничего не переименует.")
+        return 0
 
     if not args.apply:
         print("\nСухой прогон. Запустите с --apply, чтобы переименовать.")
         return 0
 
-    done = apply_renames(args.img_dir, plan)
+    done = apply_renames(args.img_dir, changes)
+    journal_records = merge_journal(args.journal, done)
     args.journal.parent.mkdir(parents=True, exist_ok=True)
     args.journal.write_text(
-        json.dumps({"img_dir": str(args.img_dir), "renames": done}, ensure_ascii=False, indent=2),
+        json.dumps(
+            {
+                "schema_version": 2,
+                "img_dir": str(args.img_dir),
+                "rule": "exact Strapi nameToSlug key; ambiguous keys are skipped",
+                "renames": journal_records,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ) + "\n",
         encoding="utf-8",
     )
     print(f"\nПереименовано: {len(done)}")

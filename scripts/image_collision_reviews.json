@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "rule": "For an incompatible SHA-256 group, retain only catalog slugs whose front-label text was read from that binary; exclude every other claimant. Unknown future conflicts retain no claimant until reviewed.",
+  "reviews": {
+    "e61c504aa1483bb25a7434569eff5fdb81f795ff7b6bfd3c8db1d179d009867c": {
+      "owner_slugs": ["aligote-barrel-2024"],
+      "label_evidence": "Front label says ALIGOTE BARREL and 2024."
+    },
+    "d1f93c3879d081f17880f9549747f034b74564c155dc729fbe22cf4f7477040a": {
+      "owner_slugs": ["agora-yachting-sauvignon"],
+      "label_evidence": "Front label says AGORA SAUVIGNON."
+    },
+    "87eeb32b2a8d36b29018be1995a04fdc0bc6f53d02ce652d6586d84647863af5": {
+      "owner_slugs": ["agora-vintage-blanc-de-blancs-extra-brut"],
+      "label_evidence": "Front label says AGORA WINERY Vintage Brut Blanc de Blanc."
+    },
+    "72e20812bf92c81c38da9457021972ec87b353d9586ebe850f38f3732b954921": {
+      "owner_slugs": ["abrau-dyurso-az-abrau-madrasa-krasnoe-suhoe-14"],
+      "label_evidence": "Front label says MADRASA, not Bayanshira."
+    },
+    "080f729754205b7a21903e53e14c28defa2face4ad6693bcdb72ac4416695a42": {
+      "owner_slugs": ["cabernet-franc-pinot-noir-2021"],
+      "label_evidence": "Front label says Cabernet Franc - Pinot Noir 2021."
+    },
+    "026864945e13fa04124225aed4607d80d79ea249ef80cc009d0abbb1abeea60b": {
+      "owner_slugs": ["esse-muskat-muskat-belyy-beloe-ekstra-bryut-115"],
+      "label_evidence": "Front label says ESSE BRUT MUSCAT, not Demi-Sec Muscat Nectar."
+    },
+    "8fde35024b63f2ccb17de2253406e1ddf9eb672bfde32205e426b0ea1f458d7d": {
+      "owner_slugs": ["agrolayn-heritage-dg-skin-contact-red-saperavi-krasnoe-suhoe-13"],
+      "label_evidence": "Front label says Heritage DG Skin Contact Cabernet Sauvignon / Antey / Marselan / Saperavi, not Rkatsiteli."
+    },
+    "97a2bc792481288d6cd4a505b469c66c04096f0afaa30390824c2e95a1b214db": {
+      "owner_slugs": ["pino-nuar-2025"],
+      "label_evidence": "Front label says Pinot Noir 2025."
+    },
+    "4e1d5fcae51da544d7282360400036168be39c0441c205c038c524536ba42c7a": {
+      "owner_slugs": ["agrolayn-mountain-eagle-semillon-semilon-beloe-suhoe-11"],
+      "label_evidence": "Front label says MOUNTAIN EAGLE SEMILLON."
+    },
+    "8810aa9343a67c811d625f203020c9fcaa8d8baae960954a2afd0721b41051bc": {
+      "owner_slugs": ["belmas-winery-pn-pino-nuar-krasnoe-suhoe-135"],
+      "label_evidence": "Front label says Pinot Noir / Pn."
+    },
+    "a8fcba0b364893f618e63a8548f01a539ffae477628d59c2a4d4b1eb8d872cbc": {
+      "owner_slugs": ["belmas-winery-riesling-katya-risling-beloe-suhoe-12"],
+      "label_evidence": "Front label says RIESLING Katya."
+    },
+    "e5e0e1f3679afcf1d0300ec12578ba1e22c9a485fffe3a81d685ab061a780ed4": {
+      "owner_slugs": ["vibes-silvaner-barrel-fermented-2022"],
+      "label_evidence": "Front label says Silvaner 2022 Barrel Fermented."
+    },
+    "f8f18b0635d5e81af85e5894e7bc6d6674ea3c6ff4a30817d6017d7f8256f583": {
+      "owner_slugs": ["zhemchuzhnaya-9-aligote-czitron"],
+      "label_evidence": "Front label says ALIGOTE / CITRON 2024."
+    },
+    "3d9fe6c1bb713a62a94d1a42216c6a00040f13176210286d79850725e52d3cab": {
+      "owner_slugs": ["zhemchuzhnaya-9-aligote-czitron"],
+      "label_evidence": "Alternate dump encoding of the same front label: ALIGOTE / CITRON 2024."
+    },
+    "fbc54e6b8fd2f53067f9cef90ba4726a363580d7fabe6ac0c6d1aab7c555666b": {
+      "owner_slugs": ["novyj-svet-polusladkoe"],
+      "label_evidence": "Front label says Новый Свет выдержанное 2020 полусладкое."
+    },
+    "d0ae2c5b4aabaffa4bdf53e5ff20a61f2359a77ccdbd579eb44f3ecc72cd1407": {
+      "owner_slugs": ["derbent-vino-endemy-merlo-krasnoe-suhoe-13"],
+      "label_evidence": "Front label says ЭНДЕМЫ МЕРЛО."
+    },
+    "49af5673d94a8a3dc560d737a38be6b6ef7a0566dba039b06c8956796c9af06a": {
+      "owner_slugs": ["derbent-vino-endemy-shardone-beloe-bryut-105-125"],
+      "label_evidence": "Sparkling closure and front label say ШАРДОНЕ БРЮТ."
+    }
+  }
+}
