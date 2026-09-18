@@ -4,7 +4,6 @@ import re
 import sys
 import time
 import tomllib
-from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
@@ -14,6 +13,7 @@ from PIL import Image
 
 from vinishko.pipeline.steps.normalization.features import candidate_features, gray_small
 from vinishko.pipeline.steps.normalization.seg import Segmenter, label_stats, open_image
+from vinishko.pipeline.structs import Candidate, Reason, Rejection, Sample
 
 HERE = Path(__file__).resolve().parent
 EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
@@ -127,6 +127,17 @@ def bottle_axis(polys: list, orient: dict) -> dict:
     }
 
 
+def polys_area(polys: list) -> float:
+    """Суммарная площадь полигонов маски."""
+    return float(sum(cv2.contourArea(np.asarray(p, np.float32)) for p in polys))
+
+
+def main_parts(polys: list, min_frac: float) -> list:
+    """Полигоны маски без мелких островков: остаются части не меньше min_frac площади самой крупной."""
+    areas = [polys_area([p]) if len(p) >= 3 else 0.0 for p in polys]
+    return [p for p, a in zip(polys, areas, strict=True) if a > 0 and a >= min_frac * max(areas)]
+
+
 def label_geometry(ax: dict, polys: list) -> dict:
     """Положение этикетки вдоль бутылки (доля полной длины от горлышка) и её размеры в системе бутылки."""
     lp = all_points(polys) - ax["neck"]
@@ -165,55 +176,43 @@ def rotated_extent(polys: list, center: np.ndarray, angle: float) -> tuple[np.nd
     return M, (rx1, ry1, rx2 - rx1, ry2 - ry1)
 
 
-Neighbor = tuple[int, tuple[float, float, float, float]]  # номер кандидата и его бокс в системе кропа
+def label_window(M: np.ndarray, label: list, bottle: tuple[float, float, float, float], pad_y: float) -> tuple[float, float, float, float]:
+    """Окно (x1, y1, x2, y2) вокруг этикетки в повёрнутой системе координат бутылки.
 
-
-def limit_padding(own: tuple[float, float, float, float], others: list[Neighbor], px: float, py: float) -> tuple[float, float, list[int]]:
-    """Урезает запас, чтобы он не заходил в боксы соседей. Боксы (x1, y1, x2, y2) в системе координат кропа.
-
-    Сосед, перекрывающий бокс самой бутылки, не учитывается: запасом это не исправить.
-    Запас по оси урезается симметрично, чтобы бутылка оставалась по центру кропа.
-    Возвращает px, py и номера соседей, которые урезали запас.
+    По ширине окно всегда во всю маску бутылки: разрыв между крупным планом и целой бутылкой есть только по высоте.
+    По высоте — этикетка с запасом pad_y, доля её высоты, сверху и снизу, не дальше габаритов маски bottle, а значит и картинки:
+    у крупного плана, где этикетка занимает почти всю видимую бутылку, окном остаётся вся маска.
     """
-    x1, y1, x2, y2 = own
-    gaps_x = [(x1 - ox2 if ox2 <= x1 else ox1 - x2, oid) for oid, (ox1, oy1, ox2, oy2) in others
-              if oy2 > y1 - py and oy1 < y2 + py and (ox2 <= x1 or ox1 >= x2)]  # соседи сбоку на уровне кропа
-    px, by_x = min([(px, -1), *((max(0.0, g), oid) for g, oid in gaps_x)])
-    gaps_y = [(y1 - oy2 if oy2 <= y1 else oy1 - y2, oid) for oid, (ox1, oy1, ox2, oy2) in others
-              if ox2 > x1 - px and ox1 < x2 + px and (oy2 <= y1 or oy1 >= y2)]  # сверху и снизу, с уже урезанным px
-    py, by_y = min([(py, -1), *((max(0.0, g), oid) for g, oid in gaps_y)])
-    return px, py, sorted({i for i in (by_x, by_y) if i >= 0})
+    v = affine(M, all_points(label))
+    ly1, ly2 = v[:, 1].min(), v[:, 1].max()
+    py = pad_y * (ly2 - ly1)
+    bx1, by1, bx2, by2 = bottle
+    return bx1, max(by1, ly1 - py), bx2, min(by2, ly2 + py)
 
 
 def render_bottle(
     rgb: np.ndarray,
     polys: list,
+    label: list,
     cfg: dict,
     angle: float | None = None,
     shift: tuple[float, float] = (0.0, 0.0),
-    others: list[tuple[int, list]] | None = None,
 ) -> tuple[np.ndarray, dict]:
-    """Кроп одной бутылки: поворот, запас, блюр фона. Возвращает картинку и описание преобразования.
+    """Кроп одной бутылки: поворот, окно вокруг этикетки label, заглушение фона по background.mode. Возвращает картинку и описание преобразования.
 
-    angle переопределяет угол, найденный по оси маски; shift сдвигает окно кропа в долях ширины и высоты бутылки.
+    Окно — полоса бутылки во всю её ширину на высоте этикетки с запасом crop.padding_y, не дальше маски бутылки, см. label_window:
+    так целая бутылка с полки и крупный план этикетки дают кадры одного масштаба. Большой padding_y даёт всю бутылку.
+    angle переопределяет угол, найденный по оси маски; shift сдвигает окно в долях его ширины и высоты.
     Оба нужны даталоадеру для джиттера поверх сохранённой разметки; запас и фон джиттерятся через cfg.
-    others — [(номер кандидата, полигоны)] соседних бутылок: при crop.avoid_neighbors запас не заходит в их боксы.
     """
     ax = bottle_axis(polys, cfg["orientation"])
     if angle is None:
         angle = ax["angle"]
     M, (rx1, ry1, bw, bh) = rotated_extent(polys, ax["center"], angle)
-    px, py = cfg["crop"]["padding_x"] * bw, cfg["crop"]["padding_y"] * bh
-    limited_by: list[int] = []
-    if cfg["crop"]["avoid_neighbors"] and others:
-        boxes = []
-        for oid, opolys in others:  # соседей поворачиваем той же матрицей, что и бутылку
-            ov = affine(M, all_points(opolys))
-            boxes.append((oid, (*ov.min(0), *ov.max(0))))
-        px, py, limited_by = limit_padding((rx1, ry1, rx1 + bw, ry1 + bh), boxes, px, py)
-    W, H = max(1, math.ceil(bw + 2 * px)), max(1, math.ceil(bh + 2 * py))
+    wx1, wy1, wx2, wy2 = label_window(M, label, (rx1, ry1, rx1 + bw, ry1 + bh), cfg["crop"]["padding_y"])
+    W, H = max(1, math.ceil(wx2 - wx1)), max(1, math.ceil(wy2 - wy1))
     A = M.copy()
-    A[:, 2] -= [rx1 - px + shift[0] * bw, ry1 - py + shift[1] * bh]
+    A[:, 2] -= [wx1 + shift[0] * W, wy1 + shift[1] * H]
     border = BORDERS[cfg["crop"]["border"]]
     crop = cv2.warpAffine(rgb, A, (W, H), flags=cv2.INTER_LINEAR, borderMode=border, borderValue=(0, 0, 0))
     inside = cv2.warpAffine(np.ones(rgb.shape[:2], np.uint8), A, (W, H), flags=cv2.INTER_NEAREST, borderValue=0)
@@ -244,8 +243,7 @@ def render_bottle(
         "neck_point": [round(v, 1) for v in ax["neck"]],
         "base_point": [round(v, 1) for v in ax["base"]],
         "bottle_size_px": [round(bw, 1), round(bh, 1)],
-        "padding_px": [round(px, 1), round(py, 1)],
-        "padding_limited_by": limited_by,
+        "window_size_px": [W, H],
         "out_of_bounds_frac": round(1 - float(inside.mean()), 4),
         "matrix_src_to_dst": np.round(A, 6).tolist(),
         "matrix_dst_to_src": np.round(cv2.invertAffineTransform(A), 6).tolist(),
@@ -298,30 +296,22 @@ def save_image(path: Path, rgb: np.ndarray, fmt: str, quality: int) -> None:
 
 # ---------- прогон ----------
 
-IDENTITY = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
 
+class NormalizationReason(Reason):
+    """Почему нормализация не пропустила бутылку дальше: значение, заголовок для интерфейса, что случилось и каким параметром управляется."""
 
-@dataclass
-class Crop:
-    """Кроп одной бутылки: RGB-массив и как он получен из оригинала (матрицы в info).
-
-    mode: "bottle" — поворот, запас и заглушённый фон; "bbox" — маска ненадёжна, bbox без поворота и блюра;
-    "full_image" — бутылка не найдена, целое фото. label_polys — маска главной этикетки в пикселях оригинала,
-    если label_status == "ok".
-    """
-
-    image: np.ndarray
-    index: int
-    score: float | None
-    box: list[int]
-    info: dict
-    mode: str = "bottle"
-    label_status: str = "unchecked"
-    label_polys: list | None = None
+    NOT_TARGET = "not_target", "Бутылка на фоне", "Бутылка не целевая: стоит на фоне, сбоку или обрезана; скор отбора ниже порога калибровки selection.threshold"
+    OVER_LIMIT = "over_limit", "Лишняя бутылка", "Годных бутылок в кадре уже selection.max_bottles, у этой скор ниже"
+    BOTTLE_TOO_SMALL = "bottle_too_small", "Бутылка слишком далеко", "Высота бутылки в кадре меньше selection.min_bottle_px"
+    NO_LABEL = "no_label", "Этикетки не видно", "Бутылка повёрнута тылом или этикетки нет: этикетки закрывают меньше label.min_cover площади бутылки"
+    NOT_A_LABEL = "not_a_label", "Это не основная этикетка", "Найдена только акцизная марка уже label_crop.min_width_frac ширины бутылки либо наклейка у горлышка выше label.min_position"
+    LABEL_PARTIAL = "label_partial", "Этикетка видна частично", "Бутылка повёрнута боком или этикетка чем-то закрыта: занято меньше label.min_fill ширины бутылки"
+    LABEL_TOO_SMALL = "label_too_small", "Этикетка слишком мелкая", "Короткая сторона этикетки меньше label.min_label_px пикселей, текст не прочитать"
+    LABEL_BLURRY = "label_blurry", "Этикетка размыта", "Расфокус или смаз: резкость ниже label.min_sharpness"
 
 
 class Normalizer:
-    """Сегментация → отбор по калибровке → ось бутылки и этикетка → кропы. Разметка без рендера — annotate, кропы — вызов."""
+    """Сегментация → отбор по калибровке → проверка этикетки → кропы. Разметка без рендера — annotate, кропы с разметкой — вызов."""
 
     def __init__(self, cfg: dict, base: Path) -> None:
         """Читает калибровку и поднимает сегментатор; base — папка, от которой считаются пути в cfg."""
@@ -335,10 +325,12 @@ class Normalizer:
             sc["conf"],
             sc["imgsz"],
             sc["max_side"],
-            label_prompt=lb["prompt"] or None,
+            label_prompt=lb["prompt"],
             label_conf=lb["min_conf"],
             exclude_prompts=lb["exclude_prompts"],
         )
+        if self.seg.label_prompt is None:
+            raise ValueError("годная бутылка определяется по этикетке: нужны веса SAM3 и непустой label.prompt")
         if self.seg.tag != self.calib.get("segmentation"):
             print(
                 f"внимание: калибровка сделана для сегментации {self.calib.get('segmentation')}, сейчас {self.seg.tag}",
@@ -346,30 +338,40 @@ class Normalizer:
             )
 
     def largest_label(self, labels: list[dict], ax: dict) -> list | None:
-        """Полигоны самой крупной этикетки корпуса; полоски уже min_width_frac ширины бутылки (акцизные марки) не считаются."""
-        min_frac = self.cfg["label_crop"]["min_width_frac"]
-        polys = [lab["polys"] for lab in labels if lab["polys"] and label_geometry(ax, lab["polys"])["width_frac"] >= min_frac]
-        return max(polys, key=lambda ps: sum(cv2.contourArea(np.asarray(p, np.float32)) for p in ps), default=None)
+        """Полигоны самой крупной этикетки корпуса; полоски уже min_width_frac ширины бутылки, то есть акцизные марки, не считаются.
 
-    def check_label(self, cand: dict, ax: dict) -> tuple[str, list | None]:
-        """("ok", полигоны главной этикетки корпуса) или (причина, None).
+        Маска одной этикетки у SAM3 бывает несвязной: к основному пятну прилипают островки на соседнем тексте и тиснении.
+        Островки мельче min_part_frac площади основного пятна отбрасываются, иначе они растягивают бокс этикетки.
+        """
+        lc = self.cfg["label_crop"]
+        solid = [main_parts(lab["polys"], lc["min_part_frac"]) for lab in labels if lab["polys"]]
+        polys = [p for p in solid if label_geometry(ax, p)["width_frac"] >= lc["min_width_frac"]]
+        return max(polys, key=polys_area, default=None)
 
-        Порядок: есть ли этикетка, видна ли, резкая ли, виден ли корпус, где этикетка и какого она размера.
+    def check_label(self, cand: dict, ax: dict, score: float) -> list | Rejection:
+        """Полигоны основной этикетки, если она годится, иначе отказ с причиной и числами.
+
+        Порядок: есть ли этикетка, основная ли она, видна ли целиком, достаточно ли крупная и резкая.
+        Положение этикетки вдоль бутылки проверяется только у бутылки, видимой целиком: у обрубка крупного плана
+        неизвестно, где горлышко, и этикетка по центру кадра считалась бы наклейкой у горлышка.
         """
         lb, stats = self.cfg["label"], cand["label"]
         main = self.largest_label(cand["label_polys"], ax)
-        geo = label_geometry(ax, main) if main else {"position": 0.0, "along_px": 0.0, "across_px": 0.0}
-        failed = [
-            ("no_label", stats["cover"] < lb["min_cover"]),
-            ("label_partial", stats["fill"] < lb["min_fill"]),
-            ("label_blurry", stats["sharpness"] < lb["min_sharpness"]),
-            ("bottle_hidden", ax["length"] < lb["min_length_ratio"] * ax["body_width"]),
-            ("no_label", main is None),
-            ("label_off_body", geo["position"] < lb["min_position"]),
-            ("label_too_small", min(geo["along_px"], geo["across_px"]) < lb["min_label_px"]),
+        if stats["cover"] < lb["min_cover"]:
+            return Rejection(NormalizationReason.NO_LABEL, f"этикетки закрывают {stats['cover']:.0%} площади бутылки, нужно от {lb['min_cover']:.0%}", score, cand["polys"], main)
+        if main is None:
+            return Rejection(NormalizationReason.NOT_A_LABEL, f"все наклейки уже {self.cfg['label_crop']['min_width_frac']:.0%} ширины бутылки", score, cand["polys"], None)
+        geo = label_geometry(ax, main)
+        whole = ax["length"] >= lb["min_length_ratio"] * ax["body_width"]
+        short_side = min(geo["along_px"], geo["across_px"])
+        checks = [
+            (NormalizationReason.NOT_A_LABEL, whole and geo["position"] < lb["min_position"], f"центр наклейки на {geo['position']:.0%} длины бутылки от горлышка, основная этикетка не выше {lb['min_position']:.0%}"),
+            (NormalizationReason.LABEL_PARTIAL, stats["fill"] < lb["min_fill"], f"этикетка занимает {stats['fill']:.0%} ширины бутылки, нужно от {lb['min_fill']:.0%}"),
+            (NormalizationReason.LABEL_TOO_SMALL, short_side < lb["min_label_px"], f"короткая сторона этикетки {short_side:.0f} px, нужно от {lb['min_label_px']} px"),
+            (NormalizationReason.LABEL_BLURRY, stats["sharpness"] < lb["min_sharpness"], f"резкость {stats['sharpness']:.0f}, нужно от {lb['min_sharpness']}"),
         ]
-        reason = next((name for name, bad in failed if bad), "ok")
-        return reason, main if reason == "ok" else None
+        failed = next(((r, d) for r, bad, d in checks if bad), None)
+        return Rejection(failed[0], failed[1], score, cand["polys"], main) if failed else main
 
     def refine_label(self, img: Image.Image, cand: dict, ax: dict, scale: float, label: list) -> list:
         """Если в первом проходе бутылка была мелкой, маска этикетки уточняется вторым проходом SAM3 по вырезке бутылки.
@@ -382,106 +384,70 @@ class Normalizer:
             return label
         return self.largest_label(self.seg.labels_on_crop(img, cand["polys"], lc["refine_margin"]), ax) or label
 
-    def _annotate_selected(self, img: Image.Image, cand: dict, scale: float) -> dict:
-        """Поля отобранной бутылки: режим кропа, ось, этикетка. Ключ status = "too_small" и т. п., если бутылка не годится."""
+    def judge(self, img: Image.Image, cand: dict, score: float, scale: float, index: int) -> Candidate | Rejection:
+        """Целевая бутылка → годная с номером index или отказ: размер бутылки, затем этикетка."""
         ax = bottle_axis(cand["polys"], self.cfg["orientation"])
-        label_status, label = self.check_label(cand, ax) if "label" in cand else ("unchecked", None)
-        if self.cfg["label"]["required"] and label_status not in ("ok", "unchecked"):
-            return {"status": label_status}
-        # маска ненадёжна (бутылка короче min_aspect своих ширин): bbox как есть, без поворота и заглушения фона
-        mode = "bbox" if ax["length"] < self.cfg["fallback"]["min_aspect"] * ax["body_width"] else "bottle"
-        angle = ax["angle"] if mode == "bottle" else 0.0
-        _, (_, _, bw, bh) = rotated_extent(cand["polys"], ax["center"], angle)
-        if bh < self.cfg["selection"]["min_bottle_px"]:
-            return {"status": "too_small"}
-        if label:
-            label = self.refine_label(img, cand, ax, scale, label)
-        return {
-            "status": "selected",
-            "mode": mode,
-            "angle_deg": round(angle, 2),
-            "neck_method": ax["method"],
-            "neck_profile_contrast": round(ax["contrast"], 3),
-            "neck_point": [round(v, 1) for v in ax["neck"]],
-            "base_point": [round(v, 1) for v in ax["base"]],
-            "bottle_size_px": [round(float(bw), 1), round(float(bh), 1)],
-            "label_status": label_status,
-            "label": cand.get("label"),
-            "label_polys": label,
-        }
+        # у бутылки короче min_aspect своих ширин ось PCA может лечь поперёк: такой кроп идёт без поворота
+        axis_reliable = ax["length"] >= self.cfg["fallback"]["min_aspect"] * ax["body_width"]
+        angle = ax["angle"] if axis_reliable else 0.0
+        _, (_, _, _, bh) = rotated_extent(cand["polys"], ax["center"], angle)
+        min_px = self.cfg["selection"]["min_bottle_px"]
+        if bh < min_px:
+            return Rejection(NormalizationReason.BOTTLE_TOO_SMALL, f"высота бутылки {bh:.0f} px, нужно от {min_px} px", score, cand["polys"], None)
+        label = self.check_label(cand, ax, score)
+        if isinstance(label, Rejection):
+            return label
+        label = self.refine_label(img, cand, ax, scale, label)
+        return Candidate(index, score, cand["polys"], label, round(angle, 2))
 
-    def annotate_image(self, img: Image.Image) -> dict:
-        """Разметка без рендера: все кандидаты сегментации с масками и статусом отбора, у отобранных — ось бутылки и этикетка.
+    def annotate_image(self, img: Image.Image) -> list[Candidate | Rejection]:
+        """Разметка без рендера: все бутылки, найденные SAM3, по убыванию скора отбора; каждая — Candidate или Rejection.
 
-        Полигоны в пикселях оригинала после EXIF-поворота. Кандидаты отсортированы по скору, отобранные нумеруются index с 1.
-        Этого достаточно, чтобы даталоадер рендерил кроп через render_bottle с джиттером угла, окна, запаса и фона.
-        У отобранных: mode ("bottle" или "bbox"), label_status ("ok", причина или "unchecked"), label — метрики этикетки,
-        label_polys — маска главной этикетки при label_status == "ok". При label.required бутылка без хорошей этикетки
-        не отбирается, причина идёт в status.
+        Годных бутылок нет, если в списке нет ни одного Candidate. Координаты в пикселях img, то есть оригинала после EXIF-поворота.
         """
         seg = self.seg(img)
         scores = score_candidates(gray_small(img, self.calib["feat_side"]), seg, self.calib)
         max_bottles = self.cfg["selection"]["max_bottles"]
-        cands, n_selected = [], 0
+        items: list[Candidate | Rejection] = []
+        n_valid = 0
         for i in sorted(range(len(scores)), key=lambda i: -scores[i]):
             c = seg["cands"][i]
-            entry = {"candidate": c["id"], "conf": c["conf"], "box": c["box"], "score": round(scores[i], 4), "polys": c["polys"]}
-            cands.append(entry)
+            if not any(len(p) >= 3 for p in c["polys"]):
+                continue  # маска выродилась в точки: показывать и вырезать нечего
+            score = round(scores[i], 4)
             if scores[i] < self.threshold:
-                entry["status"] = "below_threshold"
-            elif not any(len(p) >= 3 for p in c["polys"]):
-                entry["status"] = "empty_mask"
-            elif max_bottles and n_selected >= max_bottles:
-                entry["status"] = "over_max_bottles"
+                item = Rejection(NormalizationReason.NOT_TARGET, f"скор отбора {score}, порог {self.threshold:.2f}", score, c["polys"], None)
+            elif max_bottles and n_valid >= max_bottles:
+                item = Rejection(NormalizationReason.OVER_LIMIT, f"годных бутылок уже {max_bottles}", score, c["polys"], None)
             else:
-                entry.update(self._annotate_selected(img, c, seg["scale"]))
-            if entry["status"] == "selected":
-                n_selected += 1
-                entry["index"] = n_selected
-        return {
-            "status": "ok" if n_selected else "no_bottles",
-            "width": seg["w"],
-            "height": seg["h"],
-            "segmentation": {
-                "model": seg["model"],
-                "prompt": seg["prompt"],
-                "imgsz": seg["imgsz"],
-                "scale": seg["scale"],
-                "n_candidates": len(seg["cands"]),
-            },
-            "threshold": round(self.threshold, 4),
-            "candidates": cands,
-        }
+                item = self.judge(img, c, score, seg["scale"], n_valid + 1)
+            n_valid += isinstance(item, Candidate)
+            items.append(item)
+        return items
 
-    def annotate(self, path: Path | str) -> dict:
+    def annotate(self, path: Path | str) -> list[Candidate | Rejection]:
         """Разметка одной картинки по пути; см. annotate_image."""
         return self.annotate_image(open_image(path))
 
-    def render(self, rgb: np.ndarray, ann: dict) -> list[Crop]:
-        """Кропы отобранных бутылок по разметке, в порядке убывания скора.
-
-        Если ни одна бутылка не отобрана и включён fallback.full_image, возвращается один кроп — целое фото.
-        """
-        crops = []
-        for entry in ann["candidates"]:
-            if entry["status"] != "selected":
+    def render(self, rgb: np.ndarray, items: list[Candidate | Rejection]) -> list[Sample]:
+        """Кропы годных бутылок по разметке, в порядке убывания скора: один Sample на один Candidate."""
+        samples = []
+        for item in items:
+            if not isinstance(item, Candidate):
                 continue
-            bbox_mode = entry["mode"] == "bbox"
-            cfg = {**self.cfg, "background": {**self.cfg["background"], "mode": "none"}} if bbox_mode else self.cfg
-            others = [(e["candidate"], e["polys"]) for e in ann["candidates"] if e is not entry and any(len(p) >= 3 for p in e["polys"])]
-            crop, info = render_bottle(rgb, entry["polys"], cfg, angle=0.0 if bbox_mode else None, others=others)
-            crops.append(Crop(crop, entry["index"], entry["score"], entry["box"], info, entry["mode"], entry["label_status"], entry["label_polys"]))
-        if not crops and self.cfg["fallback"]["full_image"]:
-            h, w = rgb.shape[:2]
-            info = {"angle_deg": 0.0, "matrix_src_to_dst": IDENTITY, "matrix_dst_to_src": IDENTITY, "width": w, "height": h}
-            crops.append(Crop(rgb, 1, None, [0, 0, w - 1, h - 1], info, "full_image", "no_bottle"))
-        return crops
+            crop, info = render_bottle(rgb, item.bottle, item.label, self.cfg, angle=item.angle)
+            samples.append(Sample(item, crop, info))
+        return samples
 
-    def __call__(self, img: Image.Image | Path | str) -> list[Crop]:
-        """Картинка → кропы бутылок; при fallback.full_image и отсутствии бутылок — целое фото."""
+    def __call__(self, img: Image.Image | Path | str) -> tuple[list[Sample] | None, list[Candidate | Rejection]]:
+        """Картинка → годные бутылки с кропами и разметка всех найденных бутылок.
+
+        Первый элемент — None, если в разметке одни отказы: дальше по пайплайну идти нечему, интерфейс показывает причины.
+        """
         if not isinstance(img, Image.Image):
             img = open_image(img)
-        return self.render(np.asarray(img), self.annotate_image(img))
+        items = self.annotate_image(img)
+        return self.render(np.asarray(img), items) or None, items
 
 
 def remove_stale(out_dir: Path, stem: str) -> None:
@@ -492,35 +458,36 @@ def remove_stale(out_dir: Path, stem: str) -> None:
             f.unlink()
 
 
-def write_outputs(path: Path, out_dir: Path, rgb: np.ndarray, crops: list[Crop], cfg: dict) -> list[str]:
-    """CLI: на каждую бутылку <имя>_bN.<формат> и <имя>_bN.json; при хорошей этикетке ещё _label.npz и _label.png."""
+def write_outputs(path: Path, out_dir: Path, rgb: np.ndarray, samples: list[Sample], cfg: dict) -> list[str]:
+    """CLI: на каждую годную бутылку <имя>_bN.<формат>, <имя>_bN.json, маска этикетки _label.npz и вырезка _label.png."""
     fmt, quality = cfg["output"]["format"], cfg["output"]["quality"]
     remove_stale(out_dir, path.stem)
     names = []
-    for c in crops:
-        stem = f"{path.stem}_b{c.index}"
-        save_image(out_dir / f"{stem}.{fmt}", c.image, fmt, quality)
+    for sample in samples:
+        cand = sample.candidate
+        stem = f"{path.stem}_b{cand.index}"
+        label_box = polys_box(cand.label)
+        save_image(out_dir / f"{stem}.{fmt}", sample.crop, fmt, quality)
+        np.savez_compressed(out_dir / f"{stem}_label.npz", mask=polys_mask(cand.label, label_box))
+        save_image(out_dir / f"{stem}_label.png", render_label(rgb, cand.label, cand.angle, cfg["label_crop"]["padding"]), "png", 0)
         meta = {
             "source": str(path),
-            "mode": c.mode,
-            "bottle_box": c.box,
-            "bottle_score": c.score,
-            "bottle_angle": c.info["angle_deg"],
+            "uuid": sample.uuid,
+            "bottle_box": polys_box(cand.bottle),
+            "bottle_score": cand.score,
+            "bottle_angle": sample.crop_info["angle_deg"],
             "bottle_crop": f"{stem}.{fmt}",
-            "bottle_crop_matrix": c.info["matrix_src_to_dst"],
-            "label_status": c.label_status,
-            "label_box": None,
-            "label_mask": None,
-            "label_crop": None,
+            "bottle_crop_matrix": sample.crop_info["matrix_src_to_dst"],
+            "label_box": label_box,
+            "label_mask": f"{stem}_label.npz",
+            "label_crop": f"{stem}_label.png",
         }
-        if c.label_polys:
-            label_box = polys_box(c.label_polys)
-            np.savez_compressed(out_dir / f"{stem}_label.npz", mask=polys_mask(c.label_polys, label_box))
-            save_image(out_dir / f"{stem}_label.png", render_label(rgb, c.label_polys, c.info["angle_deg"], cfg["label_crop"]["padding"]), "png", 0)
-            meta.update(label_box=label_box, label_mask=f"{stem}_label.npz", label_crop=f"{stem}_label.png")
         (out_dir / f"{stem}.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1))
         names.append(f"{stem}.{fmt}")
     return names
+
+
+BODY_LABEL = np.array([(-20, 40), (20, 40), (20, 80), (-20, 80)], float)  # этикетка 40x40 на корпусе синтетической бутылки selftest
 
 
 def check(cond: bool, *context: object) -> None:
@@ -530,7 +497,7 @@ def check(cond: bool, *context: object) -> None:
 
 
 def selftest() -> None:
-    """Синтетическая бутылка под разными углами: горлышко должно оказаться сверху, запас соблюдён, матрицы обратимы."""
+    """Синтетическая бутылка под разными углами: горлышко должно оказаться сверху, окно вокруг этикетки нужного размера, матрицы обратимы."""
     cfg = tomllib.loads((HERE / "normalize.toml").read_text())
     cfg["background"]["mode"] = "none"
     cfg["orientation"]["upright_within_deg"] = (
@@ -554,7 +521,8 @@ def selftest() -> None:
         r = math.radians(deg)
         R = np.array([[math.cos(r), -math.sin(r)], [math.sin(r), math.cos(r)]])
         poly = (outline @ R.T + [300, 250]).round().astype(int).tolist()
-        crop, info = render_bottle(rgb, [poly], cfg)
+        label = (BODY_LABEL @ R.T + [300, 250]).round().astype(int).tolist()
+        crop, info = render_bottle(rgb, [poly], [label], cfg)
         A = np.array(info["matrix_src_to_dst"])
         Ainv = np.array(info["matrix_dst_to_src"])
         neck_dst = affine(A, np.array([info["neck_point"]]))[0]
@@ -565,7 +533,7 @@ def selftest() -> None:
         back = affine(Ainv, affine(A, np.array([[10.0, 20.0]])))[0]
         check(bool(np.allclose(back, [10, 20], atol=1e-3)), back)  # матрицы взаимно обратны
         bw, bh = info["bottle_size_px"]
-        check(abs(crop.shape[0] - bh * 1.2) <= 2 and abs(crop.shape[1] - bw * 1.2) <= 2, deg, crop.shape, bw, bh)
+        check(abs(crop.shape[0] - 40 * 1.4) <= 3 and abs(crop.shape[1] - bw) <= 2, deg, crop.shape, bw, bh)  # этикетка 40x40: вся ширина бутылки, высота с запасом 20%
         check(115 <= bh <= 185 and 35 <= bw <= 45, deg, bw, bh)  # вертикальная бутылка 40x180
     cfg["orientation"]["upright_within_deg"] = 30.0
     for deg, method in (
@@ -576,31 +544,14 @@ def selftest() -> None:
     ):
         r = math.radians(deg)
         R = np.array([[math.cos(r), -math.sin(r)], [math.sin(r), math.cos(r)]])
-        _, info = render_bottle(
-            rgb, [(outline @ R.T + [300, 250]).round().astype(int).tolist()], cfg
-        )
+        poly = (outline @ R.T + [300, 250]).round().astype(int).tolist()
+        label = (BODY_LABEL @ R.T + [300, 250]).round().astype(int).tolist()
+        _, info = render_bottle(rgb, [poly], [label], cfg)
         check(info["neck_method"] == method, deg, info["neck_method"])
         if deg == 170:  # почти вертикальная бутылка вверх ногами считается стоящей: верхний конец становится горлышком
             check(abs(info["angle_deg"]) < 15, info["angle_deg"])
-    selftest_padding(cfg, rgb, outline)
     selftest_labels(cfg, rgb, outline)
     print("selftest ok")
-
-
-def selftest_padding(cfg: dict, rgb: np.ndarray, outline: np.ndarray) -> None:
-    """Запас не заходит в соседние боксы: бутылка 40x180 с центром (120, 250), её бокс по x 100..140."""
-    me = [(outline + np.array([120, 250])).round().astype(int).tolist()]
-
-    def rect(x1: int, x2: int) -> list:
-        return [[x1, 160], [x2, 160], [x2, 340], [x1, 340]]
-
-    _, info = render_bottle(rgb, me, cfg, others=[(2, [rect(143, 183)])])  # сосед в 3 px справа
-    check(abs(info["padding_px"][0] - 3) < 0.5 and info["padding_limited_by"] == [2], info)  # слева урезано симметрично
-    check(abs(info["padding_px"][1] - 18.0) < 0.5, info)  # по вертикали запас полный
-    _, info = render_bottle(rgb, me, cfg, others=[(3, [rect(400, 440)])])  # сосед далеко
-    check(abs(info["padding_px"][0] - 4) < 0.5 and info["padding_limited_by"] == [], info)
-    _, info = render_bottle(rgb, me, cfg, others=[(4, [rect(130, 170)])])  # сосед внахлёст не учитывается
-    check(abs(info["padding_px"][0] - 4) < 0.5 and info["padding_limited_by"] == [], info)
 
 
 def selftest_labels(cfg: dict, rgb: np.ndarray, outline: np.ndarray) -> None:
@@ -620,6 +571,17 @@ def selftest_labels(cfg: dict, rgb: np.ndarray, outline: np.ndarray) -> None:
     check(abs(body_label["along_px"] - 40) < 3 and abs(body_label["width_frac"] - 1) < 0.15, body_label)
     stub = label_geometry({**ax, "length": 60.0}, [to_img(body)])  # видно мало: длина берётся как 3.3 ширины
     check(abs(stub["position"] - body_label["position"] * ax["length"] / (3.3 * ax["body_width"])) < 0.01, stub)
+
+    # окно вокруг этикетки 40x40 на корпусе шириной 40: по ширине вся бутылка, по высоте 40 * 1.4
+    window, _ = render_bottle(rgb, [to_img(outline)], [to_img(body)], cfg)
+    check(abs(window.shape[1] - 40) <= 3 and abs(window.shape[0] - 56) <= 3, window.shape)
+    low = [(-20, 90), (20, 90), (20, 118), (-20, 118)]  # этикетка у самого дна: снизу окно обрезано маской бутылки
+    window, _ = render_bottle(rgb, [to_img(outline)], [to_img(low)], cfg)
+    check(abs(window.shape[0] - (28 * 1.2 + 2)) <= 3, window.shape)
+
+    narrow = [(-5, 40), (5, 40), (5, 80), (-5, 80)]  # узкая этикетка: окно всё равно во всю ширину бутылки
+    window, _ = render_bottle(rgb, [to_img(outline)], [to_img(narrow)], cfg)
+    check(abs(window.shape[1] - 40) <= 3 and abs(window.shape[0] - 56) <= 3, window.shape)
 
     lcrop = render_label(rgb, [to_img([(-30, 40), (30, 40), (30, 60), (-30, 60)])], ax["angle"], 0.03)
     check(abs(lcrop.shape[1] - 60 * 1.06) <= 3 and abs(lcrop.shape[0] - 20 * 1.06) <= 3, lcrop.shape)  # снова горизонтальна
@@ -658,10 +620,10 @@ def selftest_labels(cfg: dict, rgb: np.ndarray, outline: np.ndarray) -> None:
 @click.option("--set", "overrides", multiple=True, metavar="секция.ключ=значение", help="Переопределить параметр конфига")
 @click.option("--selftest", "selftest_", is_flag=True, help="Проверка геометрии на синтетике, без модели")
 def main(inputs: tuple[Path, ...], config: Path, overrides: tuple[str, ...], selftest_: bool) -> None:
-    """Нормализация бутылок вина: SAM3 → отбор по калибровке → поворот горлышком вверх → кроп с запасом → блюр фона.
+    """Нормализация бутылок вина: SAM3 → отбор по калибровке → поворот горлышком вверх → кроп с запасом → заливка фона.
 
     INPUTS — картинки или папки. На каждую бутылку в output.dir пишутся <имя>_bN.<формат> и <имя>_bN.json,
-    при хорошей этикетке ещё <имя>_bN_label.npz (маска) и <имя>_bN_label.png (вырезка под OCR).
+    <имя>_bN_label.npz с маской этикетки и <имя>_bN_label.png с вырезкой под OCR. Бутылки без годной этикетки не вырезаются.
     """
     if selftest_:
         selftest()
@@ -683,14 +645,14 @@ def main(inputs: tuple[Path, ...], config: Path, overrides: tuple[str, ...], sel
         try:
             t0 = time.perf_counter()
             img = open_image(f)
-            ann = norm.annotate_image(img)
+            items = norm.annotate_image(img)
             rgb = np.asarray(img)
-            crops = norm.render(rgb, ann)
-            write_outputs(f, out_dir, rgb, crops, cfg)
-            kinds = ", ".join(f"{c.mode}/{c.label_status}" for c in crops)
+            samples = norm.render(rgb, items)
+            write_outputs(f, out_dir, rgb, samples, cfg)
+            rejected = ", ".join(item.reason for item in items if isinstance(item, Rejection))
             click.echo(
-                f"{f.name}: {ann['status']}, кропов {len(crops)} из {ann['segmentation']['n_candidates']} кандидатов"
-                f"{f' ({kinds})' if kinds else ''}, {round((time.perf_counter() - t0) * 1000)} мс"
+                f"{f.name}: бутылок {len(items)}, кропов {len(samples)}"
+                f"{f', отказы: {rejected}' if rejected else ''}, {round((time.perf_counter() - t0) * 1000)} мс"
             )
         except Exception as e:  # одна битая картинка не должна ронять весь пакет
             click.echo(f"{f.name}: ошибка {e!r}", err=True)

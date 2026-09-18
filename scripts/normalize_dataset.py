@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 import rich_click as click
@@ -15,6 +16,7 @@ from rich.progress import (
 
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
 from vinishko.pipeline.steps.normalization.normalize import Normalizer, load_config
+from vinishko.pipeline.structs import Candidate, Rejection
 
 console = Console()
 
@@ -52,14 +54,14 @@ def done_files(out: Path) -> set[str]:
         return {json.loads(line)["file"] for line in f if line.strip()}
 
 
-def record(name: str, ann: dict) -> dict:
-    """Строка normalization.jsonl: всё, что нужно даталоадеру, без конфига."""
+def record(name: str, items: list[Candidate | Rejection]) -> dict:
+    """Строка normalization.jsonl: годные бутылки и отказы одной картинки, поля — как у Candidate и Rejection."""
+    candidates = [asdict(item) for item in items if isinstance(item, Candidate)]
     return {
         "file": name,
-        "status": ann["status"],
-        "width": ann["width"],
-        "height": ann["height"],
-        "candidates": ann["candidates"],
+        "status": "ok" if candidates else "no_bottles",
+        "candidates": candidates,
+        "rejections": [asdict(item) for item in items if isinstance(item, Rejection)],
     }
 
 
@@ -79,13 +81,16 @@ def annotate_dataset(dataset: Path, out: Path, norm: Normalizer, splits: list[st
             try:
                 rec = record(name, norm.annotate(dataset / "images" / name))
             except Exception as e:  # одна битая картинка не должна ронять прогон на сутки
-                rec = {"file": name, "status": "error", "error": repr(e), "candidates": []}
+                rec = {"file": name, "status": "error", "error": repr(e), "candidates": [], "rejections": []}
             counts[str(rec["status"])] += 1
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             progress.update(task, advance=1)
     progress.remove_task(task)
     console.print(f"[green]done[/] {dataset.name}: {len(done)} were done, +{len(todo)} now ({counts}) → {out}")
 
+# !!!! Надо учесть при трейне, что в каталоге будут лежать изображения без фона, возможно вообще стоит отказаться от идеи с рамытием фона как входом и учить чисто без фона - но у нас тогда могут быть проблема с сегметацией
+
+# И при eval нужно будет формировать бд так, что делаем поиск с размытым фоном, а в бд лежат изображения без, те, что будет на проде
 
 @click.command()
 @click.argument("datasets", nargs=-1, required=True, type=click.Path(exists=True, file_okay=False, path_type=Path))
@@ -95,10 +100,11 @@ def annotate_dataset(dataset: Path, out: Path, norm: Normalizer, splits: list[st
 @click.option("--limit", type=int, default=None, help="Не больше N новых картинок на датасет")
 @click.option("--out", "out_name", default=OUT_NAME, show_default=True, help="Имя выходного файла внутри директории датасета либо абсолютный путь")
 def main(datasets: tuple[Path, ...], config: Path, overrides: tuple[str, ...], splits: str, limit: int | None, out_name: str) -> None:
-    """Прогоняет Normalizer.annotate (SAM3 → отбор → ось бутылки, без рендера) по картинкам развёрнутого датасета и пишет разметку в <dataset>/normalization.jsonl.
+    """Прогоняет Normalizer.annotate (SAM3 → отбор → проверка этикетки, без рендера) по картинкам развёрнутого датасета и пишет разметку в <dataset>/normalization.jsonl.
 
-    Одна строка на картинку: status, размер и все кандидаты с polys (маска в пикселях оригинала после EXIF), box, score и статусом отбора;
-    у отобранных — angle_deg, neck_point, base_point, bottle_size_px, mode, label_status, метрики label и маска этикетки label_polys. Кропы не пишутся: их рендерит даталоадер через render_bottle с джиттером.
+    Одна строка на картинку: status, candidates — годные бутылки с полями Candidate: index, score, bottle, label, angle, uuid;
+    rejections — отказы с полями Rejection: reason, detail, score, bottle, label, uuid. Маски bottle и label — полигоны в пикселях оригинала после EXIF.
+    Кропы не пишутся: их рендерит даталоадер по маскам и углу, с джиттером.
     Дозапись: уже обработанные картинки пропускаются, порядок сплитов задаёт --splits. Запуск из корня: python -m scripts.normalize_dataset.
     """
     cfg = load_config(config, list(overrides))

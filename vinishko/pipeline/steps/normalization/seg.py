@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import cv2
 import numpy as np
@@ -261,9 +261,9 @@ class Segmenter:
         results = self.query(small, prompts)
         labels = self._labels(results) if self.label_prompt else None
         gray_full = np.asarray(img.convert("L")) if labels else None
-        cands = []
+        cands: list[dict[str, Any]] = []
         for conf, box, m in zip(*results[self.prompt], strict=True):
-            cand = {
+            cand: dict[str, Any] = {
                 "conf": round(float(conf), 3),
                 "box": [round(float(v) / k) for v in box],
                 "area": round(float(m.sum()) / m.size, 5),
