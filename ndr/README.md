@@ -73,8 +73,8 @@ Runner не может сохранить скрытое chain-of-thought, ес�
 --model ID                 модель OpenRouter; альтернатива — OPENROUTER_MODEL
 --concurrency N            число параллельных кейсов, по умолчанию 1
 --generations N            значение n в Chat Completions, по умолчанию 1
---reasoning-effort LEVEL   none|minimal|low|medium|high
---max-tokens N             лимит output/reasoning tokens
+--reasoning-effort LEVEL   none|minimal|low|medium|high|xhigh|max
+--max-completion-tokens N  лимит output/reasoning tokens, по умолчанию 16000
 --timeout SECONDS          timeout одного HTTP-запроса
 --limit N                  прогнать первые N кейсов
 --seed N                   детерминированный порядок кандидатов
@@ -82,6 +82,9 @@ Runner не может сохранить скрытое chain-of-thought, ес�
 --env-file PATH            dotenv-файл, по умолчанию корневой .env
 --force                    заменить run.json, metrics.json и by_case/*.json
 ```
+
+Старое имя CLI-флага `--max-tokens` пока принимается как совместимый alias, но в API-запрос
+всегда уходит актуальное поле `max_completion_tokens`.
 
 Для другого OpenAI-compatible сервера задайте `--api-base`. Имя переменной с ключом можно
 изменить через `--api-key-env`; её значение никогда не записывается в результаты.

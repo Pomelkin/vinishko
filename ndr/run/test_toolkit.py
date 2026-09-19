@@ -99,6 +99,19 @@ class SolutionIntegrationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             solution_predictor.image_media_type(b"not an image")
 
+    def test_image_block_requests_and_traces_original_detail(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            image_path = Path(directory) / "query.jpg"
+            image_path.write_bytes(b"\xff\xd8\xfftest")
+            api_block, trace_block = solution_predictor.image_blocks(
+                str(image_path),
+                "original",
+            )
+
+        self.assertEqual(api_block["image_url"]["detail"], "original")
+        self.assertEqual(trace_block["image"]["detail"], "original")
+        self.assertTrue(api_block["image_url"]["url"].startswith("data:image/jpeg;base64,"))
+
     def test_every_generation_and_reasoning_is_retained(self) -> None:
         raw = {
             "choices": [
@@ -193,7 +206,7 @@ class SolutionIntegrationTests(unittest.TestCase):
         generation = solution_config.GenerationSettings(
             temperature=0.25,
             top_p=0.9,
-            max_tokens=123,
+            max_completion_tokens=123,
             generations=2,
             reasoning_effort="low",
             reasoning_exclude=True,
@@ -210,10 +223,23 @@ class SolutionIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(payload["temperature"], 0.25)
         self.assertEqual(payload["top_p"], 0.9)
-        self.assertEqual(payload["max_tokens"], 123)
+        self.assertEqual(payload["max_completion_tokens"], 123)
         self.assertEqual(payload["n"], 2)
         self.assertEqual(payload["reasoning"], {"effort": "low", "exclude": True})
         self.assertEqual(payload["provider"]["sort"], "latency")
+
+        single_generation = solution_config.GenerationSettings(reasoning_effort="none")
+        single_payload = single_generation.request_payload()
+        self.assertNotIn("n", single_payload)
+        self.assertNotIn("image_detail", single_payload)
+        self.assertEqual(
+            single_payload["reasoning"],
+            {"effort": "none", "exclude": False},
+        )
+        self.assertEqual(single_payload["max_completion_tokens"], 16000)
+        self.assertEqual(solution_config.SETTINGS.generation.image_detail, "original")
+        self.assertEqual(solution_config.SETTINGS.generation.reasoning_effort, "max")
+        self.assertEqual(solution_config.SETTINGS.openrouter.routing.routing_mode, "latency")
 
         with self.assertRaises(ValueError):
             solution_config.ProviderRoutingSettings(

@@ -54,7 +54,10 @@ def image_media_type(data: bytes) -> str:
     raise ValueError("unsupported image signature")
 
 
-def image_blocks(path_value: str) -> tuple[dict[str, Any], dict[str, Any]]:
+def image_blocks(
+    path_value: str,
+    detail: str = "original",
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return an API image block and a base64-free trace block."""
     path = Path(path_value)
     data = path.read_bytes()
@@ -66,6 +69,7 @@ def image_blocks(path_value: str) -> tuple[dict[str, Any], dict[str, Any]]:
                 f"data:{media_type};base64,"
                 f"{base64.b64encode(data).decode('ascii')}"
             ),
+            "detail": detail,
         },
     }
     trace_block = {
@@ -75,6 +79,7 @@ def image_blocks(path_value: str) -> tuple[dict[str, Any], dict[str, Any]]:
             "media_type": media_type,
             "bytes": len(data),
             "sha256": hashlib.sha256(data).hexdigest(),
+            "detail": detail,
             "data_url_omitted": True,
         },
     }
@@ -101,9 +106,10 @@ def add_image(
     api_content: list[dict[str, Any]],
     trace_content: list[dict[str, Any]],
     path: str,
+    detail: str,
 ) -> None:
     """Append an encoded API image and a compact trace descriptor."""
-    api_block, trace_block = image_blocks(path)
+    api_block, trace_block = image_blocks(path, detail)
     api_content.append(api_block)
     trace_content.append(trace_block)
 
@@ -111,19 +117,25 @@ def add_image(
 def comparison_content(
     query_path: str,
     candidate: Mapping[str, Any],
+    image_detail: str = "original",
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Build the QUERY-versus-one-ELEMENT multimodal message."""
     api_content: list[dict[str, Any]] = []
     trace_content: list[dict[str, Any]] = []
     add_text(api_content, trace_content, "=== QUERY ===")
-    add_image(api_content, trace_content, query_path)
+    add_image(api_content, trace_content, query_path, image_detail)
     card_json = json.dumps(candidate_card(candidate), ensure_ascii=False)
     add_text(
         api_content,
         trace_content,
         f"=== ELEMENT ===\nCARD_JSON:\n{card_json}",
     )
-    add_image(api_content, trace_content, candidate["reference_image_path"])
+    add_image(
+        api_content,
+        trace_content,
+        candidate["reference_image_path"],
+        image_detail,
+    )
     add_text(
         api_content,
         trace_content,
@@ -135,12 +147,13 @@ def comparison_content(
 def resolution_content(
     query_path: str,
     candidates: list[Mapping[str, Any]],
+    image_detail: str = "original",
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Build the QUERY-versus-multiple-matches resolver message."""
     api_content: list[dict[str, Any]] = []
     trace_content: list[dict[str, Any]] = []
     add_text(api_content, trace_content, "=== QUERY ===")
-    add_image(api_content, trace_content, query_path)
+    add_image(api_content, trace_content, query_path, image_detail)
     for number, candidate in enumerate(candidates, start=1):
         card_json = json.dumps(candidate_card(candidate), ensure_ascii=False)
         add_text(
@@ -148,7 +161,12 @@ def resolution_content(
             trace_content,
             f"=== ELEMENT {number} ===\nCARD_JSON:\n{card_json}",
         )
-        add_image(api_content, trace_content, candidate["reference_image_path"])
+        add_image(
+            api_content,
+            trace_content,
+            candidate["reference_image_path"],
+            image_detail,
+        )
     add_text(
         api_content,
         trace_content,
@@ -394,12 +412,17 @@ def predict(request: dict[str, Any]) -> dict[str, Any]:
         )
 
     query_path = request["query"]["image_path"]
+    image_detail = runtime.get("image_detail", "original")
     same_candidates = []
     for candidate in request["group"]["candidates"]:
         year_matters = bool(str(candidate.get("vintage", "")).strip())
         prompt_key = "compare_year_matters" if year_matters else "compare_year_not_matter"
         schema_key = "year_matters" if year_matters else "year_not_matter"
-        api_content, trace_content = comparison_content(query_path, candidate)
+        api_content, trace_content = comparison_content(
+            query_path,
+            candidate,
+            image_detail,
+        )
         output_model = comparison_output_model(year_matters)
         result = call_model(
             runtime=runtime,
@@ -442,7 +465,11 @@ def predict(request: dict[str, Any]) -> dict[str, Any]:
         }
 
     allowed_slugs = [candidate["slug"] for candidate in same_candidates]
-    api_content, trace_content = resolution_content(query_path, same_candidates)
+    api_content, trace_content = resolution_content(
+        query_path,
+        same_candidates,
+        image_detail,
+    )
     resolve_model = resolver_output_model(allowed_slugs)
     resolution = call_model(
         runtime=runtime,

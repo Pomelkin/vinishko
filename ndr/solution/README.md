@@ -39,7 +39,9 @@ JSON Schema, полученную из той же модели, которой 
 
 На каждом сравнении передаются QUERY, один ELEMENT и компактная карточка ELEMENT. Resolver
 получает QUERY и все ELEMENT с `verdict=same`. Изображения передаются отдельными image content
-blocks; MIME определяется по сигнатуре, а не расширению.
+blocks; MIME определяется по сигнатуре, а не расширению. `generation.image_detail` явно
+передаётся в каждом image block; по умолчанию используется `original`. Для модели или
+провайдера без поддержки `original` его можно заменить на `high` в `config.py`.
 
 Карточка содержит `slug`, `name`, `winery`, `vintage`, `grapes`, `category`, `sugar`,
 `sparkling`, `abv` и `aging_or_reserve`. Длинное дегустационное описание не передаётся.
@@ -48,12 +50,14 @@ blocks; MIME определяется по сигнатуре, а не расш�
 
 Для каждого HTTP-вызова без фильтрации сохраняются сырой ответ и все choices, включая
 `content`, `reasoning`, `reasoning_details`, refusal, annotations, usage и provider-specific
-поля. `generation.generations` (или разовый `--generations N`) задаёт `n`; решением этапа
-становится первая generation, прошедшая JSON parsing и прикладную проверку контракта.
+поля. `generation.generations` (или разовый `--generations N`) задаёт `n`, но при значении 1
+параметр не отправляется; решением этапа становится первая generation, прошедшая JSON parsing
+и прикладную проверку контракта.
 
 Скрытое chain-of-thought, которое провайдер не возвращает, сохранить невозможно. Параметр
 `generation.reasoning_exclude` управляет передачей доступных reasoning-данных; по умолчанию
-он равен `False`.
+он равен `False`. Значение `reasoning_effort="none"` отправляется явно и отключает reasoning;
+`None` означает, что весь блок `reasoning` нужно опустить.
 
 ## Единая конфигурация
 
@@ -73,9 +77,10 @@ SETTINGS = NdrSettings(
     ),
     generation=GenerationSettings(
         temperature=0.0,
-        max_tokens=4000,
+        max_completion_tokens=16000,
         generations=1,
-        reasoning_effort="high",
+        image_detail="original",
+        reasoning_effort="max",
     ),
     execution=ExecutionSettings(
         timeout_seconds=120.0,
@@ -85,9 +90,11 @@ SETTINGS = NdrSettings(
 )
 ```
 
-`routing_mode` преобразуется в `provider.sort`. Весь непустой provider-блок попадает в каждый
-comparison и resolver request и сохраняется в request trace. Доступны также `order`, `only`,
-`ignore`, `data_collection`, `zdr`, `quantizations` и `max_price`.
+`routing_mode` преобразуется в `provider.sort`; по умолчанию используется `latency`.
+`require_parameters=True` не позволяет маршрутизатору выбрать провайдера без поддержки
+запрошенных параметров. Весь непустой provider-блок попадает в каждый comparison и resolver
+request и сохраняется в request trace. Доступны также `order`, `only`, `ignore`,
+`data_collection`, `zdr`, `quantizations` и `max_price`.
 
 Приоритет connection/run overrides: CLI → `.env`/process environment → `config.py`. Параметры,
 которых нет среди CLI-флагов (`top_p`, `top_k`, `min_p`, penalties, generation seed, stop и

@@ -13,7 +13,16 @@ NonEmptyString = Annotated[
     StringConstraints(strip_whitespace=True, min_length=1),
 ]
 RoutingMode = Literal["price", "throughput", "latency"]
-ReasoningEffort = Literal["none", "minimal", "low", "medium", "high"]
+ImageDetail = Literal["auto", "low", "high", "original"]
+ReasoningEffort = Literal[
+    "none",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+]
 
 
 class StrictSettings(BaseModel):
@@ -92,24 +101,31 @@ class GenerationSettings(StrictSettings):
     frequency_penalty: float | None = Field(default=None, ge=-2, le=2)
     presence_penalty: float | None = Field(default=None, ge=-2, le=2)
     repetition_penalty: float | None = Field(default=None, gt=0, le=2)
-    max_tokens: int = Field(default=4000, ge=1)
+    max_completion_tokens: int = Field(default=16000, ge=1)
     generations: int = Field(default=1, ge=1, le=16)
     seed: int | None = None
     stop: tuple[NonEmptyString, ...] = Field(default=(), max_length=4)
-    reasoning_effort: ReasoningEffort = "high"
+    image_detail: ImageDetail = "original"
+    reasoning_effort: ReasoningEffort | None = "max"
     reasoning_exclude: bool = False
 
     def request_payload(self) -> dict[str, Any]:
         """Serialize names expected by the OpenAI-compatible request body."""
         payload = self.model_dump(
             mode="json",
-            exclude={"generations", "reasoning_effort", "reasoning_exclude"},
+            exclude={
+                "generations",
+                "image_detail",
+                "reasoning_effort",
+                "reasoning_exclude",
+            },
             exclude_none=True,
         )
-        payload["n"] = self.generations
+        if self.generations != 1:
+            payload["n"] = self.generations
         if not payload.get("stop"):
             payload.pop("stop", None)
-        if self.reasoning_effort != "none":
+        if self.reasoning_effort is not None:
             payload["reasoning"] = {
                 "effort": self.reasoning_effort,
                 "exclude": self.reasoning_exclude,
@@ -146,7 +162,7 @@ SETTINGS = NdrSettings(
         app_title_env="OPENROUTER_APP_TITLE",
         user_agent="vinishko-ndr-runner/1",
         routing=ProviderRoutingSettings(
-            routing_mode=None,  # None, "price", "throughput", or "latency"
+            routing_mode="latency",  # None, "price", "throughput", or "latency"
             order=(),
             only=(),
             ignore=(),
@@ -166,11 +182,12 @@ SETTINGS = NdrSettings(
         frequency_penalty=None,
         presence_penalty=None,
         repetition_penalty=None,
-        max_tokens=4000,
+        max_completion_tokens=16000,
         generations=1,
         seed=None,
         stop=(),
-        reasoning_effort="high",
+        image_detail="original",
+        reasoning_effort="low",
         reasoning_exclude=False,
     ),
     execution=ExecutionSettings(

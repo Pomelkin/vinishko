@@ -436,10 +436,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--api-key-env", default=SETTINGS.openrouter.api_key_env)
     parser.add_argument(
         "--reasoning-effort",
-        choices=("none", "minimal", "low", "medium", "high"),
+        choices=("none", "minimal", "low", "medium", "high", "xhigh", "max"),
         default=SETTINGS.generation.reasoning_effort,
     )
-    parser.add_argument("--max-tokens", type=int, default=SETTINGS.generation.max_tokens)
+    parser.add_argument(
+        "--max-completion-tokens",
+        "--max-tokens",
+        dest="max_completion_tokens",
+        type=int,
+        default=SETTINGS.generation.max_completion_tokens,
+    )
     parser.add_argument("--temperature", type=float, default=SETTINGS.generation.temperature)
     parser.add_argument("--generations", type=int, default=SETTINGS.generation.generations)
     parser.add_argument("--timeout", type=float, default=SETTINGS.execution.timeout_seconds)
@@ -458,8 +464,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise RunnerError("--concurrency must be between 1 and 64")
     if not 1 <= args.generations <= 16:
         raise RunnerError("--generations must be between 1 and 16")
-    if args.max_tokens < 1:
-        raise RunnerError("--max-tokens must be positive")
+    if args.max_completion_tokens < 1:
+        raise RunnerError("--max-completion-tokens must be positive")
     if not 0 <= args.temperature <= 2:
         raise RunnerError("--temperature must be between 0 and 2")
     if not 0 < args.timeout <= 3600:
@@ -518,7 +524,7 @@ def main() -> int:
     generation = SETTINGS.generation.model_copy(
         update={
             "reasoning_effort": args.reasoning_effort,
-            "max_tokens": args.max_tokens,
+            "max_completion_tokens": args.max_completion_tokens,
             "temperature": args.temperature,
             "generations": args.generations,
         },
@@ -531,6 +537,7 @@ def main() -> int:
         "app_title_env": SETTINGS.openrouter.app_title_env,
         "user_agent": SETTINGS.openrouter.user_agent,
         "generation": generation.request_payload(),
+        "image_detail": generation.image_detail,
         "provider": SETTINGS.openrouter.routing.request_payload(),
         "timeout": args.timeout,
     }
