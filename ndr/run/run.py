@@ -57,6 +57,9 @@ ENV_KEY_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 REASONING_EFFORT_NAMES = frozenset(
     {"none", "minimal", "low", "medium", "high", "xhigh", "max"},
 )
+WINDOWS_TRANSIENT_REPLACE_ERRORS = frozenset({5, 32, 33})
+ATOMIC_REPLACE_RETRY_SECONDS = 5.0
+ATOMIC_REPLACE_RETRY_DELAY_SECONDS = 0.05
 
 
 def parse_reasoning_effort(value: str) -> str | int:
@@ -166,7 +169,22 @@ def atomic_write_json(path: Path, value: Any) -> None:
             encoding="utf-8",
             newline="\n",
         )
-        temporary.replace(path)
+        deadline = time.monotonic() + ATOMIC_REPLACE_RETRY_SECONDS
+        while True:
+            try:
+                os.replace(temporary, path)
+                break
+            except PermissionError as error:
+                # Windows denies replacement while Defender, an indexer, or an editor
+                # briefly holds the destination without delete sharing. Concurrent runs
+                # produce checkpoint bursts that make this otherwise transient lock likely.
+                if (
+                    getattr(error, "winerror", None)
+                    not in WINDOWS_TRANSIENT_REPLACE_ERRORS
+                    or time.monotonic() >= deadline
+                ):
+                    raise
+                time.sleep(ATOMIC_REPLACE_RETRY_DELAY_SECONDS)
     finally:
         temporary.unlink(missing_ok=True)
 
@@ -251,13 +269,10 @@ def build_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
         row for row in rows if row["prediction"]["status"] == "ok"
     ]
     total = len(evaluated_rows)
-    answered_rows = [
-        row for row in evaluated_rows if row["prediction"]["slug"] != NOT_FOUND
-    ]
-    correct = sum(bool(row["prediction"]["correct"]) for row in evaluated_rows)
-    correct_answered = sum(
-        bool(row["prediction"]["correct"]) for row in answered_rows
+    not_found = sum(
+        row["prediction"]["slug"] == NOT_FOUND for row in evaluated_rows
     )
+    correct = sum(bool(row["prediction"]["correct"]) for row in evaluated_rows)
     latencies = [float(row["prediction"]["latency_ms"]) for row in rows]
     return {
         "queries": total,
@@ -265,11 +280,8 @@ def build_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "excluded_errors": attempted - total,
         "correct": correct,
         "accuracy": correct / total if total else None,
-        "answered": len(answered_rows),
-        "not_found": total - len(answered_rows),
-        "accuracy_when_answered": (
-            correct_answered / len(answered_rows) if answered_rows else None
-        ),
+        "answered": total,
+        "not_found": not_found,
         "contract_errors": sum(
             row["prediction"]["status"] == "contract_error" for row in rows
         ),
@@ -307,19 +319,16 @@ def add_numeric_usage(value: Any, totals: dict[str, int | float], prefix: str = 
 
 
 def quality_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Return accuracy, coverage, and error counters."""
+    """Return verdict accuracy and error counters."""
     report = build_report(rows)
-    total = report["queries"]
     return {
-        "queries": total,
+        "queries": report["queries"],
         "attempted_queries": report["attempted_queries"],
         "excluded_errors": report["excluded_errors"],
         "correct": report["correct"],
         "accuracy": report["accuracy"],
         "answered": report["answered"],
         "not_found": report["not_found"],
-        "coverage": report["answered"] / total if total else None,
-        "accuracy_when_answered": report["accuracy_when_answered"],
         "contract_errors": report["contract_errors"],
         "predictor_errors": report["predictor_errors"],
     }

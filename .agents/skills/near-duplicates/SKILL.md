@@ -38,12 +38,6 @@ contract and investigate the mismatch before changing data.
 
 ## Required workflow
 
-Run the validator before and after any mutation:
-
-```text
-python .agents/skills/near-duplicates/scripts/validate.py
-```
-
 For reports and downstream datasets, read `all_candidates.csv` with a real CSV parser. Do not
 reconstruct the registry from folder names or Markdown.
 
@@ -56,7 +50,7 @@ For a rebuild, do not run `scripts/collect_near_duplicates.py --force` against
 2. Re-evaluate/filter pairs at object level and require both exact slugs to exist in
    `catalog_dataset.csv`.
 3. Synchronize only the 378 confirmed candidate numbers into the working CSV and C-gallery.
-4. Validate, then remove the temporary build.
+4. Remove the temporary build after synchronizing the confirmed artifacts.
 
 If the confirmed set intentionally changes, update the CSV and image folders atomically. Do
 not leave a CSV row without its folder or a folder without its CSV row. Preserve the original

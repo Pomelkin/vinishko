@@ -352,6 +352,36 @@ class SolutionIntegrationTests(unittest.TestCase):
 class RunnerTests(unittest.TestCase):
     """Protect dotenv loading, aggregate metrics, and result artifacts."""
 
+    def test_atomic_write_retries_transient_windows_destination_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "run.json"
+            target.write_text("{}\n", encoding="utf-8")
+            real_replace = os.replace
+            attempts = 0
+
+            def flaky_replace(source: Path, destination: Path) -> None:
+                nonlocal attempts
+                attempts += 1
+                if attempts < 3:
+                    error = PermissionError("destination is temporarily locked")
+                    error.winerror = 5
+                    raise error
+                real_replace(source, destination)
+
+            with (
+                patch.object(runner.os, "replace", side_effect=flaky_replace),
+                patch.object(runner.time, "sleep") as sleep,
+            ):
+                runner.atomic_write_json(target, {"status": "completed"})
+
+            self.assertEqual(attempts, 3)
+            self.assertEqual(sleep.call_count, 2)
+            self.assertEqual(
+                json.loads(target.read_text(encoding="utf-8")),
+                {"status": "completed"},
+            )
+            self.assertEqual(list(target.parent.glob(".run.json.*.tmp")), [])
+
     def test_project_env_is_loaded_without_overriding_process_env(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             env_path = Path(directory) / ".env"
@@ -416,9 +446,11 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(metrics["quality"]["queries"], 1)
         self.assertEqual(metrics["quality"]["excluded_errors"], 1)
         self.assertEqual(metrics["quality"]["accuracy"], 1.0)
-        self.assertEqual(metrics["quality"]["coverage"], 1.0)
+        self.assertEqual(metrics["quality"]["answered"], 1)
         self.assertEqual(metrics["quality"]["not_found"], 0)
         self.assertEqual(metrics["quality"]["predictor_errors"], 1)
+        self.assertNotIn("accuracy_when_answered", metrics["quality"])
+        self.assertNotIn("coverage", metrics["quality"])
         self.assertEqual(set(metrics["by_group_size"]), {"2", "3"})
         self.assertEqual(metrics["model_activity"]["requests"], 3)
         self.assertEqual(metrics["model_activity"]["successful_requests"], 2)
@@ -460,7 +492,35 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(quality["predictor_errors"], 1)
         self.assertEqual(quality["not_found"], 0)
         self.assertIsNone(quality["accuracy"])
-        self.assertIsNone(quality["coverage"])
+        self.assertNotIn("accuracy_when_answered", quality)
+        self.assertNotIn("coverage", quality)
+
+    def test_not_found_is_an_answer_and_stays_in_accuracy_denominator(self) -> None:
+        rows = [
+            {
+                "prediction": {
+                    "slug": "a",
+                    "correct": True,
+                    "status": "ok",
+                    "latency_ms": 10,
+                },
+            },
+            {
+                "prediction": {
+                    "slug": NOT_FOUND,
+                    "correct": False,
+                    "status": "ok",
+                    "latency_ms": 20,
+                },
+            },
+        ]
+
+        quality = runner.quality_metrics(rows)
+        self.assertEqual(quality["queries"], 2)
+        self.assertEqual(quality["answered"], 2)
+        self.assertEqual(quality["not_found"], 1)
+        self.assertEqual(quality["correct"], 1)
+        self.assertEqual(quality["accuracy"], 0.5)
 
     def test_smoke_run_writes_metrics_and_requires_force(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
