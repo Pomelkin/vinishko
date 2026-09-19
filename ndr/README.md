@@ -1,92 +1,97 @@
-# NDR: запуск
+# NDR: цикл экспериментов
 
-Из корня репозитория в PowerShell:
+Каждая версия решения — отдельная самодостаточная папка в `ndr/solutions/`. Текущее решение
+называется `baseline`. Для нового эксперимента скопируйте всю папку и меняйте копию:
+
+```powershell
+Copy-Item -Recurse ndr/solutions/baseline ndr/solutions/deepseek-v2
+python ndr/run/run.py --list-solutions
+```
+
+Запуск выбранной версии из корня репозитория:
 
 ```powershell
 Copy-Item .env.example .env
-# Заполните OPENROUTER_API_KEY и OPENROUTER_MODEL в .env
+# Заполните OPENROUTER_API_KEY и при необходимости OPENROUTER_MODEL.
 python ndr/run/build_dataset.py --check
 python ndr/run/run.py `
-  --concurrency 4 `
-  --force
+  --solution deepseek-v2 `
+  --concurrency 4
 ```
 
-Результаты появятся здесь:
+`--solution` — имя непосредственной дочерней папки `ndr/solutions/`; по умолчанию запускается
+`baseline`. Настройки конкретной версии находятся в её `config.py`, а разовые CLI overrides
+не изменяют solution.
+
+## Результаты без перезаписи
+
+Каждый вызов создаёт новый каталог по имени solution и точному UTC timestamp:
 
 ```text
-ndr/results/run.json
-ndr/results/metrics.json
-ndr/results/by_case/q-000001.json
-ndr/results/by_case/q-000002.json
-...
+ndr/results/
+└── deepseek-v2/
+    └── 20260919T172530.123456Z/
+        ├── run.json
+        ├── metrics.json
+        ├── by_case/
+        │   ├── q-000001.json
+        │   └── ...
+        └── solution/
+            ├── config.py
+            ├── models.py
+            ├── predictor.py
+            └── prompts/
 ```
 
-Для короткой проверки без API-вызовов:
+Старые результаты никогда не перезаписываются, поэтому `--force` больше не нужен. Runner
+перед запуском копирует выбранную папку в `solution/` внутри эксперимента и исполняет именно
+этот snapshot. В `run.json` сохраняются имя solution, timestamp, SHA-256 каждого файла и
+общий fingerprint версии. В `metrics.json` имя и fingerprint продублированы для агрегации.
+
+Для короткой проверки инфраструктуры без API-вызовов:
 
 ```powershell
 python ndr/run/run.py `
+  --solution baseline `
   --predictor ndr/run/example_predictor.py `
   --limit 3 `
-  --concurrency 3 `
-  --force
+  --concurrency 3
 ```
 
-## Что запускается
+`--results-dir PATH` меняет только корень дерева результатов; структура
+`<solution>/<timestamp>/` сохраняется.
 
-По умолчанию runner использует:
+## Что сохраняется
 
-- решение `ndr/solution/predictor.py`;
-- отдельные промты сравнения с обязательным/необязательным годом;
-- resolver-промт для случая, когда первый этап принял несколько кандидатов;
-- 51 query из 30 многопозиционных near-duplicate-групп;
-- OpenRouter-compatible endpoint `https://openrouter.ai/api/v1`.
+`run.json` атомарно обновляется после каждого завершённого кейса, поэтому уже полученные
+ответы остаются при позднем сбое. `metrics.json` создаётся после завершения прогона.
+`by_case/` содержит полную отдельную запись каждого query, включая:
 
-`--concurrency N` задаёт максимальное число одновременно обрабатываемых кейсов. Порядок
-кандидатов детерминированно перемешивается для каждого query, а порядок кейсов в итоговом
-`run.json` всегда совпадает с manifest независимо от порядка завершения потоков.
+- вход, порядок и карточки кандидатов;
+- фактически использованные prompts и runtime;
+- gold, выбранный slug, статус, ошибку и latency;
+- сырой JSON каждого model call и все choices/generations;
+- возвращённые `content`, `reasoning`, `reasoning_details`, refusal, annotations и usage.
 
-## Артефакты
-
-`run.json` содержит параметры прогона, краткие метрики и полную запись каждого кейса.
-Итоговые агрегаты качества, latency, model usage и разбивка по размеру группы записываются
-в `metrics.json` только после завершения прогона.
-В `by_case/` лежит та же полная запись, но по одному JSON на query. Запись включает:
-
-- входное query, порядок и полные карточки кандидатов;
-- все три промта и все три structured-output schema;
-- gold и выбранный slug;
-- статус, ошибку и latency;
-- полный сырой JSON-ответ каждого candidate-comparison и resolver-вызова;
-- каждую generation/choice каждого этапа отдельно;
-- все возвращённые провайдером `content`, `reasoning`, `reasoning_details`, refusal и annotations;
-- usage и остальные provider-specific поля внутри `raw_response`.
-
-Runner не может сохранить скрытое chain-of-thought, если модель или провайдер его не
-возвращает. Все фактически возвращённые reasoning-поля сохраняются без фильтрации.
-
-Файлы перезаписываются только с `--force`. Во время прогона `run.json` атомарно обновляется
-после каждого завершённого кейса, поэтому уже полученные ответы не теряются при позднем сбое.
+Ошибки predictor/контракта не превращаются в `not_found` и исключаются из знаменателя
+accuracy. `not_found` является полноценным ответом и входит в знаменатель accuracy.
 
 ## Основные флаги
 
 ```text
---model ID                 модель OpenRouter; альтернатива — OPENROUTER_MODEL
---concurrency N            число параллельных кейсов, по умолчанию 1
---generations N            значение n в Chat Completions, по умолчанию 1
---reasoning-effort LEVEL   none|minimal|low|medium|high|xhigh|max
---max-completion-tokens N  лимит output/reasoning tokens, по умолчанию 16000
---timeout SECONDS          timeout одного HTTP-запроса
---limit N                  прогнать первые N кейсов
---seed N                   детерминированный порядок кандидатов
---results-dir PATH         каталог результатов, по умолчанию ndr/results
---env-file PATH            dotenv-файл, по умолчанию корневой .env
---force                    заменить run.json, metrics.json и by_case/*.json
+--solution NAME             имя папки в ndr/solutions (default: baseline)
+--list-solutions            показать доступные solutions
+--model ID                  модель; альтернатива — OPENROUTER_MODEL
+--concurrency N             число параллельных кейсов
+--generations N             значение n в Chat Completions
+--reasoning-effort VALUE    none|minimal|low|medium|high|xhigh|max или 1..100
+--max-completion-tokens N   лимит output/reasoning tokens
+--timeout SECONDS           timeout одного HTTP-запроса
+--limit N                   прогнать первые N кейсов
+--seed N                    детерминированный порядок кандидатов
+--results-dir PATH          корень versioned results, default ndr/results
+--env-file PATH             dotenv-файл, default корневой .env
 ```
 
-Старое имя CLI-флага `--max-tokens` пока принимается как совместимый alias, но в API-запрос
-всегда уходит актуальное поле `max_completion_tokens`.
-
-Для другого OpenAI-compatible сервера задайте `--api-base`. Имя переменной с ключом можно
-изменить через `--api-key-env`; её значение никогда не записывается в результаты.
-
-Подробности датасета — в `run/README.md`; описание pipeline — в `solution/README.md`.
+Подробности dataset и контракта predictor-а — в `run/README.md`; описание текущего pipeline —
+в `solutions/baseline/README.md`.

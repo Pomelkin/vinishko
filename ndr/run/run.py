@@ -1,4 +1,4 @@
-"""Run the NDR solution and preserve complete per-generation artifacts."""
+"""Run a named NDR solution and preserve versioned experiment artifacts."""
 
 from __future__ import annotations
 
@@ -31,22 +31,23 @@ from contracts import prediction_slug
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 DEFAULT_DATASET = HERE / "dataset"
-DEFAULT_PREDICTOR = REPO / "ndr" / "solution" / "predictor.py"
-SOLUTION_DIR = REPO / "ndr" / "solution"
-DEFAULT_COMPARE_YEAR_MATTERS = SOLUTION_DIR / "prompts" / "compare_year_matters.txt"
-DEFAULT_COMPARE_YEAR_NOT_MATTER = (
-    SOLUTION_DIR / "prompts" / "compare_year_not_matter.txt"
-)
-DEFAULT_RESOLVE_MULTIPLE = SOLUTION_DIR / "prompts" / "resolve_multiple_same.txt"
-DEFAULT_OUTPUT_MODELS = SOLUTION_DIR / "models.py"
-DEFAULT_CONFIG = SOLUTION_DIR / "config.py"
+DEFAULT_SOLUTIONS = REPO / "ndr" / "solutions"
 DEFAULT_RESULTS = REPO / "ndr" / "results"
 DEFAULT_ENV_FILE = REPO / ".env"
-
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
-
-from ndr.solution.config import SETTINGS  # noqa: E402
+REQUIRED_SOLUTION_FILES = (
+    "config.py",
+    "models.py",
+    "predictor.py",
+    "prompts/compare_year_matters.txt",
+    "prompts/compare_year_not_matter.txt",
+    "prompts/resolve_multiple_same.txt",
+)
+SOLUTION_SNAPSHOT_IGNORES = shutil.ignore_patterns(
+    "__pycache__",
+    "*.pyc",
+    "*.pyo",
+    ".DS_Store",
+)
 
 
 class RunnerError(RuntimeError):
@@ -108,24 +109,124 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return records
 
 
+def load_solution_module(path: Path) -> ModuleType:
+    """Load a module inside an isolated synthetic package.
+
+    The package wrapper makes relative imports such as ``from .models`` work even
+    when a solution folder was copied or its name contains punctuation.
+    """
+    if not path.is_file():
+        raise RunnerError(f"Python module does not exist: {path}")
+    package_digest = hashlib.sha256(str(path.parent.resolve()).encode()).hexdigest()[:16]
+    package_name = f"_ndr_solution_{package_digest}"
+    package = sys.modules.get(package_name)
+    if package is None:
+        package = ModuleType(package_name)
+        package.__package__ = package_name
+        package.__path__ = [str(path.parent.resolve())]
+        sys.modules[package_name] = package
+    module_name = f"{package_name}.{path.stem}"
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RunnerError(f"cannot import Python module: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_predictor(path: Path) -> tuple[ModuleType, Callable[[dict[str, Any]], Any]]:
     """Load predict(request) from a Python source file."""
     if not path.is_file():
         raise RunnerError(f"predictor file does not exist: {path}")
-    module_name = f"ndr_user_predictor_{hashlib.sha256(str(path).encode()).hexdigest()[:12]}"
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec is None or spec.loader is None:
-        raise RunnerError(f"cannot import predictor: {path}")
-    module = importlib.util.module_from_spec(spec)
-    parent = str(path.parent)
-    if parent not in sys.path:
-        sys.path.insert(0, parent)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
+    module = load_solution_module(path)
     predict = getattr(module, "predict", None)
     if not callable(predict):
         raise RunnerError(f"{path} must define predict(request)")
     return module, predict
+
+
+def solution_path(solutions_dir: Path, name: str) -> Path:
+    """Resolve one direct-child solution folder name without path traversal."""
+    if not name.strip() or name in {".", ".."} or Path(name).name != name:
+        raise RunnerError("--solution must be one folder name, not a path")
+    root = solutions_dir.resolve()
+    path = (root / name).resolve()
+    if path.parent != root or not path.is_dir():
+        raise RunnerError(f"solution does not exist: {name!r} under {root}")
+    missing = [relative for relative in REQUIRED_SOLUTION_FILES if not (path / relative).is_file()]
+    if missing:
+        raise RunnerError(
+            f"solution {name!r} is incomplete; missing: {', '.join(missing)}",
+        )
+    return path
+
+
+def discover_solutions(solutions_dir: Path) -> list[str]:
+    """Return valid named solution folders in deterministic order."""
+    if not solutions_dir.is_dir():
+        return []
+    names = []
+    for child in solutions_dir.iterdir():
+        if not child.is_dir():
+            continue
+        if all((child / relative).is_file() for relative in REQUIRED_SOLUTION_FILES):
+            names.append(child.name)
+    return sorted(names, key=str.casefold)
+
+
+def load_solution_settings(path: Path) -> Any:
+    """Load and minimally validate a solution's SETTINGS object."""
+    module = load_solution_module(path / "config.py")
+    settings = getattr(module, "SETTINGS", None)
+    if settings is None:
+        raise RunnerError(f"{path / 'config.py'} must define SETTINGS")
+    for attribute in ("openrouter", "generation", "execution"):
+        if not hasattr(settings, attribute):
+            raise RunnerError(f"SETTINGS must define {attribute}")
+    return settings
+
+
+def solution_files(path: Path) -> list[Path]:
+    """Enumerate source files included in a solution fingerprint."""
+    return sorted(
+        (
+            item
+            for item in path.rglob("*")
+            if item.is_file()
+            and "__pycache__" not in item.parts
+            and item.suffix not in {".pyc", ".pyo"}
+            and item.name != ".DS_Store"
+        ),
+        key=lambda item: item.relative_to(path).as_posix(),
+    )
+
+
+def solution_manifest(path: Path) -> tuple[str, dict[str, str]]:
+    """Return a stable whole-solution fingerprint and per-file SHA-256 map."""
+    digest = hashlib.sha256()
+    files: dict[str, str] = {}
+    for item in solution_files(path):
+        relative = item.relative_to(path).as_posix()
+        item_hash = file_sha256(item)
+        files[relative] = item_hash
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(item_hash.encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest(), files
+
+
+def run_timestamp(moment: datetime | None = None) -> str:
+    """Return a sortable, Windows-safe UTC timestamp with collision headroom."""
+    value = moment or datetime.now(UTC)
+    return value.strftime("%Y%m%dT%H%M%S.%fZ")
+
+
+def snapshot_solution(source: Path, destination: Path) -> tuple[str, dict[str, str]]:
+    """Copy a solution into a run and fingerprint the exact immutable snapshot."""
+    shutil.copytree(source, destination, ignore=SOLUTION_SNAPSHOT_IGNORES)
+    return solution_manifest(destination)
 
 
 def absolute_repo_path(value: str) -> Path:
@@ -243,23 +344,26 @@ def load_env_file(path: Path) -> dict[str, Any]:
     return metadata
 
 
-def prepare_results(results_dir: Path, force: bool) -> tuple[Path, Path, Path]:
-    """Create an empty results target without leaving stale per-case documents."""
+def prepare_results(
+    results_root: Path,
+    solution_name: str,
+    timestamp: str,
+) -> tuple[Path, Path, Path, Path]:
+    """Create one never-overwritten ``solution/timestamp`` experiment directory."""
+    solution_results = results_root.resolve() / solution_name
+    solution_results.mkdir(parents=True, exist_ok=True)
+    results_dir = solution_results / timestamp
+    try:
+        results_dir.mkdir()
+    except FileExistsError as error:
+        raise RunnerError(
+            f"experiment directory already exists: {results_dir}; run again for a new timestamp",
+        ) from error
     run_path = results_dir / "run.json"
     metrics_path = results_dir / "metrics.json"
     by_case = results_dir / "by_case"
-    existing_cases = sorted(by_case.glob("*.json")) if by_case.is_dir() else []
-    if (run_path.exists() or metrics_path.exists() or existing_cases) and not force:
-        raise RunnerError(
-            f"results already exist under {results_dir}; use --force to replace them",
-        )
-    if force:
-        run_path.unlink(missing_ok=True)
-        metrics_path.unlink(missing_ok=True)
-        for path in existing_cases:
-            path.unlink()
     by_case.mkdir(parents=True, exist_ok=True)
-    return run_path, metrics_path, by_case
+    return results_dir, run_path, metrics_path, by_case
 
 
 def build_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -335,7 +439,14 @@ def quality_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def build_metrics(
-    rows: list[dict[str, Any]], *, run_id: str, model: str | None, elapsed_seconds: float,
+    rows: list[dict[str, Any]],
+    *,
+    run_id: str,
+    run_timestamp: str,
+    solution_name: str,
+    solution_fingerprint: str,
+    model: str | None,
+    elapsed_seconds: float,
 ) -> dict[str, Any]:
     """Build final aggregate metrics for a completed run."""
     report = build_report(rows)
@@ -363,7 +474,12 @@ def build_metrics(
     return {
         "schema_version": 1,
         "run_id": run_id,
+        "run_timestamp": run_timestamp,
         "generated_at": utc_now(),
+        "solution": {
+            "name": solution_name,
+            "fingerprint": solution_fingerprint,
+        },
         "model": model,
         "quality": quality_metrics(rows),
         "latency_ms": report["latency_ms"],
@@ -449,49 +565,97 @@ def execute_case(
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--predictor", type=Path, default=DEFAULT_PREDICTOR)
+    parser.add_argument(
+        "--solution",
+        default="baseline",
+        help="folder name under --solutions-dir (default: baseline)",
+    )
+    parser.add_argument("--solutions-dir", type=Path, default=DEFAULT_SOLUTIONS)
+    parser.add_argument(
+        "--list-solutions",
+        action="store_true",
+        help="list runnable solution folder names and exit",
+    )
+    parser.add_argument(
+        "--predictor",
+        type=Path,
+        help="advanced one-run override; normally use the selected solution's predictor.py",
+    )
     parser.add_argument(
         "--compare-year-matters-prompt",
         type=Path,
-        default=DEFAULT_COMPARE_YEAR_MATTERS,
+        help="advanced one-run override for the selected solution prompt",
     )
     parser.add_argument(
         "--compare-year-not-matter-prompt",
         type=Path,
-        default=DEFAULT_COMPARE_YEAR_NOT_MATTER,
+        help="advanced one-run override for the selected solution prompt",
     )
     parser.add_argument(
         "--resolve-multiple-prompt",
         type=Path,
-        default=DEFAULT_RESOLVE_MULTIPLE,
+        help="advanced one-run override for the selected solution prompt",
     )
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
-    parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS)
+    parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=DEFAULT_RESULTS,
+        help="experiment root; outputs go to <root>/<solution>/<UTC timestamp>",
+    )
     parser.add_argument("--env-file", type=Path, default=DEFAULT_ENV_FILE)
     parser.add_argument("--model")
     parser.add_argument("--api-base")
-    parser.add_argument("--api-key-env", default=SETTINGS.openrouter.api_key_env)
+    parser.add_argument("--api-key-env")
     parser.add_argument(
         "--reasoning-effort",
         type=parse_reasoning_effort,
         metavar="LEVEL|1..100",
-        default=SETTINGS.generation.reasoning_effort,
     )
     parser.add_argument(
         "--max-completion-tokens",
         "--max-tokens",
         dest="max_completion_tokens",
         type=int,
-        default=SETTINGS.generation.max_completion_tokens,
     )
-    parser.add_argument("--temperature", type=float, default=SETTINGS.generation.temperature)
-    parser.add_argument("--generations", type=int, default=SETTINGS.generation.generations)
-    parser.add_argument("--timeout", type=float, default=SETTINGS.execution.timeout_seconds)
-    parser.add_argument("--concurrency", type=int, default=SETTINGS.execution.concurrency)
-    parser.add_argument("--seed", type=int, default=SETTINGS.execution.candidate_order_seed)
-    parser.add_argument("--limit", type=int, default=SETTINGS.execution.limit)
-    parser.add_argument("--force", action="store_true", default=SETTINGS.execution.force)
+    parser.add_argument("--temperature", type=float)
+    parser.add_argument("--generations", type=int)
+    parser.add_argument("--timeout", type=float)
+    parser.add_argument("--concurrency", type=int)
+    parser.add_argument("--seed", type=int)
+    parser.add_argument("--limit", type=int)
     return parser.parse_args()
+
+
+def apply_solution_defaults(args: argparse.Namespace, settings: Any) -> None:
+    """Resolve config/env defaults while retaining explicit CLI precedence."""
+    args.model = (
+        args.model
+        or os.environ.get("OPENROUTER_MODEL")
+        or settings.openrouter.model
+    )
+    args.api_base = (
+        args.api_base
+        or os.environ.get("OPENROUTER_API_BASE")
+        or settings.openrouter.api_base
+    )
+    if args.api_key_env is None:
+        args.api_key_env = settings.openrouter.api_key_env
+    generation_defaults = {
+        "reasoning_effort": settings.generation.reasoning_effort,
+        "max_completion_tokens": settings.generation.max_completion_tokens,
+        "temperature": settings.generation.temperature,
+        "generations": settings.generation.generations,
+    }
+    execution_defaults = {
+        "timeout": settings.execution.timeout_seconds,
+        "concurrency": settings.execution.concurrency,
+        "seed": settings.execution.candidate_order_seed,
+        "limit": settings.execution.limit,
+    }
+    for attribute, value in {**generation_defaults, **execution_defaults}.items():
+        if getattr(args, attribute) is None:
+            setattr(args, attribute, value)
 
 
 def validate_args(args: argparse.Namespace) -> None:
@@ -513,53 +677,77 @@ def validate_args(args: argparse.Namespace) -> None:
 def main() -> int:
     """Execute selected cases concurrently and write lossless JSON artifacts."""
     args = parse_args()
+    if args.list_solutions:
+        for name in discover_solutions(args.solutions_dir.resolve()):
+            print(name)
+        return 0
+
     try:
-        validate_args(args)
+        source_solution = solution_path(args.solutions_dir, args.solution)
+        settings = load_solution_settings(source_solution)
         environment = load_env_file(args.env_file)
-        args.model = (
-            args.model
-            or os.environ.get("OPENROUTER_MODEL")
-            or SETTINGS.openrouter.model
-        )
-        args.api_base = (
-            args.api_base
-            or os.environ.get("OPENROUTER_API_BASE")
-            or SETTINGS.openrouter.api_base
-        )
-        manifest = read_jsonl(args.dataset / "manifest.jsonl")
+        apply_solution_defaults(args, settings)
+        validate_args(args)
+        dataset_path = args.dataset.resolve()
+        manifest = read_jsonl(dataset_path / "manifest.jsonl")
         groups = {
-            row["group_id"]: row for row in read_jsonl(args.dataset / "groups.jsonl")
+            row["group_id"]: row for row in read_jsonl(dataset_path / "groups.jsonl")
         }
         catalog = {
-            row["slug"]: row for row in read_jsonl(args.dataset / "catalog.jsonl")
+            row["slug"]: row for row in read_jsonl(dataset_path / "catalog.jsonl")
         }
         dataset_metadata = json.loads(
-            (args.dataset / "metadata.json").read_text(encoding="utf-8"),
+            (dataset_path / "metadata.json").read_text(encoding="utf-8"),
         )
-        module, predict = load_predictor(args.predictor.resolve())
+
+        timestamp = run_timestamp()
+        results_dir, run_path, metrics_path, by_case_path = prepare_results(
+            args.results_dir,
+            args.solution,
+            timestamp,
+        )
+        snapshot_path = results_dir / "solution"
+        solution_fingerprint, solution_file_hashes = snapshot_solution(
+            source_solution,
+            snapshot_path,
+        )
+
+        predictor_path = (
+            args.predictor.resolve()
+            if args.predictor is not None
+            else snapshot_path / "predictor.py"
+        )
+        module, predict = load_predictor(predictor_path)
         prompt_paths = {
-            "compare_year_matters": args.compare_year_matters_prompt.resolve(),
-            "compare_year_not_matter": args.compare_year_not_matter_prompt.resolve(),
-            "resolve_multiple_same": args.resolve_multiple_prompt.resolve(),
+            "compare_year_matters": (
+                args.compare_year_matters_prompt.resolve()
+                if args.compare_year_matters_prompt is not None
+                else snapshot_path / "prompts" / "compare_year_matters.txt"
+            ),
+            "compare_year_not_matter": (
+                args.compare_year_not_matter_prompt.resolve()
+                if args.compare_year_not_matter_prompt is not None
+                else snapshot_path / "prompts" / "compare_year_not_matter.txt"
+            ),
+            "resolve_multiple_same": (
+                args.resolve_multiple_prompt.resolve()
+                if args.resolve_multiple_prompt is not None
+                else snapshot_path / "prompts" / "resolve_multiple_same.txt"
+            ),
         }
         prompts = {
             key: {"path": str(path), "content": path.read_text(encoding="utf-8")}
             for key, path in prompt_paths.items()
         }
-        output_models_path = DEFAULT_OUTPUT_MODELS.resolve()
-        if not output_models_path.is_file():
-            raise RunnerError(f"missing Pydantic output models: {output_models_path}")
-        config_path = DEFAULT_CONFIG.resolve()
-        if not config_path.is_file():
-            raise RunnerError(f"missing solution config: {config_path}")
-        run_path, metrics_path, by_case_path = prepare_results(args.results_dir.resolve(), args.force)
+        output_models_path = snapshot_path / "models.py"
+        config_path = snapshot_path / "config.py"
     except (OSError, RunnerError, json.JSONDecodeError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
 
     selected = manifest[: args.limit] if args.limit else manifest
-    run_id = f"ndr-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
-    generation = SETTINGS.generation.model_copy(
+    run_id = f"ndr-{args.solution}-{timestamp}-{solution_fingerprint[:12]}"
+    generation = settings.generation.model_copy(
         update={
             "reasoning_effort": args.reasoning_effort,
             "max_completion_tokens": args.max_completion_tokens,
@@ -571,23 +759,31 @@ def main() -> int:
         "model": args.model,
         "api_base": args.api_base,
         "api_key_env": args.api_key_env,
-        "http_referer_env": SETTINGS.openrouter.http_referer_env,
-        "app_title_env": SETTINGS.openrouter.app_title_env,
-        "user_agent": SETTINGS.openrouter.user_agent,
+        "http_referer_env": settings.openrouter.http_referer_env,
+        "app_title_env": settings.openrouter.app_title_env,
+        "user_agent": settings.openrouter.user_agent,
         "generation": generation.request_payload(),
         "image_detail": generation.image_detail,
-        "provider": SETTINGS.openrouter.routing.request_payload(),
+        "provider": settings.openrouter.routing.request_payload(),
         "timeout": args.timeout,
     }
     run_document: dict[str, Any] = {
         "schema_version": 2,
         "run": {
             "run_id": run_id,
+            "timestamp": timestamp,
             "status": "running",
             "started_at": utc_now(),
             "finished_at": None,
-            "predictor_path": str(args.predictor.resolve()),
-            "predictor_sha256": file_sha256(args.predictor.resolve()),
+            "solution": {
+                "name": args.solution,
+                "source_path": str(source_solution),
+                "snapshot_path": str(snapshot_path),
+                "fingerprint": solution_fingerprint,
+                "files": solution_file_hashes,
+            },
+            "predictor_path": str(predictor_path),
+            "predictor_sha256": file_sha256(predictor_path),
             "prompts": {
                 key: {"path": str(path), "sha256": file_sha256(path)}
                 for key, path in prompt_paths.items()
@@ -600,9 +796,10 @@ def main() -> int:
                 "path": str(config_path),
                 "sha256": file_sha256(config_path),
             },
-            "dataset_path": str(args.dataset.resolve()),
+            "dataset_path": str(dataset_path),
             "dataset_metadata": dataset_metadata,
-            "results_dir": str(args.results_dir.resolve()),
+            "results_root": str(args.results_dir.resolve()),
+            "results_dir": str(results_dir),
             "concurrency": args.concurrency,
             "seed": args.seed,
             "runtime": runtime,
@@ -722,7 +919,15 @@ def main() -> int:
     atomic_write_json(run_path, run_document)
     atomic_write_json(
         metrics_path,
-        build_metrics(ordered, run_id=run_id, model=args.model, elapsed_seconds=elapsed_seconds),
+        build_metrics(
+            ordered,
+            run_id=run_id,
+            run_timestamp=timestamp,
+            solution_name=args.solution,
+            solution_fingerprint=solution_fingerprint,
+            model=args.model,
+            elapsed_seconds=elapsed_seconds,
+        ),
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     print(f"run: {run_path}")

@@ -4,25 +4,26 @@
 
 ```powershell
 Copy-Item .env.example .env
-# Заполните OPENROUTER_API_KEY; остальные настройки — в ndr/solution/config.py
+# Заполните OPENROUTER_API_KEY; настройки baseline — в ndr/solutions/baseline/config.py
 python ndr/run/build_dataset.py --check
-python ndr/run/run.py
+python ndr/run/run.py --solution baseline
 ```
 
-Runner использует основное решение, три pipeline-промта и единый `ndr/solution/config.py`.
+Runner выбирает самодостаточную папку по `--solution`. Все versioned solutions лежат в
+`ndr/solutions/<name>/`; список готовых к запуску папок выводит `--list-solutions`.
 CLI остаётся механизмом разовых overrides; например:
 
 ```powershell
 python ndr/run/run.py `
-  --predictor ndr/solution/predictor.py `
+  --solution baseline `
   --model '<openrouter/model-id>' `
   --concurrency 4 `
-  --results-dir ndr/results `
-  --force
+  --results-dir ndr/results
 ```
 
-Выходы: `ndr/results/run.json`, `ndr/results/metrics.json` и
-`ndr/results/by_case/<query_id>.json`.
+Каждый вызов создаёт новый каталог
+`ndr/results/<solution>/<UTC timestamp>/` с `run.json`, `metrics.json`, `by_case/` и точной
+копией запущенного solution в `solution/`. Старые эксперименты не перезаписываются.
 
 ## Dataset
 
@@ -91,5 +92,6 @@ Base64 не дублируется в результатах: вместо не�
 
 `run.json` обновляется атомарно после каждого ответа. Параллельное завершение не влияет на
 итоговый порядок: кейсы записываются в порядке `manifest.jsonl`.
-`metrics.json` атомарно создаётся в конце завершённого прогона и содержит accuracy, coverage,
-latency, throughput, число запросов/generations, usage и разбивку по размеру группы.
+`metrics.json` атомарно создаётся в конце завершённого прогона и содержит accuracy, latency,
+throughput, число запросов/generations, usage и разбивку по размеру группы. Ошибки исключены
+из quality denominator, а `not_found` считается полноценным ответом.

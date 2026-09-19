@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -21,9 +22,9 @@ import run as runner  # noqa: E402
 from contracts import ContractError  # noqa: E402
 from contracts import NOT_FOUND  # noqa: E402
 from contracts import prediction_slug  # noqa: E402
-from ndr.solution import config as solution_config  # noqa: E402
-from ndr.solution import models as solution_models  # noqa: E402
-from ndr.solution import predictor as solution_predictor  # noqa: E402
+from ndr.solutions.baseline import config as solution_config  # noqa: E402
+from ndr.solutions.baseline import models as solution_models  # noqa: E402
+from ndr.solutions.baseline import predictor as solution_predictor  # noqa: E402
 
 
 def load_jsonl(name: str) -> list[dict]:
@@ -352,6 +353,31 @@ class SolutionIntegrationTests(unittest.TestCase):
 class RunnerTests(unittest.TestCase):
     """Protect dotenv loading, aggregate metrics, and result artifacts."""
 
+    def test_copied_solution_is_discovered_selected_and_versioned(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            solutions = Path(directory) / "solutions"
+            copied = solutions / "эксперимент-2"
+            shutil.copytree(REPO / "ndr" / "solutions" / "baseline", copied)
+
+            self.assertEqual(runner.discover_solutions(solutions), ["эксперимент-2"])
+            self.assertEqual(
+                runner.solution_path(solutions, "эксперимент-2"),
+                copied.resolve(),
+            )
+            first_fingerprint, first_files = runner.solution_manifest(copied)
+            prompt = copied / "prompts" / "compare_year_matters.txt"
+            prompt.write_text(
+                f"{prompt.read_text(encoding='utf-8')}\nexperiment marker\n",
+                encoding="utf-8",
+            )
+            second_fingerprint, second_files = runner.solution_manifest(copied)
+
+            self.assertNotEqual(first_fingerprint, second_fingerprint)
+            self.assertNotEqual(
+                first_files["prompts/compare_year_matters.txt"],
+                second_files["prompts/compare_year_matters.txt"],
+            )
+
     def test_atomic_write_retries_transient_windows_destination_lock(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "run.json"
@@ -440,7 +466,13 @@ class RunnerTests(unittest.TestCase):
             },
         ]
         metrics = runner.build_metrics(
-            rows, run_id="test", model="test/model", elapsed_seconds=2,
+            rows,
+            run_id="test",
+            run_timestamp="20260919T000000.000000Z",
+            solution_name="baseline",
+            solution_fingerprint="abc123",
+            model="test/model",
+            elapsed_seconds=2,
         )
         self.assertEqual(metrics["quality"]["attempted_queries"], 2)
         self.assertEqual(metrics["quality"]["queries"], 1)
@@ -522,26 +554,41 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(quality["correct"], 1)
         self.assertEqual(quality["accuracy"], 0.5)
 
-    def test_smoke_run_writes_metrics_and_requires_force(self) -> None:
+    def test_smoke_runs_are_versioned_and_never_overwrite(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             results = Path(directory) / "results"
+            solutions = Path(directory) / "solutions"
+            shutil.copytree(
+                REPO / "ndr" / "solutions" / "baseline",
+                solutions / "experiment-v2",
+            )
             argv = [
-                "run.py", "--predictor", str(HERE / "example_predictor.py"),
+                "run.py", "--solution", "experiment-v2",
+                "--solutions-dir", str(solutions),
+                "--predictor", str(HERE / "example_predictor.py"),
                 "--limit", "2", "--concurrency", "2",
                 "--results-dir", str(results),
                 "--env-file", str(Path(directory) / "missing.env"),
             ]
-            with patch.object(sys, "argv", [*argv, "--force"]):
+            with patch.object(sys, "argv", argv):
                 self.assertEqual(runner.main(), 0)
-            self.assertTrue((results / "run.json").is_file())
-            self.assertTrue((results / "metrics.json").is_file())
-            self.assertEqual(len(list((results / "by_case").glob("*.json"))), 2)
+            with patch.object(sys, "argv", argv):
+                self.assertEqual(runner.main(), 0)
+
+            runs = sorted((results / "experiment-v2").iterdir())
+            self.assertEqual(len(runs), 2)
+            first = runs[0]
+            self.assertTrue((first / "run.json").is_file())
+            self.assertTrue((first / "metrics.json").is_file())
+            self.assertTrue((first / "solution" / "predictor.py").is_file())
+            self.assertEqual(len(list((first / "by_case").glob("*.json"))), 2)
             self.assertEqual(
-                json.loads((results / "metrics.json").read_text(encoding="utf-8"))["quality"]["queries"],
+                json.loads((first / "metrics.json").read_text(encoding="utf-8"))["quality"]["queries"],
                 2,
             )
-            with patch.object(sys, "argv", argv):
-                self.assertEqual(runner.main(), 1)
+            run = json.loads((first / "run.json").read_text(encoding="utf-8"))["run"]
+            self.assertEqual(run["solution"]["name"], "experiment-v2")
+            self.assertEqual(len(run["solution"]["fingerprint"]), 64)
 
 
 if __name__ == "__main__":

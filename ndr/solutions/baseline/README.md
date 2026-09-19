@@ -4,16 +4,19 @@
 
 ```powershell
 Copy-Item .env.example .env
-# Заполните OPENROUTER_API_KEY; остальные настройки — в ndr/solution/config.py
-python ndr/run/run.py
+# Заполните OPENROUTER_API_KEY; остальные настройки — в этой папке, config.py
+python ndr/run/run.py --solution baseline
 ```
 
-Результаты: `ndr/results/run.json`, `ndr/results/metrics.json` и
-`ndr/results/by_case/<query_id>.json`.
+Результаты: новый каталог `ndr/results/baseline/<UTC timestamp>/` на каждый прогон.
 
-Все постоянные настройки находятся в одном файле: `ndr/solution/config.py`, блок `SETTINGS`.
+Все постоянные настройки находятся в одном файле: `ndr/solutions/baseline/config.py`, блок `SETTINGS`.
 Там задаются модель и endpoint, параметры генерации, reasoning, routing провайдеров, timeout,
 concurrency и seed порядка кандидатов. API-ключ остаётся в переменной окружения.
+
+Чтобы создать независимую версию, скопируйте всю папку `baseline` под новым именем и
+запускайте её через `--solution <новое-имя>`. Runner сохраняет точный snapshot и fingerprint
+использованной папки рядом с результатами.
 
 ## Pipeline
 

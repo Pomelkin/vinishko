@@ -141,7 +141,6 @@ class ExecutionSettings(StrictSettings):
     concurrency: int = Field(default=1, ge=1, le=64)
     candidate_order_seed: int = 0
     limit: int | None = Field(default=None, ge=1)
-    force: bool = False
 
 
 class NdrSettings(StrictSettings):
@@ -196,6 +195,5 @@ SETTINGS = NdrSettings(
         concurrency=1,
         candidate_order_seed=0,
         limit=None,
-        force=False,
     ),
 )
