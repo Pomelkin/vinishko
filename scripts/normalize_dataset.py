@@ -118,7 +118,7 @@ def worker(device: str, config: Path, overrides: list[str], tasks: Queue, result
     """Процесс-воркер: свой Normalizer на своей видеокарте, берёт из tasks пары (путь, имя), кладёт в results строки разметки.
 
     Сообщения в results: ("ready", device) после загрузки модели, ("record", строка) на каждую картинку,
-    ("fatal", текст) если модель не поднялась. None в tasks завершает воркер.
+    ("fatal", текст) если модель не поднялась либо посреди работы кончилась видеопамять. None в tasks завершает воркер.
     """
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Ctrl+C обрабатывает главный процесс и сам гасит воркеры
     os.environ["CUDA_VISIBLE_DEVICES"] = device  # CUDA поднимается лениво, до первого обращения видимость ещё можно задать
@@ -133,15 +133,21 @@ def worker(device: str, config: Path, overrides: list[str], tasks: Queue, result
         path, name = task
         try:
             results.put(("record", record(name, norm.annotate(path))))
+        except torch.OutOfMemoryError as e:  # виновата не картинка, а число воркеров: прогон падает, картинка остаётся неразмеченной для дозаписи
+            results.put(("fatal", f"воркер на GPU {device}: {e!r}"))
+            return
         except Exception as e:
             results.put(("record", error_record(name, e)))
 
 
 def next_message(results: Queue, workers: list[BaseProcess]) -> tuple[str, Any]:
-    """Следующее сообщение воркеров; если воркер умер молча, например его убил OOM-killer, прогон не зависает, а падает."""
+    """Следующее сообщение воркеров. Прогон падает, если воркер прислал fatal либо умер молча, например его убил OOM-killer."""
     while True:
         try:
-            return results.get(timeout=5)
+            kind, payload = results.get(timeout=5)
+            if kind == "fatal":
+                raise RuntimeError(payload)
+            return kind, payload
         except queue.Empty:
             dead = [f"{w.name}: код {w.exitcode}" for w in workers if not w.is_alive()]
             if dead:
@@ -180,9 +186,7 @@ def start_workers(devices: list[str], per_gpu: int, config: Path, overrides: lis
         w.start()
     try:
         for _ in workers:
-            kind, payload = next_message(results, workers)
-            if kind == "fatal":
-                raise RuntimeError(payload)
+            next_message(results, workers)
     except BaseException:
         stop_workers(workers)
         raise
@@ -293,7 +297,7 @@ def bench(dataset: Path, config: Path, overrides: tuple[str, ...], gpus: str | N
     """Подбирает --workers-per-gpu: размечает одни и те же картинки датасета с 1, 2, … воркерами на видеокарту и сравнивает скорость.
 
     Разметка никуда не пишется. Время загрузки модели в замер не входит. Перебор останавливается раньше --max-workers, если очередной воркер
-    не поместился в видеопамять. Советуется наименьшее число воркеров, чья скорость не хуже лучшей больше чем на 3%:
+    не поместился в видеопамять при загрузке либо посреди замера; такой замер не засчитывается. Советуется наименьшее число воркеров, чья скорость не хуже лучшей больше чем на 3%:
     лишний воркер занимает около 5 ГБ видеопамяти и ядро процессора.
     """
     devices = gpus.split(",") if gpus else all_gpus()
@@ -305,7 +309,7 @@ def bench(dataset: Path, config: Path, overrides: tuple[str, ...], gpus: str | N
         try:
             pool = start_workers(devices, n, config, list(overrides))
         except RuntimeError as e:
-            console.print(f"[yellow]stop[/] {n} на GPU не поднялись: {e}", no_wrap=True, overflow="ellipsis")
+            console.print(f"[yellow]stop[/] {n} на GPU не поднялись: {e}")
             break
         try:
             with count_progress() as progress:
@@ -315,11 +319,16 @@ def bench(dataset: Path, config: Path, overrides: tuple[str, ...], gpus: str | N
                 for rec in annotate_files(pool, dataset, names):
                     errors += rec["status"] == "error"
                     progress.update(bar, advance=1)
-                speeds[n] = len(names) / (time.perf_counter() - started)
+                elapsed = time.perf_counter() - started
+        except RuntimeError as e:
+            console.print(f"[yellow]stop[/] {n} на GPU упали посреди замера: {e}")
+            break
         finally:
             stop_workers(pool[0])
         if errors:
-            console.print(f"[yellow]warn[/] {errors} картинок упали с ошибкой, замер с {n} воркерами ненадёжен")
+            console.print(f"[yellow]stop[/] {errors} картинок с ошибкой при {n} на GPU: замер не засчитан, ошибки смотрите через run --limit")
+            break
+        speeds[n] = len(names) / elapsed
     if not speeds:
         raise click.ClickException("не поднялся ни один воркер")
     console.print(bench_table(speeds, len(devices)))
