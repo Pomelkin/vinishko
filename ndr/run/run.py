@@ -30,7 +30,7 @@ from contracts import prediction_slug
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-DEFAULT_DATASET = HERE / "dataset"
+DEFAULT_DATASET = REPO / "ndr" / "dataset"
 DEFAULT_SOLUTIONS = REPO / "ndr" / "solutions"
 DEFAULT_RESULTS = REPO / "ndr" / "results"
 DEFAULT_ENV_FILE = REPO / ".env"
@@ -399,6 +399,27 @@ def iter_model_calls(row: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     return calls
 
 
+def tie_breaker_metrics(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Measure how often a predictor with a tie-breaker actually invokes it."""
+    supported = False
+    used = 0
+    for row in rows:
+        response = row.get("predictor_response")
+        trace = response.get("_trace") if isinstance(response, Mapping) else None
+        if not isinstance(trace, Mapping) or "resolution_call" not in trace:
+            continue
+        supported = True
+        if isinstance(trace.get("resolution_call"), Mapping):
+            used += 1
+    if not supported:
+        return None
+    attempted = len(rows)
+    return {
+        "queries": used,
+        "share_of_attempted_queries": used / attempted if attempted else 0.0,
+    }
+
+
 def add_numeric_usage(value: Any, totals: dict[str, int | float], prefix: str = "") -> None:
     """Recursively sum numeric usage leaves using dotted paths."""
     if isinstance(value, Mapping):
@@ -457,8 +478,8 @@ def build_metrics(
         order = input_record.get("candidate_order", []) if isinstance(input_record, Mapping) else []
         grouped.setdefault(len(order) if isinstance(order, list) else 0, []).append(row)
     elapsed = max(float(elapsed_seconds), 0.0)
-    return {
-        "schema_version": 1,
+    metrics = {
+        "schema_version": 2,
         "run_id": run_id,
         "run_timestamp": run_timestamp,
         "generated_at": utc_now(),
@@ -486,6 +507,10 @@ def build_metrics(
             for size, group in sorted(grouped.items())
         },
     }
+    tie_breaker = tie_breaker_metrics(rows)
+    if tie_breaker is not None:
+        metrics["tie_breaker"] = tie_breaker
+    return metrics
 
 
 def execute_case(

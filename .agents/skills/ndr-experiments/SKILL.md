@@ -6,7 +6,7 @@ description: Run reproducible improvement experiments for the NDR solutions unde
 # NDR experiments
 
 Treat each solution directory as an immutable experiment version. The authoritative inputs are
-`ndr/run/dataset/`; the runner is `ndr/run/run.py`; source versions live directly under
+`ndr/dataset/`; the runner is `ndr/run/run.py`; source versions live directly under
 `ndr/solutions/`; timestamped, lossless outputs belong under `ndr/results/`.
 
 ## Iteration contract
@@ -49,6 +49,8 @@ Errors are visible outcomes, not removable observations. Always report:
 - the runner's quality accuracy and its excluded-error count, clearly labeled as conditional;
 - contract and predictor errors, `not_found`, answered accuracy, latency p50/p95/max, request
   count, token usage, and cost when present;
+- when the solution has a tie-breaker/resolver, the number of queries sent to it and its share of
+  all attempted queries; count an attempted tie-breaker even when that call fails;
 - per-case evidence for every error and wrong answer, including stage, `finish_reason`, validation
   error, and the decisive model observation.
 

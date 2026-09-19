@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
+DATASET = REPO / "ndr" / "dataset"
 sys.path.insert(0, str(HERE))
 
 import build_dataset  # noqa: E402
@@ -29,7 +30,7 @@ from ndr.solutions.baseline import predictor as solution_predictor  # noqa: E402
 
 def load_jsonl(name: str) -> list[dict]:
     """Load a generated dataset file."""
-    with (HERE / "dataset" / name).open(encoding="utf-8") as stream:
+    with (DATASET / name).open(encoding="utf-8") as stream:
         return [json.loads(line) for line in stream if line.strip()]
 
 
@@ -45,7 +46,7 @@ class DatasetTests(unittest.TestCase):
 
     def test_generated_dataset_is_current(self) -> None:
         documents, _ = build_dataset.rendered_dataset()
-        build_dataset.check_documents(HERE / "dataset", documents)
+        build_dataset.check_documents(DATASET, documents)
 
     def test_every_source_query_is_included_or_explicitly_excluded(self) -> None:
         all_paths = {
@@ -488,12 +489,53 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(metrics["model_activity"]["successful_requests"], 2)
         self.assertEqual(metrics["model_activity"]["failed_requests"], 1)
         self.assertEqual(metrics["model_activity"]["generations_returned"], 3)
+        self.assertEqual(metrics["tie_breaker"]["queries"], 1)
+        self.assertEqual(metrics["tie_breaker"]["share_of_attempted_queries"], 0.5)
         self.assertEqual(metrics["model_activity"]["usage"]["prompt_tokens"], 12)
         self.assertEqual(
             metrics["model_activity"]["usage"]["completion_tokens_details.reasoning_tokens"],
             2,
         )
         self.assertNotIn("ignored_boolean", metrics["model_activity"]["usage"])
+
+    def test_metrics_omit_tie_breaker_for_predictor_without_one(self) -> None:
+        rows = [{
+            "input": {"candidate_order": ["a"]},
+            "prediction": {
+                "slug": "a", "correct": True, "status": "ok", "latency_ms": 1,
+            },
+            "predictor_response": {"slug": "a"},
+        }]
+
+        metrics = runner.build_metrics(
+            rows,
+            run_id="test",
+            run_timestamp="20260919T000000.000000Z",
+            solution_name="without-tie-breaker",
+            solution_fingerprint="abc123",
+            model=None,
+            elapsed_seconds=1,
+        )
+
+        self.assertNotIn("tie_breaker", metrics)
+
+    def test_tie_breaker_share_counts_a_failed_call(self) -> None:
+        rows = [
+            {
+                "predictor_response": {"_trace": {
+                    "resolution_call": {"status": "predictor_error"},
+                }},
+            },
+            {
+                "predictor_response": {"_trace": {"resolution_call": None}},
+            },
+        ]
+
+        activity = runner.tie_breaker_metrics(rows)
+
+        self.assertIsNotNone(activity)
+        self.assertEqual(activity["queries"], 1)
+        self.assertEqual(activity["share_of_attempted_queries"], 0.5)
 
     def test_predictor_error_has_no_verdict_and_is_excluded_from_quality(self) -> None:
         record = runner.execute_case(

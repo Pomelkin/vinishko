@@ -15,7 +15,7 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-DEFAULT_OUTPUT = HERE / "dataset"
+DEFAULT_OUTPUT = REPO / "ndr" / "dataset"
 REGISTRY_PATH = REPO / "data" / "near_duplicates" / "all_candidates.csv"
 CATALOG_PATH = REPO / "data" / "strapi" / "catalog_dataset.csv"
 TEST_PATH = REPO / "data" / "test"
