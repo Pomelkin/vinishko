@@ -32,7 +32,12 @@ from ndr.solutions.v1 import predictor as v1_predictor  # noqa: E402
 from ndr.solutions.v2 import predictor as v2_predictor  # noqa: E402
 from ndr.solutions.v3 import predictor as v3_predictor  # noqa: E402
 from ndr.solutions.v4 import predictor as v4_predictor  # noqa: E402
-from ndr.solutions.v5 import predictor as v5_predictor  # noqa: E402
+try:
+    from ndr.solutions.v5 import predictor as v5_predictor  # noqa: E402
+except ModuleNotFoundError as error:  # v5 is optional until its experiment exists.
+    if error.name != "ndr.solutions.v5":
+        raise
+    v5_predictor = None
 
 
 RETRY_PREDICTORS = (
@@ -40,9 +45,13 @@ RETRY_PREDICTORS = (
     ("v1", v1_predictor),
     ("v2", v2_predictor),
     ("v3", v3_predictor),
-    ("v4", v4_predictor),
-    ("v5", v5_predictor),
 )
+if v5_predictor is not None:
+    RETRY_PREDICTORS += (("v5", v5_predictor),)
+SINGLE_ATTEMPT_PREDICTORS = (
+    ("v4", v4_predictor),
+)
+ALL_PREDICTORS = RETRY_PREDICTORS + SINGLE_ATTEMPT_PREDICTORS
 
 
 def load_jsonl(name: str) -> list[dict]:
@@ -81,20 +90,107 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(all(len(row["slugs"]) >= 2 for row in self.groups))
         self.assertTrue(all(len(groups[row["group_id"]]["slugs"]) >= 2 for row in self.manifest))
         self.assertTrue(
-            all(row["reason"] == "no_confirmed_near_duplicates" for row in self.excluded),
+            all(
+                row["reason"]
+                in {
+                    "no_confirmed_near_duplicates",
+                    "no_confirmed_near_duplicate_mapping",
+                }
+                for row in self.excluded
+            ),
         )
 
     def test_gold_and_references_are_valid(self) -> None:
         groups = {row["group_id"]: row for row in self.groups}
         catalog = {row["slug"]: row for row in self.catalog}
         for case in self.manifest:
-            self.assertIn(case["expected_slug"], groups[case["group_id"]]["slugs"])
+            self.assertTrue(
+                case["expected_slug"] == NOT_FOUND
+                or case["expected_slug"] in groups[case["group_id"]]["slugs"],
+            )
             self.assertTrue((REPO / case["image_path"]).is_file())
         for group in self.groups:
             for slug in group["slugs"]:
                 self.assertIn(slug, catalog)
         for card in self.catalog:
             self.assertTrue((REPO / card["reference_image_path"]).is_file())
+
+    def test_not_found_registry_maps_only_to_catalog_slugs(self) -> None:
+        rows = build_dataset.read_csv(
+            build_dataset.NOT_FOUND_REGISTRY_PATH,
+            build_dataset.REGISTRY_FIELDS,
+        )
+        catalog_slugs = {
+            row["Slug"] for row in build_dataset.read_csv(build_dataset.CATALOG_PATH)
+        }
+        mapped_ids = set()
+        for row in rows:
+            self.assertTrue(row["slug_1"].startswith(build_dataset.NOT_FOUND_PREFIX))
+            self.assertNotIn(row["slug_1"], catalog_slugs)
+            self.assertIn(row["slug_2"], catalog_slugs)
+            self.assertNotIn(row["slug_1"], mapped_ids)
+            mapped_ids.add(row["slug_1"])
+
+    def test_mapped_not_found_query_uses_full_catalog_component(self) -> None:
+        not_found_id = (
+            "not_found_fanagoriya-primum-alveus-blanc-de-blancs-bryut-2019"
+        )
+        anchor = (
+            "fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-"
+            "shardone-beloe-11-13"
+        )
+        cases = [case for case in self.manifest if case.get("not_found_id") == not_found_id]
+        self.assertEqual(len(cases), 1)
+        case = cases[0]
+        self.assertEqual(case["expected_slug"], NOT_FOUND)
+        self.assertEqual(case["near_duplicate_anchor_slug"], anchor)
+
+        registry_rows = build_dataset.read_csv(
+            build_dataset.REGISTRY_PATH,
+            build_dataset.REGISTRY_FIELDS,
+        )
+        adjacency = {}
+        for row in registry_rows:
+            adjacency.setdefault(row["slug_1"], set()).add(row["slug_2"])
+            adjacency.setdefault(row["slug_2"], set()).add(row["slug_1"])
+        expected_component = set(
+            build_dataset.graph_components(adjacency, [anchor])[0],
+        )
+        group = next(row for row in self.groups if row["group_id"] == case["group_id"])
+        self.assertEqual(set(group["slugs"]), expected_component)
+
+    def test_unmapped_not_found_queries_are_explicitly_excluded(self) -> None:
+        mapped_ids = {
+            row["slug_1"]
+            for row in build_dataset.read_csv(
+                build_dataset.NOT_FOUND_REGISTRY_PATH,
+                build_dataset.REGISTRY_FIELDS,
+            )
+        }
+        source_ids = {
+            path.name
+            for path in build_dataset.TEST_PATH.iterdir()
+            if path.is_dir() and path.name.startswith(build_dataset.NOT_FOUND_PREFIX)
+        }
+        excluded_ids = {
+            row["not_found_id"]
+            for row in self.excluded
+            if row["reason"] == "no_confirmed_near_duplicate_mapping"
+        }
+        self.assertEqual(excluded_ids, source_ids - mapped_ids)
+        self.assertTrue(
+            all(row["expected_slug"] == NOT_FOUND for row in self.excluded if row.get("not_found_id")),
+        )
+
+    def test_not_found_ids_never_become_catalog_candidates(self) -> None:
+        candidate_slugs = {row["slug"] for row in self.catalog}
+        group_slugs = {slug for group in self.groups for slug in group["slugs"]}
+        self.assertFalse(
+            any(slug.startswith(build_dataset.NOT_FOUND_PREFIX) for slug in candidate_slugs),
+        )
+        self.assertFalse(
+            any(slug.startswith(build_dataset.NOT_FOUND_PREFIX) for slug in group_slugs),
+        )
 
     def test_prediction_contract(self) -> None:
         allowed = {"a", "b"}
@@ -110,14 +206,14 @@ class DatasetTests(unittest.TestCase):
 class SolutionIntegrationTests(unittest.TestCase):
     """Protect raw generation retention and the integrated response envelope."""
 
-    def test_retry_matrix_covers_every_solution(self) -> None:
+    def test_predictor_matrix_covers_every_solution(self) -> None:
         solution_names = {
             path.name
             for path in (REPO / "ndr" / "solutions").iterdir()
             if path.is_dir() and (path / "predictor.py").is_file()
         }
         self.assertEqual(
-            {solution_name for solution_name, _ in RETRY_PREDICTORS},
+            {solution_name for solution_name, _ in ALL_PREDICTORS},
             solution_names,
         )
 
@@ -445,6 +541,53 @@ class SolutionIntegrationTests(unittest.TestCase):
                 )
                 self.assertEqual(len(result["trace"]["retry_attempts"]), 2)
 
+    def test_single_attempt_predictors_do_not_retry_429(self) -> None:
+        for solution_name, predictor in SINGLE_ATTEMPT_PREDICTORS:
+            with self.subTest(solution=solution_name):
+                rate_limited = urllib.error.HTTPError(
+                    "https://example.invalid/v1/chat/completions",
+                    429,
+                    "Too Many Requests",
+                    None,
+                    io.BytesIO(b'{"error":"rate limited"}'),
+                )
+                with (
+                    patch.object(
+                        predictor.urllib.request,
+                        "urlopen",
+                        side_effect=rate_limited,
+                    ) as urlopen,
+                    patch.object(predictor.random, "uniform") as jitter,
+                    patch.object(predictor.time, "sleep") as sleep,
+                ):
+                    result = predictor.call_model(
+                        runtime={
+                            "api_base": "https://example.invalid/v1",
+                            "model": "test/model",
+                            "generation": {},
+                            "provider": {},
+                            "timeout": 60,
+                        },
+                        api_key="secret",
+                        system_prompt="system",
+                        api_content=[],
+                        trace_content=[],
+                        output_format={
+                            "type": "json_schema",
+                            "json_schema": {
+                                "name": "test",
+                                "schema": {"type": "object"},
+                            },
+                        },
+                        validator=lambda payload: payload,
+                    )
+
+                self.assertEqual(result["status"], "predictor_error")
+                self.assertEqual(urlopen.call_count, 1)
+                jitter.assert_not_called()
+                sleep.assert_not_called()
+                self.assertEqual(result["trace"]["retry_attempts"], [])
+
     def test_only_429_is_retried_and_retry_count_is_capped_at_five(self) -> None:
         def http_error(status: int, reason: str) -> urllib.error.HTTPError:
             return urllib.error.HTTPError(
@@ -473,7 +616,7 @@ class SolutionIntegrationTests(unittest.TestCase):
             },
             "validator": lambda payload: payload,
         }
-        for solution_name, predictor in RETRY_PREDICTORS:
+        for solution_name, predictor in ALL_PREDICTORS:
             with self.subTest(solution=solution_name, status=503):
                 with (
                     patch.object(
@@ -520,7 +663,7 @@ class SolutionIntegrationTests(unittest.TestCase):
             b'{"id":"generation-id","error":{"message":"A Timeout Occurred",'
             b'"code":504,"metadata":{"error_type":"timeout"}}}'
         )
-        for solution_name, predictor in RETRY_PREDICTORS:
+        for solution_name, predictor in ALL_PREDICTORS:
             with self.subTest(solution=solution_name):
                 response = MagicMock()
                 response.__enter__.return_value = response
@@ -566,7 +709,7 @@ class SolutionIntegrationTests(unittest.TestCase):
                 self.assertEqual(result["trace"]["retry_attempts"], [])
 
     def test_response_heartbeats_cannot_extend_wall_clock_deadline(self) -> None:
-        for solution_name, predictor in RETRY_PREDICTORS:
+        for solution_name, predictor in ALL_PREDICTORS:
             with self.subTest(solution=solution_name):
                 response = MagicMock()
                 response.__enter__.return_value = response

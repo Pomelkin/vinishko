@@ -30,21 +30,27 @@ python ndr/run/run.py `
 
 Источники истины:
 
-- запросы — все файлы из `data/test/`, кроме slug без подтверждённых near-duplicates;
-- пары — только `data/near_duplicates/all_candidates.csv`;
+- запросы — все файлы из `data/test/`: каталожные slug с подтверждёнными near-duplicates
+  и сопоставленные `not_found_*`;
+- каталожные пары — только `data/near_duplicates/all_candidates.csv`;
+- пары для отсутствующих в Каталоге вин — только
+  `data/near_duplicates/not_found_candidates.csv`;
 - карточки — только `data/strapi/catalog_dataset.csv`;
 - группа — полная связная компонента подтверждённых пар.
 
-Сгенерированный набор лежит в `ndr/dataset/`. Одноэлементные группы не тестируются. Их файлы
-перечислены в `ndr/dataset/excluded.jsonl`, но
-не попадают в `manifest.jsonl` и не передаются решению.
+Сгенерированный набор лежит в `ndr/dataset/`. Одноэлементные каталожные группы и
+несопоставленные `not_found_*` не тестируются. Их файлы перечислены в
+`ndr/dataset/excluded.jsonl`, но не попадают в `manifest.jsonl` и не передаются решению.
+Для сопоставленного `not_found_*` в gold записывается `expected_slug="not_found"`, а в запрос
+передаётся полная каталожная компонента указанного anchor-slug.
 
 Состав snapshot:
 
 - `manifest.jsonl` — 51 тестовый query и gold slug;
 - `groups.jsonl` — 30 групп и рёбра реестра;
 - `catalog.jsonl` — 132 карточки кандидатов и пути к Эталонам;
-- `excluded.jsonl` — исключённые одноэлементные случаи;
+- `excluded.jsonl` — 25 исключённых случаев: 22 каталожных singleton и 3 несопоставленных
+  `not_found`;
 - `metadata.json` — правила, хеши источников и контрольные количества.
 
 Пересборка и проверка:

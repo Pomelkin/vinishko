@@ -17,10 +17,27 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 DEFAULT_OUTPUT = REPO / "ndr" / "dataset"
 REGISTRY_PATH = REPO / "data" / "near_duplicates" / "all_candidates.csv"
+NOT_FOUND_REGISTRY_PATH = (
+    REPO / "data" / "near_duplicates" / "not_found_candidates.csv"
+)
 CATALOG_PATH = REPO / "data" / "strapi" / "catalog_dataset.csv"
 TEST_PATH = REPO / "data" / "test"
 MEDIA_PATH = REPO / "data" / "strapi" / "img"
 GALLERY_PATH = REPO / "data" / "near_duplicates" / "C-visually-close"
+NOT_FOUND_PREFIX = "not_found_"
+NOT_FOUND = "not_found"
+
+REGISTRY_FIELDS = (
+    "candidate_number",
+    "slug_1",
+    "slug_2",
+    "winery_1",
+    "winery_2",
+    "review_verdict",
+    "is_confirmed_near_duplicate",
+    "visual_relation",
+    "diff_percent",
+)
 
 CATALOG_FIELDS = {
     "name": "Название вина",
@@ -65,10 +82,50 @@ def relative_path(path: Path) -> str:
     return path.resolve().relative_to(REPO).as_posix()
 
 
-def read_csv(path: Path) -> list[dict[str, str]]:
+def read_csv(
+    path: Path,
+    expected_fields: tuple[str, ...] | None = None,
+) -> list[dict[str, str]]:
     """Read a UTF-8 CSV with a real CSV parser."""
     with path.open(encoding="utf-8-sig", newline="") as stream:
-        return list(csv.DictReader(stream))
+        reader = csv.DictReader(stream)
+        if expected_fields is not None and tuple(reader.fieldnames or ()) != expected_fields:
+            raise DatasetError(
+                f"unexpected CSV columns in {relative_path(path)}: {reader.fieldnames}",
+            )
+        return list(reader)
+
+
+def require_confirmed_rows(
+    rows: list[dict[str, str]],
+    source: Path,
+) -> None:
+    """Require every registry row to carry the reviewed confirmation verdict."""
+    if not rows:
+        raise DatasetError(f"near-duplicate registry is empty: {relative_path(source)}")
+    numbers: set[int] = set()
+    for row in rows:
+        try:
+            number = int(row["candidate_number"])
+        except (TypeError, ValueError) as error:
+            raise DatasetError(
+                f"invalid candidate number in {relative_path(source)}: "
+                f"{row['candidate_number']!r}",
+            ) from error
+        if number <= 0 or number in numbers:
+            raise DatasetError(
+                f"duplicate or non-positive candidate number in "
+                f"{relative_path(source)}: {number}",
+            )
+        numbers.add(number)
+        if (
+            row["review_verdict"] != "confirmed_near_duplicate"
+            or row["is_confirmed_near_duplicate"].lower() != "true"
+        ):
+            raise DatasetError(
+                f"candidate {number} in {relative_path(source)} is not a "
+                "confirmed near-duplicate",
+            )
 
 
 def graph_components(
@@ -151,17 +208,10 @@ def json_line(record: dict[str, Any]) -> str:
 
 def rendered_dataset() -> tuple[dict[str, str], dict[str, Any]]:
     """Build all output documents in memory and return documents plus statistics."""
-    registry_rows = read_csv(REGISTRY_PATH)
-    if not registry_rows:
-        raise DatasetError("near-duplicate registry is empty")
-    for row in registry_rows:
-        if (
-            row["review_verdict"] != "confirmed_near_duplicate"
-            or row["is_confirmed_near_duplicate"].lower() != "true"
-        ):
-            raise DatasetError(
-                f"candidate {row['candidate_number']} is not a confirmed near-duplicate",
-            )
+    registry_rows = read_csv(REGISTRY_PATH, REGISTRY_FIELDS)
+    require_confirmed_rows(registry_rows, REGISTRY_PATH)
+    not_found_rows = read_csv(NOT_FOUND_REGISTRY_PATH, REGISTRY_FIELDS)
+    require_confirmed_rows(not_found_rows, NOT_FOUND_REGISTRY_PATH)
 
     catalog_rows = read_csv(CATALOG_PATH)
     catalog_by_slug: dict[str, dict[str, str]] = {}
@@ -182,19 +232,79 @@ def rendered_dataset() -> tuple[dict[str, str], dict[str, Any]]:
         adjacency[left].add(right)
         adjacency[right].add(left)
 
-    source_queries: list[tuple[Path, str]] = []
+    not_found_by_id: dict[str, dict[str, str]] = {}
+    for row in not_found_rows:
+        not_found_id = row["slug_1"]
+        anchor_slug = row["slug_2"]
+        if not not_found_id.startswith(NOT_FOUND_PREFIX):
+            raise DatasetError(
+                f"not-found candidate slug_1 must start with {NOT_FOUND_PREFIX!r}: "
+                f"{not_found_id!r}",
+            )
+        if not_found_id in catalog_by_slug:
+            raise DatasetError(f"not-found ID unexpectedly exists in catalog: {not_found_id}")
+        if anchor_slug not in catalog_by_slug:
+            raise DatasetError(
+                f"not-found candidate {not_found_id} points to a non-catalog slug: "
+                f"{anchor_slug}",
+            )
+        if not adjacency[anchor_slug]:
+            raise DatasetError(
+                f"not-found candidate {not_found_id} points outside the confirmed "
+                f"catalog near-duplicate graph: {anchor_slug}",
+            )
+        if not_found_id in not_found_by_id:
+            raise DatasetError(f"duplicate not-found mapping: {not_found_id}")
+        if not (TEST_PATH / not_found_id).is_dir():
+            raise DatasetError(f"mapped not-found test directory is missing: {not_found_id}")
+        not_found_by_id[not_found_id] = row
+
+    source_queries: list[dict[str, Any]] = []
     for path in sorted(item for item in TEST_PATH.rglob("*") if item.is_file()):
-        slug = path.relative_to(TEST_PATH).parts[0]
-        if slug not in catalog_by_slug:
-            raise DatasetError(f"test directory is not a catalog slug: {slug}")
-        source_queries.append((path, slug))
+        source_id = path.relative_to(TEST_PATH).parts[0]
+        if source_id.startswith(NOT_FOUND_PREFIX):
+            mapping = not_found_by_id.get(source_id)
+            source_queries.append(
+                {
+                    "path": path,
+                    "source_id": source_id,
+                    "expected_slug": NOT_FOUND,
+                    "anchor_slug": mapping["slug_2"] if mapping is not None else None,
+                    "is_not_found": True,
+                },
+            )
+            continue
+        if source_id not in catalog_by_slug:
+            raise DatasetError(f"test directory is not a catalog slug: {source_id}")
+        source_queries.append(
+            {
+                "path": path,
+                "source_id": source_id,
+                "expected_slug": source_id,
+                "anchor_slug": source_id,
+                "is_not_found": False,
+            },
+        )
     if not source_queries:
         raise DatasetError("data/test contains no query files")
 
-    included = [(path, slug) for path, slug in source_queries if adjacency[slug]]
-    excluded = [(path, slug) for path, slug in source_queries if not adjacency[slug]]
-    included_slugs = sorted({slug for _, slug in included})
-    components = graph_components(adjacency, included_slugs)
+    included: list[dict[str, Any]] = []
+    excluded: list[dict[str, Any]] = []
+    for query in source_queries:
+        if query["is_not_found"]:
+            if query["anchor_slug"] is None:
+                query["exclusion_reason"] = "no_confirmed_near_duplicate_mapping"
+                excluded.append(query)
+            else:
+                included.append(query)
+        elif adjacency[query["anchor_slug"]]:
+            included.append(query)
+        else:
+            query["exclusion_reason"] = "no_confirmed_near_duplicates"
+            excluded.append(query)
+
+    included_roots = sorted({query["anchor_slug"] for query in included})
+    components = graph_components(adjacency, included_roots)
     groups_by_slug = {
         slug: component for component in components for slug in component
     }
@@ -230,48 +340,84 @@ def rendered_dataset() -> tuple[dict[str, str], dict[str, Any]]:
     ]
 
     manifest_records: list[dict[str, Any]] = []
-    for number, (path, slug) in enumerate(included, start=1):
-        component = groups_by_slug[slug]
-        manifest_records.append(
-            {
-                "query_id": f"q-{number:06d}",
-                "image_path": relative_path(path),
-                "image_sha256": file_sha256(path),
-                "image_bytes": path.stat().st_size,
-                "expected_slug": slug,
-                "group_id": group_id(component),
-            },
-        )
-
-    excluded_records = [
-        {
+    for number, query in enumerate(included, start=1):
+        path = query["path"]
+        component = groups_by_slug[query["anchor_slug"]]
+        record = {
+            "query_id": f"q-{number:06d}",
             "image_path": relative_path(path),
             "image_sha256": file_sha256(path),
-            "expected_slug": slug,
-            "reason": "no_confirmed_near_duplicates",
+            "image_bytes": path.stat().st_size,
+            "expected_slug": query["expected_slug"],
+            "group_id": group_id(component),
         }
-        for path, slug in excluded
-    ]
+        if query["is_not_found"]:
+            record.update(
+                {
+                    "not_found_id": query["source_id"],
+                    "near_duplicate_anchor_slug": query["anchor_slug"],
+                },
+            )
+        manifest_records.append(record)
+
+    excluded_records: list[dict[str, Any]] = []
+    for query in excluded:
+        path = query["path"]
+        record = {
+            "image_path": relative_path(path),
+            "image_sha256": file_sha256(path),
+            "expected_slug": query["expected_slug"],
+            "reason": query["exclusion_reason"],
+        }
+        if query["is_not_found"]:
+            record["not_found_id"] = query["source_id"]
+        excluded_records.append(record)
+
+    source_not_found = [query for query in source_queries if query["is_not_found"]]
+    included_not_found = [query for query in included if query["is_not_found"]]
+    excluded_singletons = [query for query in excluded if not query["is_not_found"]]
+    excluded_not_found = [query for query in excluded if query["is_not_found"]]
 
     metadata = {
-        "schema_version": 1,
+        "schema_version": 2,
         "selection_rule": (
-            "all files from data/test whose expected slug belongs to a connected "
-            "component of at least two slugs in all_candidates.csv"
+            "catalog queries whose slug belongs to a connected component in "
+            "all_candidates.csv, plus not_found queries mapped by "
+            "not_found_candidates.csv to an anchor in such a component"
         ),
-        "group_rule": "connected_components_of_confirmed_registry_edges",
-        "not_found_value": "not_found",
+        "group_rule": "connected_components_of_confirmed_catalog_registry_edges",
+        "not_found_value": NOT_FOUND,
         "source_files": {
             relative_path(REGISTRY_PATH): file_sha256(REGISTRY_PATH),
+            relative_path(NOT_FOUND_REGISTRY_PATH): file_sha256(
+                NOT_FOUND_REGISTRY_PATH,
+            ),
             relative_path(CATALOG_PATH): file_sha256(CATALOG_PATH),
         },
         "counts": {
             "source_query_files": len(source_queries),
-            "source_query_slugs": len({slug for _, slug in source_queries}),
+            "source_query_slugs": len({query["source_id"] for query in source_queries}),
+            "source_not_found_files": len(source_not_found),
+            "source_not_found_products": len(
+                {query["source_id"] for query in source_not_found}
+            ),
             "included_queries": len(manifest_records),
-            "included_query_slugs": len(included_slugs),
-            "excluded_singleton_queries": len(excluded_records),
-            "excluded_singleton_slugs": len({slug for _, slug in excluded}),
+            "included_query_slugs": len({query["source_id"] for query in included}),
+            "included_not_found_queries": len(included_not_found),
+            "included_not_found_products": len(
+                {query["source_id"] for query in included_not_found}
+            ),
+            "excluded_queries": len(excluded_records),
+            "excluded_query_slugs": len({query["source_id"] for query in excluded}),
+            "excluded_singleton_queries": len(excluded_singletons),
+            "excluded_singleton_slugs": len(
+                {query["source_id"] for query in excluded_singletons}
+            ),
+            "excluded_unmapped_not_found_queries": len(excluded_not_found),
+            "excluded_unmapped_not_found_products": len(
+                {query["source_id"] for query in excluded_not_found}
+            ),
+            "mapped_not_found_products": len(not_found_by_id),
             "groups": len(group_records),
             "candidate_products": len(catalog_records),
         },
@@ -345,7 +491,9 @@ def main() -> int:
     print(
         f"Dataset {action}: {counts['included_queries']} queries, "
         f"{counts['groups']} groups, {counts['candidate_products']} candidates; "
-        f"excluded {counts['excluded_singleton_queries']} singleton queries.",
+        f"excluded {counts['excluded_queries']} queries "
+        f"({counts['excluded_singleton_queries']} catalog singletons, "
+        f"{counts['excluded_unmapped_not_found_queries']} unmapped not_found).",
     )
     return 0
 

@@ -1,19 +1,29 @@
 {
-  "schema_version": 1,
-  "selection_rule": "all files from data/test whose expected slug belongs to a connected component of at least two slugs in all_candidates.csv",
-  "group_rule": "connected_components_of_confirmed_registry_edges",
+  "schema_version": 2,
+  "selection_rule": "catalog queries whose slug belongs to a connected component in all_candidates.csv, plus not_found queries mapped by not_found_candidates.csv to an anchor in such a component",
+  "group_rule": "connected_components_of_confirmed_catalog_registry_edges",
   "not_found_value": "not_found",
   "source_files": {
     "data/near_duplicates/all_candidates.csv": "de3d7836f69b7bd4d7f713e6094ca5a9c04953b8f996848c9dc6aefd6773eeb9",
+    "data/near_duplicates/not_found_candidates.csv": "421544891181eec1fd7e8c2db98961f07453688ad144db029236400889e43136",
     "data/strapi/catalog_dataset.csv": "f064650fe339a0279f4cf1bbd81dad3f87a60985806244062e727017bee72e35"
   },
   "counts": {
-    "source_query_files": 73,
-    "source_query_slugs": 61,
+    "source_query_files": 76,
+    "source_query_slugs": 65,
+    "source_not_found_files": 4,
+    "source_not_found_products": 4,
     "included_queries": 51,
-    "included_query_slugs": 42,
+    "included_query_slugs": 43,
+    "included_not_found_queries": 1,
+    "included_not_found_products": 1,
+    "excluded_queries": 25,
+    "excluded_query_slugs": 22,
     "excluded_singleton_queries": 22,
     "excluded_singleton_slugs": 19,
+    "excluded_unmapped_not_found_queries": 3,
+    "excluded_unmapped_not_found_products": 3,
+    "mapped_not_found_products": 1,
     "groups": 30,
     "candidate_products": 132
   }
