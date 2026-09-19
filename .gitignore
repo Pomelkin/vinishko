@@ -224,5 +224,6 @@ data/near_duplicates/C-visually-close
 dev/
 data/strapi/catalog_dataset.report.json
 data/strapi/strapi_output0709.csv
+data/test
 
 .DS_Store

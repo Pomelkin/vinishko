@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "numpy",
     "pillow",
+    "pydantic>=2,<3",
 ]
 
 [tool.ty.environment]

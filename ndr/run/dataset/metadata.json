@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "selection_rule": "all files from data/test whose expected slug belongs to a connected component of at least two slugs in all_candidates.csv",
+  "group_rule": "connected_components_of_confirmed_registry_edges",
+  "not_found_value": "not_found",
+  "source_files": {
+    "data/near_duplicates/all_candidates.csv": "de3d7836f69b7bd4d7f713e6094ca5a9c04953b8f996848c9dc6aefd6773eeb9",
+    "data/strapi/catalog_dataset.csv": "f064650fe339a0279f4cf1bbd81dad3f87a60985806244062e727017bee72e35"
+  },
+  "counts": {
+    "source_query_files": 73,
+    "source_query_slugs": 61,
+    "included_queries": 51,
+    "included_query_slugs": 42,
+    "excluded_singleton_queries": 22,
+    "excluded_singleton_slugs": 19,
+    "groups": 30,
+    "candidate_products": 132
+  }
+}
