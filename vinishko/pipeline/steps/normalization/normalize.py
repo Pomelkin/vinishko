@@ -14,6 +14,9 @@ from PIL import Image
 from vinishko.pipeline.steps.normalization.features import candidate_features, gray_small
 from vinishko.pipeline.steps.normalization.seg import Segmenter, label_stats, open_image
 from vinishko.pipeline.structs import Candidate, Reason, Rejection, Sample
+import torch
+
+torch.set_float32_matmul_precision("high")
 
 HERE = Path(__file__).resolve().parent
 EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
