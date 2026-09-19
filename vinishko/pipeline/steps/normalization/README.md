@@ -42,7 +42,8 @@ N=vinishko.pipeline.steps.normalization
 uv run python -m $N.normalize photo.jpg                           # одна картинка
 uv run python -m $N.normalize images/ --set output.dir=/data/out  # папка, параметр конфига из командной строки
 uv run python -m $N.normalize --selftest                          # проверка геометрии и метрик на синтетике, без модели
-uv run python -m scripts.normalize_dataset datasets/<имя>         # разметка датасета в normalization.jsonl, без кропов
+uv run python -m scripts.normalize_dataset run datasets/<имя>     # разметка датасета в normalization.jsonl, без кропов
+uv run python -m scripts.normalize_dataset bench datasets/<имя>   # подбор --workers-per-gpu для run на этой машине
 ```
 
 Из кода: `Normalizer.annotate(path)` отдаёт разметку без рендера — список, где каждая найденная бутылка это `Candidate` (годная: маски бутылки и этикетки, угол поворота) или `Rejection` (отказ: причина `NormalizationReason`, пояснение с числами, маска бутылки для интерфейса). `Normalizer(img)` отдаёт пару: список `Sample` с кропами годных бутылок либо `None`, если годных нет, и ту же разметку. `Candidate`, `Rejection` и `Sample` общие для всего пайплайна и описаны в `vinishko/pipeline/structs.py`: следующие шаги дописывают результаты в `Sample`, а бракуя бутылку, зовут `structs.reject` — `Sample` уходит из потока, `Candidate` в разметке становится `Rejection` с тем же `uuid`. Причины отказа у каждого шага свои, наследник `structs.Reason` с `title` и `description` для интерфейса.

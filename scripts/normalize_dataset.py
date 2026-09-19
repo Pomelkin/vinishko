@@ -2,6 +2,8 @@ import json
 import os
 import queue
 import signal
+import time
+from collections.abc import Iterator
 from dataclasses import asdict
 from itertools import islice
 from multiprocessing import get_context
@@ -14,6 +16,7 @@ import rich_click as click
 import torch
 from PIL import Image
 from rich.console import Console
+from rich.table import Table
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
@@ -33,6 +36,9 @@ console = Console()
 SPLITS = ["val", "val_distractors", "train", "catalog", "negatives"]
 OUT_NAME = "normalization.jsonl"
 QUEUE_DEPTH = 4  # задач в очереди на воркера: хватает, чтобы никто не простаивал, и мало теряется при остановке
+BENCH_TOLERANCE = 0.03  # bench советует наименьшее число воркеров, чья скорость не хуже лучшей больше чем на эту долю
+
+Pool = tuple[list[BaseProcess], Queue, Queue]
 
 
 def count_progress() -> Progress:
@@ -153,8 +159,16 @@ def all_gpus() -> list[str]:
     return [str(n) for n in range(count)]
 
 
-def start_workers(devices: list[str], per_gpu: int, config: Path, overrides: list[str]) -> tuple[list[BaseProcess], Queue, Queue]:
-    """Поднимает per_gpu воркеров на каждую видеокарту и ждёт, пока все загрузят модель."""
+def stop_workers(workers: list[BaseProcess]) -> None:
+    """Гасит воркеры и ждёт их выхода: видеопамять освобождается только со смертью процесса."""
+    for w in workers:
+        w.terminate()
+    for w in workers:
+        w.join()
+
+
+def start_workers(devices: list[str], per_gpu: int, config: Path, overrides: list[str]) -> Pool:
+    """Поднимает per_gpu воркеров на каждую видеокарту и ждёт, пока все загрузят модель; если хоть один не поднялся, гасит остальных."""
     ctx = get_context("spawn")  # fork после инициализации CUDA в родителе ломает драйвер, spawn даёт чистый процесс
     tasks, results = ctx.Queue(), ctx.Queue()
     workers: list[BaseProcess] = [
@@ -164,23 +178,41 @@ def start_workers(devices: list[str], per_gpu: int, config: Path, overrides: lis
     ]
     for w in workers:
         w.start()
-    for _ in workers:
-        kind, payload = next_message(results, workers)
-        if kind == "fatal":
-            raise RuntimeError(payload)
+    try:
+        for _ in workers:
+            kind, payload = next_message(results, workers)
+            if kind == "fatal":
+                raise RuntimeError(payload)
+    except BaseException:
+        stop_workers(workers)
+        raise
     console.print(f"[green]ready[/] воркеров {len(workers)}: по {per_gpu} на GPU {','.join(devices)}")
     return workers, tasks, results
 
 
-def annotate_dataset(
-    dataset: Path, out: Path, meta: dict, splits: list[str] | None, limit: int | None, pool: tuple[list[BaseProcess], Queue, Queue], progress: Progress
-) -> None:
-    """Дописывает в out разметку картинок датасета, которых там ещё нет.
+def annotate_files(pool: Pool, dataset: Path, names: list[str]) -> Iterator[dict]:
+    """Строки разметки картинок датасета, по готовности.
 
     Картинки раздаются воркерам по одной из общей очереди: куски не пересекаются, быстрая карта берёт больше.
-    В очереди держится небольшой запас задач, файл пишет только этот процесс, порядок строк — по готовности.
+    В очереди держится небольшой запас задач.
     """
     workers, tasks, results = pool
+    pending = iter(names)
+    in_flight = 0
+    for name in islice(pending, QUEUE_DEPTH * len(workers)):
+        tasks.put((str(dataset / "images" / name), name))
+        in_flight += 1
+    while in_flight:
+        _, rec = next_message(results, workers)
+        in_flight -= 1
+        for name in islice(pending, 1):
+            tasks.put((str(dataset / "images" / name), name))
+            in_flight += 1
+        yield rec
+
+
+def annotate_dataset(dataset: Path, out: Path, meta: dict, splits: list[str] | None, limit: int | None, pool: Pool, progress: Progress) -> None:
+    """Дописывает в out разметку картинок датасета, которых там ещё нет. Файл пишет только этот процесс, порядок строк — по готовности."""
     done = done_files(out)
     todo = [n for n in files_in_order(dataset, dataset_splits(dataset, splits)) if n not in done]
     if limit is not None:
@@ -189,22 +221,12 @@ def annotate_dataset(
     out.with_suffix(".meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     bar = progress.add_task(dataset.name, name=dataset.name, total=len(todo))
     counts = {"ok": 0, "no_bottles": 0, "error": 0}
-    pending = iter(todo)
-    in_flight = 0
-    for name in islice(pending, QUEUE_DEPTH * len(workers)):
-        tasks.put((str(dataset / "images" / name), name))
-        in_flight += 1
     with out.open("a", encoding="utf-8") as f:
-        while in_flight:
-            _, rec = next_message(results, workers)
-            in_flight -= 1
+        for rec in annotate_files(pool, dataset, todo):
             counts[str(rec["status"])] += 1
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             f.flush()  # строка на диске сразу: прогон идёт сутками, и его могут убить в любой момент
             progress.update(bar, advance=1)
-            for name in islice(pending, 1):
-                tasks.put((str(dataset / "images" / name), name))
-                in_flight += 1
     progress.remove_task(bar)
     console.print(f"[green]done[/] {dataset.name}: {len(done)} were done, +{len(todo)} now ({counts}) → {out}")
 
@@ -212,7 +234,12 @@ def annotate_dataset(
 
 # И при eval нужно будет формировать бд так, что делаем поиск с размытым фоном, а в бд лежат изображения без, те, что будет на проде
 
-@click.command()
+@click.group()
+def cli() -> None:
+    """Разметка нормализации по развёрнутому датасету: run размечает, bench подбирает число воркеров на видеокарту. Запуск из корня: python -m scripts.normalize_dataset."""
+
+
+@cli.command()
 @click.argument("datasets", nargs=-1, required=True, type=click.Path(exists=True, file_okay=False, path_type=Path))
 @click.option("-c", "--config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True)
 @click.option("--set", "overrides", multiple=True, metavar="секция.ключ=значение", help="Переопределить параметр конфига")
@@ -220,8 +247,8 @@ def annotate_dataset(
 @click.option("--limit", type=int, default=None, help="Не больше N новых картинок на датасет")
 @click.option("--out", "out_name", default=OUT_NAME, show_default=True, help="Имя выходного файла внутри директории датасета либо абсолютный путь")
 @click.option("--gpus", default=None, help="Номера видеокарт через запятую, по умолчанию все доступные; картинки делятся между их воркерами")
-@click.option("--workers-per-gpu", type=click.IntRange(min=1), default=1, show_default=True, help="Процессов с моделью на одну видеокарту; SAM3 занимает около 5 ГБ видеопамяти на процесс")
-def main(
+@click.option("--workers-per-gpu", type=click.IntRange(min=1), default=1, show_default=True, help="Процессов с моделью на одну видеокарту; SAM3 занимает около 5 ГБ видеопамяти на процесс, число подбирает bench")
+def run(
     datasets: tuple[Path, ...], config: Path, overrides: tuple[str, ...], splits: str | None, limit: int | None, out_name: str, gpus: str | None, workers_per_gpu: int
 ) -> None:
     """Прогоняет Normalizer.annotate (SAM3 → отбор → проверка этикетки, без рендера) по картинкам развёрнутого датасета и пишет разметку в <dataset>/normalization.jsonl.
@@ -230,7 +257,7 @@ def main(
     rejections — отказы с полями Rejection: reason, detail, score, bottle, label, uuid. Маски bottle и label — полигоны в пикселях оригинала после EXIF.
     Кропы не пишутся: их рендерит даталоадер по маскам и углу, с джиттером.
     Рядом пишется normalization.meta.json с конфигом прогона. Дозапись: уже обработанные картинки пропускаются, но только с теми же настройками,
-    что в meta; порядок сплитов задаёт --splits. Запуск из корня: python -m scripts.normalize_dataset.
+    что в meta; порядок сплитов задаёт --splits.
 
     Параллельность по данным: на каждой видеокарте, по умолчанию на всех, а с --gpus 0,2 на указанных, поднимается --workers-per-gpu процессов с моделью,
     картинки раздаются им из общей очереди без пересечений, файл пишет главный процесс.
@@ -244,8 +271,61 @@ def main(
                 out = Path(out_name) if Path(out_name).is_absolute() else dataset / out_name
                 annotate_dataset(dataset, out, meta, splits.split(",") if splits else None, limit, pool, progress)
     finally:
-        for w in pool[0]:
-            w.terminate()
+        stop_workers(pool[0])
+
+
+def bench_table(speeds: dict[int, float], n_gpus: int) -> Table:
+    """Таблица замера: скорость при каждом числе воркеров на видеокарту и прирост к одному воркеру."""
+    table = Table("воркеров на GPU", "всего воркеров", "с на фото", "фото в час", "к одному воркеру")
+    for n, speed in speeds.items():
+        table.add_row(str(n), str(n * n_gpus), f"{1 / speed:.3f}", f"{speed * 3600:,.0f}".replace(",", " "), f"{speed / speeds[1]:.2f}×")
+    return table
+
+
+@cli.command()
+@click.argument("dataset", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option("-c", "--config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True)
+@click.option("--set", "overrides", multiple=True, metavar="секция.ключ=значение", help="Переопределить параметр конфига; задавайте те же, что пойдут в run")
+@click.option("--gpus", default=None, help="Номера видеокарт через запятую, по умолчанию все доступные")
+@click.option("--max-workers", type=click.IntRange(min=1), default=4, show_default=True, help="До скольких воркеров на видеокарту пробовать")
+@click.option("--limit", type=click.IntRange(min=1), default=200, show_default=True, help="Картинок на один замер")
+def bench(dataset: Path, config: Path, overrides: tuple[str, ...], gpus: str | None, max_workers: int, limit: int) -> None:
+    """Подбирает --workers-per-gpu: размечает одни и те же картинки датасета с 1, 2, … воркерами на видеокарту и сравнивает скорость.
+
+    Разметка никуда не пишется. Время загрузки модели в замер не входит. Перебор останавливается раньше --max-workers, если очередной воркер
+    не поместился в видеопамять. Советуется наименьшее число воркеров, чья скорость не хуже лучшей больше чем на 3%:
+    лишний воркер занимает около 5 ГБ видеопамяти и ядро процессора.
+    """
+    devices = gpus.split(",") if gpus else all_gpus()
+    names = files_in_order(dataset, dataset_splits(dataset, None))[:limit]
+    for name in names:
+        (dataset / "images" / name).read_bytes()  # файлы в кэше страниц до первого замера: иначе чтение с диска достанется только ему
+    speeds: dict[int, float] = {}
+    for n in range(1, max_workers + 1):
+        try:
+            pool = start_workers(devices, n, config, list(overrides))
+        except RuntimeError as e:
+            console.print(f"[yellow]stop[/] {n} на GPU не поднялись: {e}", no_wrap=True, overflow="ellipsis")
+            break
+        try:
+            with count_progress() as progress:
+                bar = progress.add_task(str(n), name=f"{n} на GPU", total=len(names))
+                started = time.perf_counter()
+                errors = 0
+                for rec in annotate_files(pool, dataset, names):
+                    errors += rec["status"] == "error"
+                    progress.update(bar, advance=1)
+                speeds[n] = len(names) / (time.perf_counter() - started)
+        finally:
+            stop_workers(pool[0])
+        if errors:
+            console.print(f"[yellow]warn[/] {errors} картинок упали с ошибкой, замер с {n} воркерами ненадёжен")
+    if not speeds:
+        raise click.ClickException("не поднялся ни один воркер")
+    console.print(bench_table(speeds, len(devices)))
+    best = min(n for n, speed in speeds.items() if speed >= (1 - BENCH_TOLERANCE) * max(speeds.values()))
+    console.print(f"[green]best[/] --workers-per-gpu {best}: {speeds[best] * 3600:,.0f} фото в час на {len(devices)} GPU".replace(",", " "))
+
 
 if __name__ == "__main__":
-    main()
+    cli()
