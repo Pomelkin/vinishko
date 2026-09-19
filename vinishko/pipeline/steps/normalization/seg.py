@@ -1,13 +1,17 @@
+from functools import partial
 from pathlib import Path
 from typing import Any, cast
 
 import cv2
 import numpy as np
+import torch
 from PIL import Image, ImageOps
 from torch import Tensor
+from torchvision.ops import nms
 from ultralytics import YOLO
 from ultralytics.engine.results import Results
 from ultralytics.models.sam import SAM3SemanticPredictor
+from ultralytics.utils.ops import xywh2xyxy
 
 BOTTLE = 39  # класс bottle в COCO
 MIN_CONTOUR_AREA = 10  # контуры меньше этого в пикселях кадра модели — шум маски
@@ -26,10 +30,15 @@ def open_image(path: Path | str) -> Image.Image:
     return ImageOps.exif_transpose(Image.open(path)).convert("RGB")
 
 
+def no_masks() -> Masks:
+    """Пустой результат: по промпту ничего не найдено."""
+    return np.zeros(0), np.zeros((0, 4)), np.zeros((0, 0, 0), bool)
+
+
 def masks_of(result: Results) -> Masks:
-    """Уверенности, боксы и bool-маски из результата ultralytics; пустые массивы, если ничего не найдено."""
+    """Уверенности, боксы и bool-маски из результата YOLO; пустые массивы, если ничего не найдено."""
     if result.masks is None or result.boxes is None:
-        return np.zeros(0), np.zeros((0, 4)), np.zeros((0, 0, 0), bool)
+        return no_masks()
     return (
         to_numpy(result.boxes.conf),
         to_numpy(result.boxes.xyxy).astype(np.float64),
@@ -218,7 +227,7 @@ class Segmenter:
     def _load(self) -> SAM3SemanticPredictor | YOLO:
         if not self.is_sam3:
             return YOLO(self.model)
-        return SAM3SemanticPredictor(
+        predictor = SAM3SemanticPredictor(
             overrides={
                 "model": self.model,
                 "conf": self.conf,
@@ -230,11 +239,49 @@ class Segmenter:
                 "verbose": False,
             }
         )
+        predictor.setup_model()
+        # шея SAM2 нужна интерактивному режиму и трекеру, а считается на каждом кадре: 8 мс из 140 на RTX 3080
+        cast(Any, predictor.model).backbone.vision_backbone.sam2_convs = None
+        # ultralytics зовёт внимание fusion-энкодера без need_weights=False, и torch считает матрицу весов 5184×5184
+        # через bmm и softmax. Без неё идёт flash attention: выход тот же, а промпт дешевле на 20 мс из 44 на RTX 3080
+        for layer in cast(Any, predictor.model).transformer.encoder.layers:
+            for attn in (layer.self_attn, layer.cross_attn_image):
+                attn.forward = partial(attn.forward, need_weights=False)
+        return predictor
+
+    @torch.inference_mode()
+    def _ground(self, predictor: SAM3SemanticPredictor, prompts: list[str], shape: tuple[int, int]) -> dict[str, Masks]:
+        """Все промпты одним батчем на признаках кадра, которые посчитал set_image. shape — (высота, ширина) кадра.
+
+        Промпты в батче независимы: у каждого свои текстовые признаки и свои 200 запросов декодера, детекции те же,
+        что при отдельных вызовах. Эмбеддинги промптов считаются один раз и остаются в модели, а не заново на каждый кадр.
+        Дальше то же, что в postprocess ultralytics: скор запроса × скор присутствия, порог conf, NMS, маски в размер кадра.
+        """
+        model = cast(Any, predictor.model)
+        if new := [p for p in prompts if p not in model.names]:
+            model.set_classes([*model.names, *new])
+        ids = torch.tensor([model.names.index(p) for p in prompts], device=predictor.device)
+        out = model.forward_grounding(backbone_out=predictor.features, text_ids=ids)
+        scores = (out["pred_logits"].sigmoid() * out["presence_logit_dec"].sigmoid().unsqueeze(1)).squeeze(-1)
+        size = torch.tensor([shape[1], shape[0], shape[1], shape[0]], device=predictor.device)
+        results: dict[str, Masks] = {}
+        for i, prompt in enumerate(prompts):
+            keep = scores[i] > self.conf
+            conf, boxes, masks = scores[i][keep], xywh2xyxy(out["pred_boxes"][i][keep]), out["pred_masks"][i][keep]
+            keep = nms(boxes, conf, predictor.args.iou)
+            if not len(keep):
+                results[prompt] = no_masks()
+                continue
+            results[prompt] = (
+                to_numpy(conf[keep].float()),
+                to_numpy(boxes[keep] * size).astype(np.float64),  # в fp16, как в ultralytics: на таких боксах обучена калибровка отбора
+                to_numpy(predictor._upscale_masks(masks[keep], shape)),
+            )
+        return results
 
     def query(self, img: Image.Image, prompts: list[str]) -> dict[str, Masks]:
-        """Кодирует кадр один раз и выполняет каждый промпт отдельным запросом на тех же признаках.
+        """Кодирует кадр один раз и выполняет все промпты одним батчем на тех же признаках, см. _ground.
 
-        Промпты не объединяются в один запрос: совместный промпт «бутылка + этикетка» менял набор бутылок.
         Для YOLO промпт один, класс bottle. Не потокобезопасно: вызывающий держит лок.
         """
         if self._predictor is None:
@@ -244,7 +291,7 @@ class Segmenter:
             results = self._predictor.predict(bgr, classes=[BOTTLE], conf=self.conf, imgsz=self.imgsz, retina_masks=True, verbose=False)
             return {self.prompt: masks_of(cast(Results, next(iter(results))))}
         self._predictor.set_image(bgr)
-        return {p: masks_of(next(iter(self._predictor(text=[p])))) for p in prompts}
+        return self._ground(self._predictor, prompts, (bgr.shape[0], bgr.shape[1]))
 
     def _labels(self, results: dict[str, Masks]) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
         """Уверенности этикеток, их маски и зона крышек и горлышек (или None) из результатов query."""
