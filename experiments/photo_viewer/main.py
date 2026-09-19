@@ -22,6 +22,7 @@ NEAR_DUPLICATES_CSV = Path(__file__).parents[1] / "all_candidates_reviewed.csv"
 NEAR_DUPLICATE_WEIGHT = 12.0
 SPLIT_SEED = 54
 FOLDER_COUNT = 3
+SYNC_INTERVAL_SECONDS = 20
 HOST = "0.0.0.0"
 PORT = 8000
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
@@ -89,13 +90,26 @@ def image_groups() -> tuple[tuple[tuple[Path, str, str], ...], ...]:
     return tuple(tuple(items[index::FOLDER_COUNT]) for index in range(FOLDER_COUNT))
 
 
+def labeled_slugs() -> set[str]:
+    if not SAVE_DIR.is_dir():
+        return set()
+    folder_names = {path.name.casefold() for path in SAVE_DIR.iterdir() if path.is_dir()}
+    return {
+        slug
+        for group in image_groups()
+        for _, slug, _ in group
+        if safe_name(slug).casefold() in folder_names
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
-    return HTML
+    return HTML.replace("__SYNC_INTERVAL_MS__", str(SYNC_INTERVAL_SECONDS * 1000))
 
 
 @app.get("/api/folders")
 def folders() -> list[dict[str, object]]:
+    marked = labeled_slugs()
     return [
         {
             "name": f"Папка {folder_index + 1}",
@@ -105,12 +119,18 @@ def folders() -> list[dict[str, object]]:
                     "title": slug,
                     "wine_name": wine_name,
                     "url": f"/image/{folder_index}/{file_index}",
+                    "labeled": slug in marked,
                 }
                 for file_index, (_, slug, wine_name) in enumerate(files)
             ],
         }
         for folder_index, files in enumerate(image_groups())
     ]
+
+
+@app.get("/api/labeled")
+def labeled_files() -> list[str]:
+    return sorted(labeled_slugs())
 
 
 @app.get("/image/{folder_index}/{file_index}")
@@ -159,10 +179,18 @@ HTML = """<!doctype html>
     .folder { padding: 10px 5px; border-radius: 9px; background: #292d35; font-weight: 700; }
     .folder.active { background: #7c5cff; }
     .folder small { display: block; margin-top: 3px; opacity: .7; font-weight: 500; }
+    .sidebar-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 14px; border-bottom: 1px solid #30343c; color: #aeb4c0; font-size: 12px; }
+    .sync-state { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .sync-state.syncing .sync-icon { animation: spin .8s linear infinite; }
+    .sync-state.error { color: #e69a9a; }
+    .hide-labeled { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+    .hide-labeled input { accent-color: #7c5cff; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .list { overflow-y: auto; padding: 8px; }
     .item { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; width: 100%; gap: 11px; padding: 7px; margin-bottom: 5px; border-radius: 9px; background: transparent; text-align: left; }
     .item:hover { background: #252932; }
     .item.active { background: #343946; outline: 2px solid #7c5cff; }
+    .item.labeled { box-shadow: inset 0 0 0 2px #42c98a; }
     .item img { width: 72px; height: 64px; border-radius: 6px; object-fit: contain; background: #0c0d10; }
     .item-copy { min-width: 0; }
     .item-slug, .item-wine { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -187,6 +215,10 @@ HTML = """<!doctype html>
   <div class="app">
     <aside>
       <div class="folders" id="folders"></div>
+      <div class="sidebar-tools">
+        <span class="sync-state" id="syncState"><span class="sync-icon">↻</span><span>Синхронизация</span></span>
+        <label class="hide-labeled"><input type="checkbox" id="hideLabeled"> Скрыть размеченные</label>
+      </div>
       <div class="list" id="list"></div>
     </aside>
     <main>
@@ -213,6 +245,9 @@ HTML = """<!doctype html>
     const empty = document.querySelector('#empty');
     const stage = document.querySelector('#stage');
     const notice = document.querySelector('#notice');
+    const syncState = document.querySelector('#syncState');
+    const hideLabeled = document.querySelector('#hideLabeled');
+    let syncing = false;
     const escapeText = value => value.replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
 
     function renderFolders() {
@@ -223,21 +258,28 @@ HTML = """<!doctype html>
 
     function selectFolder(index) {
       folderIndex = index;
-      fileIndex = 0;
+      fileIndex = visibleIndexes()[0] ?? 0;
       renderFolders();
       renderList();
       showPhoto();
     }
 
     function renderList() {
-      list.innerHTML = folders[folderIndex].files.map((file, index) =>
-        `<button class="item ${index === fileIndex ? 'active' : ''}" data-index="${index}"><img src="${file.url}" loading="lazy" alt=""><span class="item-copy"><span class="item-slug" title="${escapeText(file.name)}">${escapeText(file.name)}</span><span class="item-wine" title="${escapeText(file.wine_name)}">${escapeText(file.wine_name)}</span></span></button>`
-      ).join('');
+      list.innerHTML = folders[folderIndex].files.map((file, index) => ({file, index}))
+        .filter(({file}) => !hideLabeled.checked || !file.labeled)
+        .map(({file, index}) =>
+          `<button class="item ${index === fileIndex ? 'active' : ''} ${file.labeled ? 'labeled' : ''}" data-index="${index}"><img src="${file.url}" loading="lazy" alt=""><span class="item-copy"><span class="item-slug" title="${escapeText(file.name)}">${escapeText(file.name)}</span><span class="item-wine" title="${escapeText(file.wine_name)}">${escapeText(file.wine_name)}</span></span></button>`
+        ).join('');
+    }
+
+    function visibleIndexes() {
+      return folders[folderIndex].files.flatMap((file, index) => hideLabeled.checked && file.labeled ? [] : [index]);
     }
 
     function showPhoto() {
       const files = folders[folderIndex].files;
-      const file = files[fileIndex];
+      const selected = files[fileIndex];
+      const file = selected && (!hideLabeled.checked || !selected.labeled) ? selected : null;
       title.textContent = file ? file.title : folders[folderIndex].name;
       wineName.textContent = file ? file.wine_name : '';
       photo.hidden = !file;
@@ -251,10 +293,44 @@ HTML = """<!doctype html>
     }
 
     function move(step) {
-      const files = folders[folderIndex].files;
-      if (!files.length) return;
-      fileIndex = (fileIndex + step + files.length) % files.length;
+      const indexes = visibleIndexes();
+      if (!indexes.length) return;
+      const position = indexes.indexOf(fileIndex);
+      fileIndex = indexes[(Math.max(position, 0) + step + indexes.length) % indexes.length];
       showPhoto();
+    }
+
+    function applyLabeled(slugs) {
+      const labeled = new Set(slugs);
+      folders.forEach(folder => folder.files.forEach(file => file.labeled = labeled.has(file.name)));
+      list.querySelectorAll('.item').forEach(button => {
+        const file = folders[folderIndex].files[Number(button.dataset.index)];
+        button.classList.toggle('labeled', file.labeled);
+        button.hidden = hideLabeled.checked && file.labeled;
+      });
+      const indexes = visibleIndexes();
+      if (hideLabeled.checked && !indexes.includes(fileIndex)) {
+        fileIndex = indexes[0] ?? 0;
+        showPhoto();
+      }
+    }
+
+    async function syncLabeled() {
+      if (syncing) return;
+      syncing = true;
+      syncState.className = 'sync-state syncing';
+      syncState.title = '';
+      try {
+        const response = await fetch('/api/labeled');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        applyLabeled(await response.json());
+        syncState.className = 'sync-state';
+      } catch (error) {
+        syncState.className = 'sync-state error';
+        syncState.title = `Ошибка синхронизации: ${error.message}`;
+      } finally {
+        syncing = false;
+      }
     }
 
     folderBox.addEventListener('click', event => {
@@ -267,6 +343,12 @@ HTML = """<!doctype html>
     });
     document.querySelector('.prev').addEventListener('click', () => move(-1));
     document.querySelector('.next').addEventListener('click', () => move(1));
+    hideLabeled.addEventListener('change', () => {
+      const indexes = visibleIndexes();
+      if (!indexes.includes(fileIndex)) fileIndex = indexes[0] ?? 0;
+      renderList();
+      showPhoto();
+    });
     document.addEventListener('keydown', event => {
       if (event.key === 'ArrowLeft') move(-1);
       if (event.key === 'ArrowRight') move(1);
@@ -294,6 +376,7 @@ HTML = """<!doctype html>
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail);
         notice.textContent = result.message;
+        await syncLabeled();
       } catch (error) {
         notice.textContent = `Ошибка: ${error.message}`;
       }
@@ -303,6 +386,7 @@ HTML = """<!doctype html>
     fetch('/api/folders').then(response => response.json()).then(data => {
       folders = data;
       selectFolder(0);
+      setInterval(syncLabeled, __SYNC_INTERVAL_MS__);
     });
   </script>
 </body>
