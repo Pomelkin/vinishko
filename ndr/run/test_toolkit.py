@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -237,14 +238,28 @@ class SolutionIntegrationTests(unittest.TestCase):
             {"effort": "none", "exclude": False},
         )
         self.assertEqual(single_payload["max_completion_tokens"], 16000)
-        self.assertEqual(solution_config.SETTINGS.generation.image_detail, "original")
-        self.assertEqual(solution_config.SETTINGS.openrouter.routing.routing_mode, "throughput")
 
         with self.assertRaises(ValueError):
             solution_config.ProviderRoutingSettings(
                 only=("provider-a",),
                 ignore=("provider-a",),
             )
+
+    def test_numeric_reasoning_effort_accepts_only_integers_from_1_to_100(self) -> None:
+        for effort in (1, 5, 42, 100):
+            generation = solution_config.GenerationSettings(reasoning_effort=effort)
+            self.assertEqual(generation.request_payload()["reasoning"]["effort"], effort)
+            self.assertEqual(runner.parse_reasoning_effort(str(effort)), effort)
+
+        for effort in (0, 101, -1, 1.5, True):
+            with self.assertRaises(ValueError):
+                solution_config.GenerationSettings(reasoning_effort=effort)
+
+        for effort in ("0", "101", "1.5", "unknown"):
+            with self.assertRaises(argparse.ArgumentTypeError):
+                runner.parse_reasoning_effort(effort)
+
+        self.assertEqual(runner.parse_reasoning_effort("high"), "high")
 
     def test_case_artifact_preserves_predictor_response(self) -> None:
         response = {
@@ -385,7 +400,7 @@ class RunnerTests(unittest.TestCase):
             {
                 "input": {"candidate_order": ["a", "b", "c"]},
                 "prediction": {
-                    "slug": NOT_FOUND, "correct": False,
+                    "slug": None, "correct": None,
                     "status": "predictor_error", "latency_ms": 20,
                 },
                 "predictor_response": {"_trace": {
@@ -397,8 +412,13 @@ class RunnerTests(unittest.TestCase):
         metrics = runner.build_metrics(
             rows, run_id="test", model="test/model", elapsed_seconds=2,
         )
-        self.assertEqual(metrics["quality"]["accuracy"], 0.5)
-        self.assertEqual(metrics["quality"]["coverage"], 0.5)
+        self.assertEqual(metrics["quality"]["attempted_queries"], 2)
+        self.assertEqual(metrics["quality"]["queries"], 1)
+        self.assertEqual(metrics["quality"]["excluded_errors"], 1)
+        self.assertEqual(metrics["quality"]["accuracy"], 1.0)
+        self.assertEqual(metrics["quality"]["coverage"], 1.0)
+        self.assertEqual(metrics["quality"]["not_found"], 0)
+        self.assertEqual(metrics["quality"]["predictor_errors"], 1)
         self.assertEqual(set(metrics["by_group_size"]), {"2", "3"})
         self.assertEqual(metrics["model_activity"]["requests"], 3)
         self.assertEqual(metrics["model_activity"]["successful_requests"], 2)
@@ -410,6 +430,37 @@ class RunnerTests(unittest.TestCase):
             2,
         )
         self.assertNotIn("ignored_boolean", metrics["model_activity"]["usage"])
+
+    def test_predictor_error_has_no_verdict_and_is_excluded_from_quality(self) -> None:
+        record = runner.execute_case(
+            run_id="test",
+            case={
+                "query_id": "q-error",
+                "group_id": "g-error",
+                "expected_slug": "a",
+            },
+            request={"group": {"candidates": [{"slug": "a"}]}},
+            input_record={"candidate_order": ["a"]},
+            predict=lambda _request: {
+                "slug": None,
+                "_status": "predictor_error",
+                "_error": "upstream failed",
+                "_trace": {},
+            },
+        )
+
+        self.assertEqual(record["prediction"]["status"], "predictor_error")
+        self.assertIsNone(record["prediction"]["slug"])
+        self.assertIsNone(record["prediction"]["correct"])
+
+        quality = runner.quality_metrics([record])
+        self.assertEqual(quality["attempted_queries"], 1)
+        self.assertEqual(quality["queries"], 0)
+        self.assertEqual(quality["excluded_errors"], 1)
+        self.assertEqual(quality["predictor_errors"], 1)
+        self.assertEqual(quality["not_found"], 0)
+        self.assertIsNone(quality["accuracy"])
+        self.assertIsNone(quality["coverage"])
 
     def test_smoke_run_writes_metrics_and_requires_force(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

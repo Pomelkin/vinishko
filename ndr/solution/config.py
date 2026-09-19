@@ -14,7 +14,7 @@ NonEmptyString = Annotated[
 ]
 RoutingMode = Literal["price", "throughput", "latency"]
 ImageDetail = Literal["auto", "low", "high", "original"]
-ReasoningEffort = Literal[
+ReasoningEffortName = Literal[
     "none",
     "minimal",
     "low",
@@ -23,6 +23,7 @@ ReasoningEffort = Literal[
     "xhigh",
     "max",
 ]
+ReasoningEffort = ReasoningEffortName | Annotated[int, Field(ge=1, le=100)]
 
 
 class StrictSettings(BaseModel):
@@ -162,11 +163,11 @@ SETTINGS = NdrSettings(
         app_title_env="OPENROUTER_APP_TITLE",
         user_agent="vinishko-ndr-runner/1",
         routing=ProviderRoutingSettings(
-            routing_mode="latency",  # Nitro: fastest generation throughput
+            routing_mode=None,  # Nitro: fastest generation throughput
             order=(),
-            only=(),
+            only=("together",),
             ignore=(),
-            allow_fallbacks=None,
+            allow_fallbacks=False,
             require_parameters=True,
             data_collection=None,
             zdr=None,

@@ -54,6 +54,26 @@ class RunnerError(RuntimeError):
 
 
 ENV_KEY_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
+REASONING_EFFORT_NAMES = frozenset(
+    {"none", "minimal", "low", "medium", "high", "xhigh", "max"},
+)
+
+
+def parse_reasoning_effort(value: str) -> str | int:
+    """Parse a named effort or DeepSeek's numeric 1-100 reasoning budget."""
+    if value in REASONING_EFFORT_NAMES:
+        return value
+    try:
+        effort = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "reasoning effort must be a named level or an integer from 1 to 100",
+        ) from error
+    if not 1 <= effort <= 100:
+        raise argparse.ArgumentTypeError(
+            "numeric reasoning effort must be between 1 and 100",
+        )
+    return effort
 
 
 def utc_now() -> str:
@@ -226,23 +246,29 @@ def prepare_results(results_dir: Path, force: bool) -> tuple[Path, Path, Path]:
 
 def build_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Aggregate metrics useful while comparing prompts."""
-    total = len(rows)
-    answered_rows = [
-        row for row in rows if row["prediction"]["slug"] != NOT_FOUND
+    attempted = len(rows)
+    evaluated_rows = [
+        row for row in rows if row["prediction"]["status"] == "ok"
     ]
-    correct = sum(bool(row["prediction"]["correct"]) for row in rows)
+    total = len(evaluated_rows)
+    answered_rows = [
+        row for row in evaluated_rows if row["prediction"]["slug"] != NOT_FOUND
+    ]
+    correct = sum(bool(row["prediction"]["correct"]) for row in evaluated_rows)
     correct_answered = sum(
         bool(row["prediction"]["correct"]) for row in answered_rows
     )
     latencies = [float(row["prediction"]["latency_ms"]) for row in rows]
     return {
         "queries": total,
+        "attempted_queries": attempted,
+        "excluded_errors": attempted - total,
         "correct": correct,
-        "accuracy": correct / total if total else 0.0,
+        "accuracy": correct / total if total else None,
         "answered": len(answered_rows),
         "not_found": total - len(answered_rows),
         "accuracy_when_answered": (
-            correct_answered / len(answered_rows) if answered_rows else 0.0
+            correct_answered / len(answered_rows) if answered_rows else None
         ),
         "contract_errors": sum(
             row["prediction"]["status"] == "contract_error" for row in rows
@@ -286,11 +312,13 @@ def quality_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
     total = report["queries"]
     return {
         "queries": total,
+        "attempted_queries": report["attempted_queries"],
+        "excluded_errors": report["excluded_errors"],
         "correct": report["correct"],
         "accuracy": report["accuracy"],
         "answered": report["answered"],
         "not_found": report["not_found"],
-        "coverage": report["answered"] / total if total else 0.0,
+        "coverage": report["answered"] / total if total else None,
         "accuracy_when_answered": report["accuracy_when_answered"],
         "contract_errors": report["contract_errors"],
         "predictor_errors": report["predictor_errors"],
@@ -363,24 +391,24 @@ def execute_case(
     status = "ok"
     error_message = None
     raw_response: Any = None
+    predicted: str | None = None
     allowed = {candidate["slug"] for candidate in request["group"]["candidates"]}
     try:
         raw_response = predict(request)
-        predicted = prediction_slug(raw_response, allowed)
         if isinstance(raw_response, Mapping):
             internal_status = raw_response.get("_status", "ok")
             if internal_status not in {"ok", "contract_error", "predictor_error"}:
                 raise ContractError(f"unknown predictor status: {internal_status!r}")
             status = internal_status
             error_message = raw_response.get("_error")
-            if status != "ok":
-                predicted = NOT_FOUND
+        if status == "ok":
+            predicted = prediction_slug(raw_response, allowed)
     except ContractError as error:
-        predicted = NOT_FOUND
+        predicted = None
         status = "contract_error"
         error_message = str(error)
     except Exception as error:  # noqa: BLE001 - retain later cases and exception trace.
-        predicted = NOT_FOUND
+        predicted = None
         status = "predictor_error"
         error_message = f"{type(error).__name__}: {error}"
         raw_response = {
@@ -400,7 +428,7 @@ def execute_case(
         "expected_slug": case["expected_slug"],
         "prediction": {
             "slug": predicted,
-            "correct": predicted == case["expected_slug"],
+            "correct": predicted == case["expected_slug"] if status == "ok" else None,
             "status": status,
             "error": error_message,
             "latency_ms": round(latency_ms, 3),
@@ -436,7 +464,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--api-key-env", default=SETTINGS.openrouter.api_key_env)
     parser.add_argument(
         "--reasoning-effort",
-        choices=("none", "minimal", "low", "medium", "high", "xhigh", "max"),
+        type=parse_reasoning_effort,
+        metavar="LEVEL|1..100",
         default=SETTINGS.generation.reasoning_effort,
     )
     parser.add_argument(
@@ -653,9 +682,13 @@ def main() -> int:
             run_document["summary"] = build_report(ordered)
             run_document["run"]["cases_completed"] = len(ordered)
             atomic_write_json(run_path, run_document)
+            prediction = record["prediction"]
+            if prediction["status"] == "ok":
+                outcome = f"ok -> {prediction['slug']}"
+            else:
+                outcome = f"{prediction['status']}: {prediction['error']}"
             print(
-                f"[{len(ordered)}/{len(selected)}] {record['query_id']}: "
-                f"{record['prediction']['status']} -> {record['prediction']['slug']}",
+                f"[{len(ordered)}/{len(selected)}] {record['query_id']}: {outcome}",
                 file=sys.stderr,
             )
 

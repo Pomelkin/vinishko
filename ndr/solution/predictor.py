@@ -376,7 +376,7 @@ def call_model(
 def failure(status: str, error: str, trace: dict[str, Any]) -> dict[str, Any]:
     """Return a runner envelope for a failed pipeline stage."""
     return {
-        "slug": NOT_FOUND,
+        "slug": None,
         "_status": status,
         "_error": error,
         "_trace": trace,
