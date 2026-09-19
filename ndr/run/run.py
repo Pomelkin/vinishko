@@ -642,8 +642,8 @@ def apply_solution_defaults(args: argparse.Namespace, settings: Any) -> None:
     """Resolve config/env defaults while retaining explicit CLI precedence."""
     args.model = (
         args.model
-        or os.environ.get("OPENROUTER_MODEL")
         or settings.openrouter.model
+        or os.environ.get("OPENROUTER_MODEL")
     )
     args.api_base = (
         args.api_base

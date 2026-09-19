@@ -191,7 +191,7 @@ SETTINGS = NdrSettings(
         reasoning_exclude=False,
     ),
     execution=ExecutionSettings(
-        timeout_seconds=180.0,
+        timeout_seconds=60.0,
         concurrency=1,
         candidate_order_seed=0,
         limit=None,

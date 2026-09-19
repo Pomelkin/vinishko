@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import shutil
 import sys
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 HERE = Path(__file__).resolve().parent
@@ -26,6 +28,21 @@ from contracts import prediction_slug  # noqa: E402
 from ndr.solutions.baseline import config as solution_config  # noqa: E402
 from ndr.solutions.baseline import models as solution_models  # noqa: E402
 from ndr.solutions.baseline import predictor as solution_predictor  # noqa: E402
+from ndr.solutions.v1 import predictor as v1_predictor  # noqa: E402
+from ndr.solutions.v2 import predictor as v2_predictor  # noqa: E402
+from ndr.solutions.v3 import predictor as v3_predictor  # noqa: E402
+from ndr.solutions.v4 import predictor as v4_predictor  # noqa: E402
+from ndr.solutions.v5 import predictor as v5_predictor  # noqa: E402
+
+
+RETRY_PREDICTORS = (
+    ("baseline", solution_predictor),
+    ("v1", v1_predictor),
+    ("v2", v2_predictor),
+    ("v3", v3_predictor),
+    ("v4", v4_predictor),
+    ("v5", v5_predictor),
+)
 
 
 def load_jsonl(name: str) -> list[dict]:
@@ -92,6 +109,17 @@ class DatasetTests(unittest.TestCase):
 
 class SolutionIntegrationTests(unittest.TestCase):
     """Protect raw generation retention and the integrated response envelope."""
+
+    def test_retry_matrix_covers_every_solution(self) -> None:
+        solution_names = {
+            path.name
+            for path in (REPO / "ndr" / "solutions").iterdir()
+            if path.is_dir() and (path / "predictor.py").is_file()
+        }
+        self.assertEqual(
+            {solution_name for solution_name, _ in RETRY_PREDICTORS},
+            solution_names,
+        )
 
     def test_image_type_is_detected_from_signature(self) -> None:
         self.assertEqual(solution_predictor.image_media_type(b"\xff\xd8\xffx"), "image/jpeg")
@@ -349,6 +377,248 @@ class SolutionIntegrationTests(unittest.TestCase):
         self.assertEqual(call.call_args_list[0].kwargs["system_prompt"], "year matters")
         self.assertEqual(call.call_args_list[1].kwargs["system_prompt"], "year ignored")
         self.assertEqual(call.call_args_list[2].kwargs["system_prompt"], "resolve")
+
+    def test_429_retries_with_exponential_full_jitter(self) -> None:
+        for solution_name, predictor in RETRY_PREDICTORS:
+            with self.subTest(solution=solution_name):
+                rate_limited = [
+                    urllib.error.HTTPError(
+                        "https://example.invalid/v1/chat/completions",
+                        429,
+                        "Too Many Requests",
+                        None,
+                        io.BytesIO(b'{"error":"rate limited"}'),
+                    )
+                    for _ in range(2)
+                ]
+                response = MagicMock()
+                response.__enter__.return_value = response
+                response.status = 200
+                response.headers = {}
+                response.read.return_value = (
+                    b'{"choices":[{"message":{"content":"{}"},"finish_reason":"stop"}]}'
+                )
+                with (
+                    patch.object(
+                        predictor.urllib.request,
+                        "urlopen",
+                        side_effect=[*rate_limited, response],
+                    ) as urlopen,
+                    patch.object(
+                        predictor.random,
+                        "uniform",
+                        side_effect=[0.25, 1.5],
+                    ) as jitter,
+                    patch.object(predictor.time, "sleep") as sleep,
+                ):
+                    result = predictor.call_model(
+                        runtime={
+                            "api_base": "https://example.invalid/v1",
+                            "model": "test/model",
+                            "generation": {},
+                            "provider": {},
+                            "timeout": 60,
+                        },
+                        api_key="secret",
+                        system_prompt="system",
+                        api_content=[],
+                        trace_content=[],
+                        output_format={
+                            "type": "json_schema",
+                            "json_schema": {
+                                "name": "test",
+                                "schema": {"type": "object"},
+                            },
+                        },
+                        validator=lambda payload: payload,
+                    )
+
+                self.assertEqual(result["status"], "ok")
+                self.assertEqual(urlopen.call_count, 3)
+                self.assertEqual(
+                    [item.args for item in jitter.call_args_list],
+                    [(0.0, 1.0), (0.0, 2.0)],
+                )
+                self.assertEqual(
+                    [item.args for item in sleep.call_args_list],
+                    [(0.25,), (1.5,)],
+                )
+                self.assertEqual(len(result["trace"]["retry_attempts"]), 2)
+
+    def test_only_429_is_retried_and_retry_count_is_capped_at_five(self) -> None:
+        def http_error(status: int, reason: str) -> urllib.error.HTTPError:
+            return urllib.error.HTTPError(
+                "https://example.invalid/v1/chat/completions",
+                status,
+                reason,
+                None,
+                io.BytesIO(b'{"error":"failed"}'),
+            )
+
+        arguments = {
+            "runtime": {
+                "api_base": "https://example.invalid/v1",
+                "model": "test/model",
+                "generation": {},
+                "provider": {},
+                "timeout": 60,
+            },
+            "api_key": "secret",
+            "system_prompt": "system",
+            "api_content": [],
+            "trace_content": [],
+            "output_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "test", "schema": {"type": "object"}},
+            },
+            "validator": lambda payload: payload,
+        }
+        for solution_name, predictor in RETRY_PREDICTORS:
+            with self.subTest(solution=solution_name, status=503):
+                with (
+                    patch.object(
+                        predictor.urllib.request,
+                        "urlopen",
+                        side_effect=http_error(503, "Service Unavailable"),
+                    ) as urlopen,
+                    patch.object(predictor.random, "uniform") as jitter,
+                    patch.object(predictor.time, "sleep") as sleep,
+                ):
+                    unavailable = predictor.call_model(**arguments)
+
+                self.assertEqual(unavailable["status"], "predictor_error")
+                self.assertEqual(urlopen.call_count, 1)
+                jitter.assert_not_called()
+                sleep.assert_not_called()
+
+            with self.subTest(solution=solution_name, status=429):
+                with (
+                    patch.object(
+                        predictor.urllib.request,
+                        "urlopen",
+                        side_effect=[
+                            http_error(429, "Too Many Requests")
+                            for _ in range(predictor.MAX_429_RETRIES + 1)
+                        ],
+                    ) as urlopen,
+                    patch.object(predictor.random, "uniform", return_value=0.0),
+                    patch.object(predictor.time, "sleep") as sleep,
+                ):
+                    exhausted = predictor.call_model(**arguments)
+
+                self.assertEqual(exhausted["status"], "predictor_error")
+                self.assertEqual(exhausted["trace"]["response_status"], 429)
+                self.assertEqual(urlopen.call_count, predictor.MAX_429_RETRIES + 1)
+                self.assertEqual(sleep.call_count, predictor.MAX_429_RETRIES)
+                self.assertEqual(
+                    len(exhausted["trace"]["retry_attempts"]),
+                    predictor.MAX_429_RETRIES,
+                )
+
+    def test_embedded_provider_error_is_not_a_contract_error(self) -> None:
+        body = (
+            b'{"id":"generation-id","error":{"message":"A Timeout Occurred",'
+            b'"code":504,"metadata":{"error_type":"timeout"}}}'
+        )
+        for solution_name, predictor in RETRY_PREDICTORS:
+            with self.subTest(solution=solution_name):
+                response = MagicMock()
+                response.__enter__.return_value = response
+                response.status = 200
+                response.headers = {}
+                response.read.return_value = body
+                with patch.object(
+                    predictor.urllib.request,
+                    "urlopen",
+                    return_value=response,
+                ) as urlopen:
+                    result = predictor.call_model(
+                        runtime={
+                            "api_base": "https://example.invalid/v1",
+                            "model": "test/model",
+                            "generation": {},
+                            "provider": {},
+                            "timeout": 1,
+                        },
+                        api_key="secret",
+                        system_prompt="system",
+                        api_content=[],
+                        trace_content=[],
+                        output_format={
+                            "type": "json_schema",
+                            "json_schema": {
+                                "name": "test",
+                                "schema": {"type": "object"},
+                            },
+                        },
+                        validator=lambda payload: payload,
+                    )
+
+                self.assertEqual(urlopen.call_count, 1)
+                self.assertEqual(result["status"], "predictor_error")
+                self.assertEqual(
+                    result["error"],
+                    "OpenRouter error 504: A Timeout Occurred",
+                )
+                self.assertEqual(result["trace"]["response_status"], 200)
+                self.assertEqual(result["trace"]["provider_error"]["code"], 504)
+                self.assertEqual(result["trace"]["generations"], [])
+                self.assertEqual(result["trace"]["retry_attempts"], [])
+
+    def test_response_heartbeats_cannot_extend_wall_clock_deadline(self) -> None:
+        for solution_name, predictor in RETRY_PREDICTORS:
+            with self.subTest(solution=solution_name):
+                response = MagicMock()
+                response.__enter__.return_value = response
+                response.status = 200
+                response.headers = {}
+                response.read1.return_value = b" \n"
+                with (
+                    patch.object(
+                        predictor.urllib.request,
+                        "urlopen",
+                        return_value=response,
+                    ) as urlopen,
+                    patch.object(
+                        predictor.time,
+                        "monotonic",
+                        side_effect=[0.0, 0.0, 0.25, 0.5, 1.01],
+                    ),
+                ):
+                    result = predictor.call_model(
+                        runtime={
+                            "api_base": "https://example.invalid/v1",
+                            "model": "test/model",
+                            "generation": {},
+                            "provider": {},
+                            "timeout": 1,
+                        },
+                        api_key="secret",
+                        system_prompt="system",
+                        api_content=[],
+                        trace_content=[],
+                        output_format={
+                            "type": "json_schema",
+                            "json_schema": {
+                                "name": "test",
+                                "schema": {"type": "object"},
+                            },
+                        },
+                        validator=lambda payload: payload,
+                    )
+
+                self.assertEqual(urlopen.call_count, 1)
+                self.assertEqual(result["status"], "predictor_error")
+                self.assertEqual(
+                    result["error"],
+                    "TimeoutError: model call exceeded 1s wall-clock deadline",
+                )
+                self.assertEqual(result["trace"]["response_status"], 200)
+                self.assertEqual(result["trace"]["raw_response_text"], " \n")
+                self.assertEqual(
+                    result["trace"]["timeout"],
+                    {"kind": "wall_clock", "limit_seconds": 1.0},
+                )
 
 
 class RunnerTests(unittest.TestCase):

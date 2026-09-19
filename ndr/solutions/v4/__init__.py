@@ -1,1 +1,0 @@
-"""Near-duplicate recognition solution."""

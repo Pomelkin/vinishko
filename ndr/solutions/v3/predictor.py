@@ -6,6 +6,8 @@ import base64
 import hashlib
 import json
 import os
+import random
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
@@ -39,6 +41,102 @@ CARD_FIELDS = (
     "abv",
     "aging_or_reserve",
 )
+HTTP_TOO_MANY_REQUESTS = 429
+MAX_429_RETRIES = 5
+RETRY_BASE_DELAY_SECONDS = 1.0
+RESPONSE_READ_CHUNK_BYTES = 64 * 1024
+
+
+class ModelCallTimeout(TimeoutError):
+    """A strict wall-clock timeout with any response bytes read so far."""
+
+    def __init__(self, timeout_seconds: float, partial_body: bytes = b"") -> None:
+        super().__init__(
+            f"model call exceeded {timeout_seconds:g}s wall-clock deadline",
+        )
+        self.partial_body = partial_body
+
+
+def remaining_seconds(
+    deadline: float,
+    timeout_seconds: float,
+    partial_body: bytes = b"",
+) -> float:
+    """Return time left before the model-call deadline or raise."""
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise ModelCallTimeout(timeout_seconds, partial_body)
+    return remaining
+
+
+def set_response_read_timeout(response: Any, timeout_seconds: float) -> None:
+    """Apply the shrinking deadline to urllib's underlying response socket."""
+    stream = getattr(response, "fp", None)
+    raw = getattr(stream, "raw", None)
+    sock = getattr(raw, "_sock", None)
+    setter = getattr(sock, "settimeout", None)
+    if callable(setter):
+        setter(timeout_seconds)
+
+
+def read_response_bytes(
+    response: Any,
+    *,
+    deadline: float,
+    timeout_seconds: float,
+) -> bytes:
+    """Read a response while enforcing one wall-clock deadline across heartbeats."""
+    chunks: list[bytes] = []
+    read1 = getattr(response, "read1", None)
+    if not callable(read1):
+        remaining = remaining_seconds(deadline, timeout_seconds)
+        set_response_read_timeout(response, remaining)
+        try:
+            body = response.read()
+        except TimeoutError as error:
+            raise ModelCallTimeout(timeout_seconds) from error
+        if not isinstance(body, bytes):
+            raise TypeError("HTTP response body must be bytes")
+        remaining_seconds(deadline, timeout_seconds, body)
+        return body
+
+    while True:
+        partial_body = b"".join(chunks)
+        remaining = remaining_seconds(deadline, timeout_seconds, partial_body)
+        set_response_read_timeout(response, remaining)
+        try:
+            chunk = read1(RESPONSE_READ_CHUNK_BYTES)
+        except TimeoutError as error:
+            raise ModelCallTimeout(timeout_seconds, partial_body) from error
+        if not isinstance(chunk, bytes):
+            # Test doubles and unusual wrappers may expose a synthetic read1.
+            remaining = remaining_seconds(deadline, timeout_seconds, partial_body)
+            set_response_read_timeout(response, remaining)
+            try:
+                body = response.read()
+            except TimeoutError as error:
+                raise ModelCallTimeout(timeout_seconds, partial_body) from error
+            if not isinstance(body, bytes):
+                raise TypeError("HTTP response body must be bytes")
+            complete_body = partial_body + body
+            remaining_seconds(deadline, timeout_seconds, complete_body)
+            return complete_body
+        if not chunk:
+            return partial_body
+        chunks.append(chunk)
+        partial_body += chunk
+        remaining_seconds(deadline, timeout_seconds, partial_body)
+
+
+def provider_error_description(error: Any) -> str:
+    """Describe an OpenRouter-compatible top-level error envelope."""
+    if not isinstance(error, Mapping):
+        return f"OpenRouter error: {error}"
+    code = error.get("code")
+    message = error.get("message") or "unknown provider error"
+    if code is None:
+        return f"OpenRouter error: {message}"
+    return f"OpenRouter error {code}: {message}"
 
 
 def image_media_type(data: bytes) -> str:
@@ -308,7 +406,7 @@ def call_model(
     output_format: dict[str, Any],
     validator: Callable[[Any], dict[str, Any]],
 ) -> dict[str, Any]:
-    """Execute one model call and return status, selection, and a lossless trace."""
+    """Execute one model call within a strict total deadline."""
     endpoint = endpoint_url(runtime["api_base"])
     effective_system_prompt = system_prompt_with_schema(system_prompt, output_format)
     payload = build_request_payload(
@@ -332,6 +430,7 @@ def call_model(
         "raw_response_text": None,
         "generations": [],
         "selected_generation_ordinal": None,
+        "retry_attempts": [],
     }
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -344,50 +443,129 @@ def call_model(
         headers["HTTP-Referer"] = site_url
     if app_title := os.environ.get(app_title_env):
         headers["X-Title"] = app_title
+
+    timeout_seconds = float(runtime.get("timeout", 120))
+    deadline = time.monotonic() + timeout_seconds
     try:
-        http_request = urllib.request.Request(
-            endpoint,
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers=headers,
-            method="POST",
-        )
-        with urllib.request.urlopen(
-            http_request,
-            timeout=float(runtime.get("timeout", 120)),
-        ) as response:
-            raw_text = response.read().decode("utf-8", errors="replace")
-            trace["response_status"] = response.status
-            trace["response_headers"] = dict(response.headers.items())
-            trace["raw_response_text"] = raw_text
-        raw_response = json.loads(raw_text)
-        trace["raw_response"] = raw_response
-        records, selected_index, selected = generation_records(raw_response, validator)
-        trace["generations"] = records
-        trace["selected_generation_ordinal"] = selected_index
-        if selected is None:
-            return {
-                "status": "contract_error",
-                "error": "no generation satisfied this stage response contract",
-                "selected": None,
-                "trace": trace,
-            }
-        return {"status": "ok", "error": None, "selected": selected, "trace": trace}
-    except urllib.error.HTTPError as error:
-        body = error.read().decode("utf-8", errors="replace")
-        trace["response_status"] = error.code
-        trace["response_headers"] = dict(error.headers.items()) if error.headers else {}
-        trace["raw_response_text"] = body
-        try:
-            trace["raw_response"] = json.loads(body)
-        except json.JSONDecodeError:
-            pass
+        for retry_number in range(MAX_429_RETRIES + 1):
+            http_request = urllib.request.Request(
+                endpoint,
+                data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                headers=headers,
+                method="POST",
+            )
+            try:
+                response_context = urllib.request.urlopen(
+                    http_request,
+                    timeout=remaining_seconds(deadline, timeout_seconds),
+                )
+                with response_context as response:
+                    trace["response_status"] = response.status
+                    trace["response_headers"] = dict(response.headers.items())
+                    raw_body = read_response_bytes(
+                        response,
+                        deadline=deadline,
+                        timeout_seconds=timeout_seconds,
+                    )
+                    raw_text = raw_body.decode("utf-8", errors="replace")
+                    trace["raw_response_text"] = raw_text
+            except urllib.error.HTTPError as error:
+                trace["response_status"] = error.code
+                trace["response_headers"] = (
+                    dict(error.headers.items()) if error.headers else {}
+                )
+                raw_body = read_response_bytes(
+                    error,
+                    deadline=deadline,
+                    timeout_seconds=timeout_seconds,
+                )
+                raw_text = raw_body.decode("utf-8", errors="replace")
+                trace["raw_response_text"] = raw_text
+                try:
+                    trace["raw_response"] = json.loads(raw_text)
+                except json.JSONDecodeError:
+                    trace["raw_response"] = None
+
+                if error.code == HTTP_TOO_MANY_REQUESTS and retry_number < MAX_429_RETRIES:
+                    requested_delay = random.uniform(
+                        0.0,
+                        RETRY_BASE_DELAY_SECONDS * (2**retry_number),
+                    )
+                    remaining = remaining_seconds(deadline, timeout_seconds)
+                    actual_delay = min(requested_delay, remaining)
+                    trace["retry_attempts"].append(
+                        {
+                            "attempt": retry_number + 1,
+                            "response_status": error.code,
+                            "response_headers": trace["response_headers"],
+                            "raw_response": trace["raw_response"],
+                            "raw_response_text": raw_text,
+                            "delay_seconds": actual_delay,
+                        },
+                    )
+                    time.sleep(actual_delay)
+                    if actual_delay < requested_delay:
+                        raise ModelCallTimeout(timeout_seconds)
+                    continue
+
+                return {
+                    "status": "predictor_error",
+                    "error": f"HTTPError {error.code}: {error.reason}",
+                    "selected": None,
+                    "trace": trace,
+                }
+
+            raw_response = json.loads(raw_text)
+            trace["raw_response"] = raw_response
+            provider_error = raw_response.get("error")
+            if provider_error is not None:
+                trace["provider_error"] = provider_error
+                return {
+                    "status": "predictor_error",
+                    "error": provider_error_description(provider_error),
+                    "selected": None,
+                    "trace": trace,
+                }
+
+            records, selected_index, selected = generation_records(raw_response, validator)
+            trace["generations"] = records
+            trace["selected_generation_ordinal"] = selected_index
+            if selected is None:
+                return {
+                    "status": "contract_error",
+                    "error": "no generation satisfied this stage response contract",
+                    "selected": None,
+                    "trace": trace,
+                }
+            return {"status": "ok", "error": None, "selected": selected, "trace": trace}
+    except ModelCallTimeout as error:
+        if error.partial_body:
+            trace["raw_response_text"] = error.partial_body.decode(
+                "utf-8",
+                errors="replace",
+            )
+        trace["timeout"] = {
+            "kind": "wall_clock",
+            "limit_seconds": timeout_seconds,
+        }
         return {
             "status": "predictor_error",
-            "error": f"HTTPError {error.code}: {error.reason}",
+            "error": f"TimeoutError: {error}",
             "selected": None,
             "trace": trace,
         }
-    except Exception as error:  # noqa: BLE001 - the caller persists this stage failure.
+    except TimeoutError as error:
+        trace["timeout"] = {
+            "kind": "wall_clock",
+            "limit_seconds": timeout_seconds,
+        }
+        return {
+            "status": "predictor_error",
+            "error": f"TimeoutError: {error}",
+            "selected": None,
+            "trace": trace,
+        }
+    except Exception as error:  # noqa: BLE001 - persist this stage failure.
         return {
             "status": "predictor_error",
             "error": f"{type(error).__name__}: {error}",
