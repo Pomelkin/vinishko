@@ -6,16 +6,19 @@ from pathlib import Path
 import pandas as pd
 
 from pretty_retriever import PrettyRetriever
+from tqdm import tqdm
 
+tqdm.pandas(desc="Retrieving images")
 
 HERE = Path(__file__).resolve().parent
 PROJECT_DIR = HERE.parents[1]
 
 INPUT_CSV = HERE / "sorted_photos.csv"
-OUTPUT_CSV = HERE / "sorted_photos_with_retrieval.csv"
+OUTPUT_CSV = HERE / "sorted_photos_with_retrieval_vlm.csv"
 IMAGE_COLUMN = "image"
 RESULT_COLUMN = "retrieval_results"
-TOP_K = 10
+TOP_K = 3
+USE_VLM = True
 
 ENCODER_URL = "http://localhost:8000/encode"
 QDRANT_URL = "http://127.0.0.1:6333"
@@ -30,13 +33,14 @@ def main() -> None:
         raise ValueError(f"В датасете нет колонки {IMAGE_COLUMN!r}")
 
     with PrettyRetriever(
-        encoder_url=ENCODER_URL,
-        qdrant_url=QDRANT_URL,
-        qdrant_grpc_port=QDRANT_GRPC_PORT,
-        collection_name=COLLECTION_NAME,
-        timeout_seconds=REQUEST_TIMEOUT_SECONDS,
+            encoder_url=ENCODER_URL,
+            qdrant_url=QDRANT_URL,
+            qdrant_grpc_port=QDRANT_GRPC_PORT,
+            collection_name=COLLECTION_NAME,
+            timeout_seconds=REQUEST_TIMEOUT_SECONDS,
+            use_vlm=USE_VLM,
     ) as retriever:
-        results = dataset[IMAGE_COLUMN].apply(
+        results = dataset[IMAGE_COLUMN].progress_apply(
             lambda image: json.dumps(
                 retriever.retrieve(PROJECT_DIR / str(image), limit=TOP_K),
                 ensure_ascii=False,

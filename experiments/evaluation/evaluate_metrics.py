@@ -9,7 +9,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 INPUT_CSV = HERE / "sorted_photos_with_retrieval.csv"
 
-K = 1
+K = 3
 TARGET_COLUMN = "slug"
 RESULT_COLUMN = "retrieval_results"
 
