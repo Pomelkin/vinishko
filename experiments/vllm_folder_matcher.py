@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 from typing import Literal
 
+import httpx2
 from openai import DefaultHttpxClient
 from openai import OpenAI
 from pydantic import BaseModel
@@ -14,9 +15,11 @@ from pydantic import Field
 from pydantic import create_model
 
 # Настройки запуска.
-VLLM_BASE_URL = "https://5214-34-147-86-224.ngrok-free.app/v1"
-VLLM_API_KEY = "EMPTY"
-MODEL = "Qwen/Qwen3.6-35B-A3B-FP8"
+# VLLM_BASE_URL = "https://5214-34-147-86-224.ngrok-free.app/v1"
+VLLM_BASE_URL = "https://openrouter.ai/api/v1"
+VLLM_API_KEY = "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"
+# MODEL = "Qwen/Qwen3.6-35B-A3B-FP8"
+MODEL = "z-ai/glm-5.3-flash"
 QUERY_IMAGE = r"E:\Pycharm Projects\vinishko\experiments\photo_viewer\sorted_photos\abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12\images.jpg"
 CANDIDATES_DIR = Path(__file__).with_name("candidates")
 REQUEST_TIMEOUT_SECONDS = 600.0
@@ -139,12 +142,14 @@ def main() -> None:
         },
     ]
 
+    httpx_client = httpx2.Client(proxy="http://127.0.0.1:12334")
+
     with OpenAI(
             base_url=VLLM_BASE_URL,
             api_key=VLLM_API_KEY,
             timeout=REQUEST_TIMEOUT_SECONDS,
             max_retries=0,
-            http_client=DefaultHttpxClient(trust_env=False),
+            http_client=httpx_client,
     ) as client:
         completion = client.chat.completions.parse(
             model=MODEL,
@@ -155,6 +160,7 @@ def main() -> None:
         )
 
     message = completion.choices[0].message
+    print(message)
     if message.parsed is None:
         raise RuntimeError(message.refusal or message.content or "Model returned no result")
     image_number = message.parsed.model_dump()["image_number"]

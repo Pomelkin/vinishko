@@ -11,7 +11,8 @@ from qdrant_client import QdrantClient
 HERE = Path(__file__).resolve().parent
 IMAGES_DIR = HERE / "data" / "images_without_garbarage"
 
-QUERY_IMAGE = Path(r"E:\Pycharm Projects\vinishko\experiments\data\images_without_garbarage\(-)_Аристов Кюве Розе_Пино_2023_0,75л_брют Normal-Photoroom.webp")
+QUERY_IMAGE = Path(
+    r"E:\Pycharm Projects\vinishko\experiments\data\images_without_garbarage\(-)_Аристов Кюве Розе_Пино_2023_0,75л_брют Normal-Photoroom.webp")
 SHOW_IMAGES = True
 TOP_K = 5
 
@@ -56,7 +57,7 @@ def show_images(results: list[tuple[str, str, float]]) -> None:
         if image is None:
             raise ValueError(f"OpenCV не смог открыть {path}")
 
-        title = f"#{rank} {slug} similarity={score:.4f}"
+        title = f"#{rank} {slug} similarity={score:.2%}"
         cv2.namedWindow(title, cv2.WINDOW_NORMAL)
         cv2.imshow(title, image)
 
@@ -87,12 +88,16 @@ def main() -> None:
         qdrant.close()
 
     results = [
-        (str(point.payload["slug"]), str(point.payload["photo"]), point.score)
+        (
+            str(point.payload["slug"]),
+            str(point.payload["photo"]),
+            point.score / len(embedding),
+        )
         for point in points
         if point.payload is not None
     ]
     for rank, (slug, _photo, score) in enumerate(results, start=1):
-        print(f"{rank}. {slug}: {score:.6f}")
+        print(f"{rank}. {slug}: {score:.2%}")
 
     if SHOW_IMAGES:
         show_images(results)

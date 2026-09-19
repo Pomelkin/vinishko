@@ -216,7 +216,7 @@ HTML = """<!doctype html>
     <aside>
       <div class="folders" id="folders"></div>
       <div class="sidebar-tools">
-        <span class="sync-state" id="syncState"><span class="sync-icon">↻</span><span>Синхронизация</span></span>
+        <span class="sync-state" id="syncState"><span class="sync-icon">↻</span><span id="labeledStats">Размечено: 0 из 0</span></span>
         <label class="hide-labeled"><input type="checkbox" id="hideLabeled"> Скрыть размеченные</label>
       </div>
       <div class="list" id="list"></div>
@@ -246,6 +246,7 @@ HTML = """<!doctype html>
     const stage = document.querySelector('#stage');
     const notice = document.querySelector('#notice');
     const syncState = document.querySelector('#syncState');
+    const labeledStats = document.querySelector('#labeledStats');
     const hideLabeled = document.querySelector('#hideLabeled');
     let syncing = false;
     const escapeText = value => value.replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
@@ -303,6 +304,7 @@ HTML = """<!doctype html>
     function applyLabeled(slugs) {
       const labeled = new Set(slugs);
       folders.forEach(folder => folder.files.forEach(file => file.labeled = labeled.has(file.name)));
+      updateLabeledStats();
       list.querySelectorAll('.item').forEach(button => {
         const file = folders[folderIndex].files[Number(button.dataset.index)];
         button.classList.toggle('labeled', file.labeled);
@@ -313,6 +315,11 @@ HTML = """<!doctype html>
         fileIndex = indexes[0] ?? 0;
         showPhoto();
       }
+    }
+
+    function updateLabeledStats() {
+      const files = folders.flatMap(folder => folder.files);
+      labeledStats.textContent = `Размечено: ${files.filter(file => file.labeled).length} из ${files.length}`;
     }
 
     async function syncLabeled() {
@@ -385,6 +392,7 @@ HTML = """<!doctype html>
 
     fetch('/api/folders').then(response => response.json()).then(data => {
       folders = data;
+      updateLabeledStats();
       selectFolder(0);
       setInterval(syncLabeled, __SYNC_INTERVAL_MS__);
     });
