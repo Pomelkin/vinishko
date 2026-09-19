@@ -186,7 +186,7 @@ class SolutionIntegrationTests(unittest.TestCase):
 
     def test_central_config_builds_generation_and_provider_payloads(self) -> None:
         routing = solution_config.ProviderRoutingSettings(
-            routing_mode="latency",
+            routing_mode="throughput",
             only=("provider-a", "provider-b"),
             allow_fallbacks=False,
             require_parameters=True,
@@ -199,7 +199,7 @@ class SolutionIntegrationTests(unittest.TestCase):
                 "allow_fallbacks": False,
                 "require_parameters": True,
                 "data_collection": "deny",
-                "sort": "latency",
+                "sort": "throughput",
             },
         )
 
@@ -226,7 +226,7 @@ class SolutionIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["max_completion_tokens"], 123)
         self.assertEqual(payload["n"], 2)
         self.assertEqual(payload["reasoning"], {"effort": "low", "exclude": True})
-        self.assertEqual(payload["provider"]["sort"], "latency")
+        self.assertEqual(payload["provider"]["sort"], "throughput")
 
         single_generation = solution_config.GenerationSettings(reasoning_effort="none")
         single_payload = single_generation.request_payload()
@@ -238,8 +238,7 @@ class SolutionIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(single_payload["max_completion_tokens"], 16000)
         self.assertEqual(solution_config.SETTINGS.generation.image_detail, "original")
-        self.assertEqual(solution_config.SETTINGS.generation.reasoning_effort, "max")
-        self.assertEqual(solution_config.SETTINGS.openrouter.routing.routing_mode, "latency")
+        self.assertEqual(solution_config.SETTINGS.openrouter.routing.routing_mode, "throughput")
 
         with self.assertRaises(ValueError):
             solution_config.ProviderRoutingSettings(

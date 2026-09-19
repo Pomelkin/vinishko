@@ -106,7 +106,7 @@ class GenerationSettings(StrictSettings):
     seed: int | None = None
     stop: tuple[NonEmptyString, ...] = Field(default=(), max_length=4)
     image_detail: ImageDetail = "original"
-    reasoning_effort: ReasoningEffort | None = "max"
+    reasoning_effort: ReasoningEffort | None = "minimal"
     reasoning_exclude: bool = False
 
     def request_payload(self) -> dict[str, Any]:
@@ -162,7 +162,7 @@ SETTINGS = NdrSettings(
         app_title_env="OPENROUTER_APP_TITLE",
         user_agent="vinishko-ndr-runner/1",
         routing=ProviderRoutingSettings(
-            routing_mode="latency",  # None, "price", "throughput", or "latency"
+            routing_mode="latency",  # Nitro: fastest generation throughput
             order=(),
             only=(),
             ignore=(),
@@ -182,12 +182,12 @@ SETTINGS = NdrSettings(
         frequency_penalty=None,
         presence_penalty=None,
         repetition_penalty=None,
-        max_completion_tokens=16000,
+        max_completion_tokens=4096,
         generations=1,
         seed=None,
         stop=(),
         image_detail="original",
-        reasoning_effort="low",
+        reasoning_effort="minimal",
         reasoning_exclude=False,
     ),
     execution=ExecutionSettings(

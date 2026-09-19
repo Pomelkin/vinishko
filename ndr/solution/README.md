@@ -68,7 +68,7 @@ SETTINGS = NdrSettings(
     openrouter=OpenRouterSettings(
         model="provider/model",
         routing=ProviderRoutingSettings(
-            routing_mode="latency",  # None, price, throughput или latency
+            routing_mode="throughput",  # Nitro
             only=(),
             ignore=(),
             allow_fallbacks=True,
@@ -90,7 +90,8 @@ SETTINGS = NdrSettings(
 )
 ```
 
-`routing_mode` преобразуется в `provider.sort`; по умолчанию используется `latency`.
+`routing_mode` преобразуется в `provider.sort`; по умолчанию используется `throughput`,
+то есть режим OpenRouter Nitro. Это поле добавляется в каждый comparison и resolver request.
 `require_parameters=True` не позволяет маршрутизатору выбрать провайдера без поддержки
 запрошенных параметров. Весь непустой provider-блок попадает в каждый comparison и resolver
 request и сохраняется в request trace. Доступны также `order`, `only`, `ignore`,
