@@ -3404,6 +3404,7 @@ dependencies = [
 dev = [
     { name = "ipykernel" },
     { name = "ipywidgets" },
+    { name = "polars" },
 ]
 scripts = [
     { name = "httpx" },
@@ -3441,6 +3442,7 @@ requires-dist = [
 dev = [
     { name = "ipykernel", specifier = ">=7.3.0" },
     { name = "ipywidgets", specifier = ">=8.1.9" },
+    { name = "polars", specifier = ">=1.44.2" },
 ]
 scripts = [
     { name = "httpx", specifier = ">=0.28.1" },
