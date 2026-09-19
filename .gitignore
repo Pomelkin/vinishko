@@ -227,3 +227,5 @@ data/strapi/strapi_output0709.csv
 data/test
 
 .DS_Store
+
+ndr/results

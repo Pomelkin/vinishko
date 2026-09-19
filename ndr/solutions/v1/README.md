@@ -1,22 +1,71 @@
-# NDR solution: запуск
+# NDR solution v1: схема structured output в system prompt
+
+## Гипотеза эксперимента
+
+Baseline передавал JSON Schema только в `response_format`. DeepSeek в шести вызовах не видел
+форму ответа, начинал рассуждение с `Need infer schema?`, исчерпывал 4096 токенов и возвращал
+`finish_reason=length`. В v1 точная схема из той же Pydantic-модели дополнительно включается в
+system prompt каждого вызова. Для resolver туда попадает динамический enum допустимых slug.
+
+Других изменений относительно baseline нет: pipeline, prompts, модели данных, параметры
+генерации и routing сохранены. Ретраев и исправления невалидного JSON нет; любая ошибка
+сохраняется runner-ом как результат эксперимента.
 
 Из корня репозитория в PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 # Заполните OPENROUTER_API_KEY; остальные настройки — в этой папке, config.py
-python ndr/run/run.py --solution baseline
+python ndr/run/run.py --solution v1
 ```
 
-Результаты: новый каталог `ndr/results/baseline/<UTC timestamp>/` на каждый прогон.
+Результаты: новый каталог `ndr/results/v1/<UTC timestamp>/` на каждый прогон.
 
-Все постоянные настройки находятся в одном файле: `ndr/solutions/baseline/config.py`, блок `SETTINGS`.
+Все постоянные настройки находятся в одном файле: `ndr/solutions/v1/config.py`, блок `SETTINGS`.
 Там задаются модель и endpoint, параметры генерации, reasoning, routing провайдеров, timeout,
 concurrency и seed порядка кандидатов. API-ключ остаётся в переменной окружения.
 
-Чтобы создать независимую версию, скопируйте всю папку `baseline` под новым именем и
-запускайте её через `--solution <новое-имя>`. Runner не копирует solution в results, но
-сохраняет путь, по-файловые SHA-256 и общий fingerprint на момент запуска.
+Чтобы создать независимую версию, скопируйте всю папку предыдущего solution под новым именем и
+запускайте её через `--solution <новое-имя>`. Runner не копирует solution в results, но сохраняет
+его путь, по-файловые SHA-256 и общий fingerprint на момент запуска. Уже прогнанную версию
+после этого не изменяйте.
+
+## Анализ baseline
+
+Baseline прогнан на `deepseek/deepseek-v4.1-flash`, 51 кейсе и concurrency 16. Headline accuracy
+runner-а — 43/45 = 95,56%, но она условная: шесть contract errors исключены из знаменателя.
+Сквозной результат без сокрытия ошибок — **43/51 = 84,31%**.
+
+| Показатель | Baseline |
+|---|---:|
+| Верных / всех кейсов | 43 / 51 |
+| Сквозная accuracy | 84,31% |
+| Условная accuracy runner-а | 95,56% |
+| Contract errors | 6 |
+| Predictor/HTTP errors | 0 |
+| Неверный slug | 1 |
+| `not_found` вместо gold | 1 |
+| Latency p50 / p95 / max | 29,21 / 72,45 / 121,08 с |
+| Model requests | 265 |
+| Prompt / completion tokens | 436386 / 234420 |
+| Стоимость | $0,291835 |
+
+Шесть ошибок `q-000033`, `q-000034`, `q-000039`, `q-000042`, `q-000044` и `q-000046`
+одинаковы: HTTP 200, затем текст `Need infer schema?`, ровно 4096 completion tokens,
+`finish_reason=length` и невалидный JSON. Это непосредственно проверяемая причина изменения v1.
+
+Оставшиеся два промаха не относятся к отсутствующей схеме:
+
+- `q-000045`: QUERY явно подписан `BLANC DE BLANCS BRUT 2019`, а Эталон и карточка gold-slug —
+  `EXTRA BRUT 2019`. Модель последовательно отметила конфликт сахара. Это несогласованность
+  QUERY/Эталона/карточки с folder-derived gold, а не подтверждённая ошибка распознавания.
+- `q-000050`: сравнение ошибочно приняло за `same` и сухой, и полусухой Millstream AV;
+  resolver выбрал полусухой. В observation модель прямо приписала QUERY слово «полусухое».
+  Это семантическая/OCR-ошибка на минимальном различии этикеток.
+
+Pipeline также дорог для product SLA: каждый QUERY сравнивается с кандидатами отдельными
+вызовами, поэтому baseline сделал 265 запросов, а p50 составил 29,21 с. Это отдельная гипотеза
+для следующей версии; v1 её намеренно не смешивает с исправлением контракта.
 
 ## Pipeline
 

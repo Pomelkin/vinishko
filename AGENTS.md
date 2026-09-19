@@ -28,6 +28,9 @@ SLA < 3 с. Вес критериев: достоверность выдачи 5
   **обязательно прочитать и применять** `.agents/skills/near-duplicates/SKILL.md`.
 - Инварианты текущего отфильтрованного реестра проверяются командой
   `python .agents/skills/near-duplicates/scripts/validate.py`.
+- Для цикла экспериментов NDR/NRP, анализа baseline, создания версий в `ndr/solutions/`
+  и сравнения прогонов из `ndr/results/` **обязательно прочитать и применять**
+  `.agents/skills/ndr-experiments/SKILL.md`.
 
 ## Контракт со скриптом оценки (главное ограничение)
 

@@ -21,9 +21,10 @@ python ndr/run/run.py `
   --results-dir ndr/results
 ```
 
-Каждый вызов создаёт новый каталог
-`ndr/results/<solution>/<UTC timestamp>/` с `run.json`, `metrics.json`, `by_case/` и точной
-копией запущенного solution в `solution/`. Старые эксперименты не перезаписываются.
+Каждый вызов создаёт новый каталог `ndr/results/<solution>/<UTC timestamp>/` с `run.json`,
+`metrics.json` и `by_case/`. Папка solution не копируется; в `run.json` записываются её путь,
+по-файловые SHA-256 и общий fingerprint на момент запуска. Старые эксперименты не
+перезаписываются.
 
 ## Dataset
 

@@ -580,7 +580,7 @@ class RunnerTests(unittest.TestCase):
             first = runs[0]
             self.assertTrue((first / "run.json").is_file())
             self.assertTrue((first / "metrics.json").is_file())
-            self.assertTrue((first / "solution" / "predictor.py").is_file())
+            self.assertFalse((first / "solution").exists())
             self.assertEqual(len(list((first / "by_case").glob("*.json"))), 2)
             self.assertEqual(
                 json.loads((first / "metrics.json").read_text(encoding="utf-8"))["quality"]["queries"],

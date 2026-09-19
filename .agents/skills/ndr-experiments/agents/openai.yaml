@@ -1,0 +1,4 @@
+interface:
+  display_name: "NDR Experiments"
+  short_description: "Run traceable no-retry NDR improvement cycles"
+  default_prompt: "Use $ndr-experiments to analyze the latest NDR run and create the next isolated experiment."

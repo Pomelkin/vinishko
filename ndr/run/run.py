@@ -42,14 +42,6 @@ REQUIRED_SOLUTION_FILES = (
     "prompts/compare_year_not_matter.txt",
     "prompts/resolve_multiple_same.txt",
 )
-SOLUTION_SNAPSHOT_IGNORES = shutil.ignore_patterns(
-    "__pycache__",
-    "*.pyc",
-    "*.pyo",
-    ".DS_Store",
-)
-
-
 class RunnerError(RuntimeError):
     """Raised for runner configuration or dataset errors."""
 
@@ -221,12 +213,6 @@ def run_timestamp(moment: datetime | None = None) -> str:
     """Return a sortable, Windows-safe UTC timestamp with collision headroom."""
     value = moment or datetime.now(UTC)
     return value.strftime("%Y%m%dT%H%M%S.%fZ")
-
-
-def snapshot_solution(source: Path, destination: Path) -> tuple[str, dict[str, str]]:
-    """Copy a solution into a run and fingerprint the exact immutable snapshot."""
-    shutil.copytree(source, destination, ignore=SOLUTION_SNAPSHOT_IGNORES)
-    return solution_manifest(destination)
 
 
 def absolute_repo_path(value: str) -> Path:
@@ -706,41 +692,37 @@ def main() -> int:
             args.solution,
             timestamp,
         )
-        snapshot_path = results_dir / "solution"
-        solution_fingerprint, solution_file_hashes = snapshot_solution(
-            source_solution,
-            snapshot_path,
-        )
+        solution_fingerprint, solution_file_hashes = solution_manifest(source_solution)
 
         predictor_path = (
             args.predictor.resolve()
             if args.predictor is not None
-            else snapshot_path / "predictor.py"
+            else source_solution / "predictor.py"
         )
         module, predict = load_predictor(predictor_path)
         prompt_paths = {
             "compare_year_matters": (
                 args.compare_year_matters_prompt.resolve()
                 if args.compare_year_matters_prompt is not None
-                else snapshot_path / "prompts" / "compare_year_matters.txt"
+                else source_solution / "prompts" / "compare_year_matters.txt"
             ),
             "compare_year_not_matter": (
                 args.compare_year_not_matter_prompt.resolve()
                 if args.compare_year_not_matter_prompt is not None
-                else snapshot_path / "prompts" / "compare_year_not_matter.txt"
+                else source_solution / "prompts" / "compare_year_not_matter.txt"
             ),
             "resolve_multiple_same": (
                 args.resolve_multiple_prompt.resolve()
                 if args.resolve_multiple_prompt is not None
-                else snapshot_path / "prompts" / "resolve_multiple_same.txt"
+                else source_solution / "prompts" / "resolve_multiple_same.txt"
             ),
         }
         prompts = {
             key: {"path": str(path), "content": path.read_text(encoding="utf-8")}
             for key, path in prompt_paths.items()
         }
-        output_models_path = snapshot_path / "models.py"
-        config_path = snapshot_path / "config.py"
+        output_models_path = source_solution / "models.py"
+        config_path = source_solution / "config.py"
     except (OSError, RunnerError, json.JSONDecodeError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
@@ -778,7 +760,6 @@ def main() -> int:
             "solution": {
                 "name": args.solution,
                 "source_path": str(source_solution),
-                "snapshot_path": str(snapshot_path),
                 "fingerprint": solution_fingerprint,
                 "files": solution_file_hashes,
             },
