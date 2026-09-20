@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 import os
+import shutil
 from collections import Counter
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Iterator
 from dataclasses import dataclass
@@ -37,6 +38,8 @@ CHUNK = 1 << 20
 BATCH_ROWS = 256
 VAL_FRAC = 0.1
 MIN_VAL_CLASS_SIZE = 2
+TRAIN_FULL = "train_full"  # json с полным train до среза командой trim
+EXTRA_SUFFIX = "-extra"  # соседний датасет, куда trim уносит срезанное
 
 OFF_API = "https://world.openfoodfacts.org/api/v2/search"
 OFF_CATEGORY = "wines"
@@ -476,8 +479,7 @@ def unpack_source(
     progress.remove_task(task)
     parts = split_labels(source.role, labels, val_frac)
     for name, part in parts.items():
-        with (out / f"{name}.json").open("w", encoding="utf-8") as f:
-            json.dump(part, f, ensure_ascii=False, indent=0)
+        dump_json(out / f"{name}.json", part)
     stats = ", ".join(
         f"{name} {len(part)} images / {len(set(part.values()))} classes"
         for name, part in parts.items()
@@ -512,7 +514,7 @@ README = """\
 
 Сплит по классам, а не по картинкам: все картинки класса попадают в одну часть, классы train и val не пересекаются. Класс попадает в val-долю детерминированно, по хэшу метки (blake2b), доля `--val-frac` = {val_frac}. Внутри val-доли:
 
-- `train.json` — классы для обучения, включая одиночные (одна картинка на класс).
+- `train.json` — классы для обучения, включая одиночные (одна картинка на класс). Команда `trim` срезает его по размеру класса: мелкие классы и излишек фото крупных классов переносятся в соседний датасет `<dataset>-extra` того же формата, полный список остаётся в `train_full.json`. val и val_distractors срез не трогает.
 - `val.json` — классы с ≥{min_val} картинками. Одновременно галерея и запросы, схема leave-one-out: каждая картинка ищет среди всех остальных картинок val.
 - `val_distractors.json` — одиночные классы из val-доли. Запросы, у которых в галерее нет ни одного позитива; правильный ответ на них — «не найдено». Нужны для калибровки порога отказа: скор top-1 и отрыв top-1 от top-2 на val против дистракторов.
 
@@ -577,6 +579,74 @@ def unpack_all(
                 source, raw / source.name, out / source.name, progress, limit, val_frac
             )
     write_readme(out, val_frac)
+
+
+# ---------- срез train ----------
+
+
+def photo_order(name: str) -> int:
+    """Порядок фото внутри класса по хэшу имени: какие фото переживут потолок, не зависит от порядка в json."""
+    return int.from_bytes(hashlib.blake2b(name.encode(), digest_size=8).digest(), "big")
+
+
+def trimmed(full: dict[str, str], min_size: int, cap: int | None) -> dict[str, str]:
+    """Срез train: классы не мельче min_size, из класса крупнее cap остаются cap фото с наименьшим photo_order."""
+    by_class: dict[str, list[str]] = {}
+    for name, label in full.items():
+        by_class.setdefault(label, []).append(name)
+    kept = {
+        name
+        for names in by_class.values()
+        if len(names) >= min_size
+        for name in sorted(names, key=photo_order)[:cap]
+    }
+    return {name: label for name, label in full.items() if name in kept}
+
+
+def load_json(path: Path) -> dict[str, str]:
+    """Json вида {имя картинки: метка}; пустой словарь, если файла нет."""
+    if not path.exists():
+        return {}
+    with path.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+def dump_json(path: Path, labels: dict[str, str]) -> None:
+    """Пишет {имя картинки: метка}, по записи на строку."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(labels, f, ensure_ascii=False, indent=0)
+
+
+def move_images(
+    names: list[str], src: Path, dst: Path, progress: Progress, title: str
+) -> None:
+    """Переносит картинки из src в dst. Уже перенесённые пропускает: прерванный перенос можно повторить."""
+    dst.mkdir(parents=True, exist_ok=True)
+    task = progress.add_task(title, name=title, total=len(names))
+    for name in names:
+        if (src / name).exists():
+            shutil.move(src / name, dst / name)
+        progress.update(task, advance=1)
+
+
+def trim_table(
+    train: dict[str, str],
+    extra: dict[str, str],
+    new_train: dict[str, str],
+    new_extra: dict[str, str],
+) -> Table:
+    """Что было и что станет: фото и классы в train и в extra."""
+    table = Table("", "фото было", "классов было", "фото станет", "классов станет")
+    for title, old, new in (("train", train, new_train), ("extra", extra, new_extra)):
+        table.add_row(
+            title,
+            str(len(old)),
+            str(len(set(old.values()))),
+            str(len(new)),
+            str(len(set(new.values()))),
+        )
+    return table
 
 
 # ---------- состояние на диске ----------
@@ -830,6 +900,96 @@ def unpack(
 ) -> None:
     """Только разворот RAW/<dataset> в OUT/<dataset>/images и json-файлы роли."""
     unpack_all(raw, out, selected(datasets), limit, val_frac)
+
+
+@cli.command()
+@click.argument(
+    "dataset", type=click.Path(exists=True, file_okay=False, path_type=Path)
+)
+@click.option(
+    "--min-size",
+    type=click.IntRange(min=1),
+    required=True,
+    help="Класс остаётся в train, если в полном train у него не меньше стольких фото",
+)
+@click.option(
+    "--cap",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Не больше стольких фото на класс; какие остаются, решает хэш имени файла. По умолчанию без потолка",
+)
+@click.option(
+    "--added-list",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Куда записать имена фото, которые срез добавил в train: их нужно довезти до копий датасета и доразметить",
+)
+@click.option(
+    "--apply",
+    is_flag=True,
+    help="Перенести картинки и переписать json; без флага команда только показывает, что изменится",
+)
+def trim(
+    dataset: Path, min_size: int, cap: int | None, added_list: Path | None, apply: bool
+) -> None:
+    """Срезает train.json датасета DATASET по размеру класса; срезанное лежит в соседнем датасете DATASET-extra.
+
+    Размер класса считается по полному train: это train_full.json, а пока его нет — train.json вместе с train.json из extra.
+    Поэтому команду можно запускать повторно с другими порогами: срез каждый раз строится заново из полного списка,
+    картинки переезжают между images двух датасетов в обе стороны. Мелкие классы уходят в extra целиком,
+    у классов крупнее --cap уходит излишек фото, метка у него та же. val.json и val_distractors.json не меняются.
+    """
+    extra_dir = dataset.with_name(dataset.name + EXTRA_SUFFIX)
+    train = load_json(dataset / "train.json")
+    extra = load_json(extra_dir / "train.json")
+    full = load_json(dataset / f"{TRAIN_FULL}.json") or {**extra, **train}
+    if set(full) != set(train) | set(extra):
+        raise click.ClickException(
+            f"{TRAIN_FULL}.json не совпадает с объединением train.json и {extra_dir.name}/train.json: "
+            f"{len(full)} против {len(set(train) | set(extra))} фото"
+        )
+    new_train = trimmed(full, min_size, cap)
+    new_extra = {name: label for name, label in full.items() if name not in new_train}
+    to_train = [name for name in new_train if name not in train]
+    to_extra = [name for name in new_extra if name not in extra]
+    console.print(trim_table(train, extra, new_train, new_extra))
+    console.print(
+        f"переедет в train {len(to_train)} фото, из train в {extra_dir.name} {len(to_extra)} фото"
+    )
+    if not apply:
+        console.print(
+            "[yellow]сухой прогон[/]: с --apply картинки переедут, json перепишутся"
+        )
+        return
+    lost = [
+        name
+        for name in full
+        if not (dataset / "images" / name).exists()
+        and not (extra_dir / "images" / name).exists()
+    ]
+    if lost:
+        raise click.ClickException(
+            f"{len(lost)} фото из полного train нет ни в одном images, например {lost[:3]}"
+        )
+    with count_progress() as progress:
+        move_images(
+            to_train, extra_dir / "images", dataset / "images", progress, "в train"
+        )
+        move_images(
+            to_extra, dataset / "images", extra_dir / "images", progress, "в extra"
+        )
+    dump_json(dataset / f"{TRAIN_FULL}.json", full)
+    dump_json(dataset / "train.json", new_train)
+    dump_json(extra_dir / "train.json", new_extra)
+    if added_list is not None:
+        added_list.write_text(
+            "".join(f"{name}\n" for name in to_train), encoding="utf-8"
+        )
+    if (dataset.parent / "README.md").exists():
+        write_readme(dataset.parent, VAL_FRAC)
+    console.print(
+        f"[green]done[/] train: {len(new_train)} фото, {extra_dir.name}: {len(new_extra)} фото"
+    )
 
 
 if __name__ == "__main__":
