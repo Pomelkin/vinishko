@@ -220,3 +220,5 @@ __marimo__/
 /datasets/
 sam3.pt
 weights/
+# Результаты прогонов обучения: в git идёт только config.yaml эксперимента
+vis_seacher_training/experiments/*/*/
