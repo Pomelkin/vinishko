@@ -33,6 +33,7 @@ from ndr.solutions.v2 import predictor as v2_predictor  # noqa: E402
 from ndr.solutions.v3 import predictor as v3_predictor  # noqa: E402
 from ndr.solutions.v4 import predictor as v4_predictor  # noqa: E402
 from ndr.solutions.v6 import predictor as v6_predictor  # noqa: E402
+from ndr.solutions.v7 import predictor as v7_predictor  # noqa: E402
 try:
     from ndr.solutions.v5 import predictor as v5_predictor  # noqa: E402
 except ModuleNotFoundError as error:  # v5 is optional until its experiment exists.
@@ -50,6 +51,7 @@ RETRY_PREDICTORS = (
 SINGLE_ATTEMPT_PREDICTORS = (
     ("v4", v4_predictor),
     ("v6", v6_predictor),
+    ("v7", v7_predictor),
 )
 if v5_predictor is not None:
     SINGLE_ATTEMPT_PREDICTORS += (("v5", v5_predictor),)
@@ -768,6 +770,13 @@ class SolutionIntegrationTests(unittest.TestCase):
 
 class RunnerTests(unittest.TestCase):
     """Protect dotenv loading, aggregate metrics, and result artifacts."""
+
+    def test_solution_can_declare_one_named_prompt(self) -> None:
+        solution = REPO / "ndr" / "solutions" / "v7"
+        self.assertEqual(
+            runner.solution_prompt_paths(solution),
+            {"select_nearest": solution / "prompts" / "select_nearest.txt"},
+        )
 
     def test_copied_solution_is_discovered_selected_and_versioned(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

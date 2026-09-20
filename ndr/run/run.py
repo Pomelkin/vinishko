@@ -38,15 +38,18 @@ REQUIRED_SOLUTION_FILES = (
     "config.py",
     "models.py",
     "predictor.py",
-    "prompts/compare_year_matters.txt",
-    "prompts/compare_year_not_matter.txt",
-    "prompts/resolve_multiple_same.txt",
 )
+LEGACY_PROMPT_FILES = {
+    "compare_year_matters": "prompts/compare_year_matters.txt",
+    "compare_year_not_matter": "prompts/compare_year_not_matter.txt",
+    "resolve_multiple_same": "prompts/resolve_multiple_same.txt",
+}
 class RunnerError(RuntimeError):
     """Raised for runner configuration or dataset errors."""
 
 
 ENV_KEY_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
+PROMPT_KEY_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 REASONING_EFFORT_NAMES = frozenset(
     {"none", "minimal", "low", "medium", "high", "xhigh", "max"},
 )
@@ -138,6 +141,32 @@ def load_predictor(path: Path) -> tuple[ModuleType, Callable[[dict[str, Any]], A
     return module, predict
 
 
+def solution_prompt_paths(path: Path) -> dict[str, Path]:
+    """Load and validate the prompt mapping declared by one solution."""
+    module = load_solution_module(path / "config.py")
+    configured = getattr(module, "PROMPT_FILES", LEGACY_PROMPT_FILES)
+    if not isinstance(configured, Mapping) or not configured:
+        raise RunnerError("PROMPT_FILES must be a non-empty mapping")
+
+    root = path.resolve()
+    prompts: dict[str, Path] = {}
+    for key, relative in configured.items():
+        if not isinstance(key, str) or not PROMPT_KEY_PATTERN.fullmatch(key):
+            raise RunnerError(f"invalid PROMPT_FILES key: {key!r}")
+        if not isinstance(relative, str) or not relative.strip():
+            raise RunnerError(f"PROMPT_FILES[{key!r}] must be a relative path string")
+        relative_path = Path(relative)
+        if relative_path.is_absolute():
+            raise RunnerError(f"PROMPT_FILES[{key!r}] must be relative to the solution")
+        prompt_path = (root / relative_path).resolve()
+        if root not in prompt_path.parents:
+            raise RunnerError(f"PROMPT_FILES[{key!r}] escapes the solution directory")
+        if not prompt_path.is_file():
+            raise RunnerError(f"configured prompt does not exist: {prompt_path}")
+        prompts[key] = prompt_path
+    return dict(sorted(prompts.items()))
+
+
 def solution_path(solutions_dir: Path, name: str) -> Path:
     """Resolve one direct-child solution folder name without path traversal."""
     if not name.strip() or name in {".", ".."} or Path(name).name != name:
@@ -151,6 +180,7 @@ def solution_path(solutions_dir: Path, name: str) -> Path:
         raise RunnerError(
             f"solution {name!r} is incomplete; missing: {', '.join(missing)}",
         )
+    solution_prompt_paths(path)
     return path
 
 
@@ -162,8 +192,13 @@ def discover_solutions(solutions_dir: Path) -> list[str]:
     for child in solutions_dir.iterdir():
         if not child.is_dir():
             continue
-        if all((child / relative).is_file() for relative in REQUIRED_SOLUTION_FILES):
-            names.append(child.name)
+        if not all((child / relative).is_file() for relative in REQUIRED_SOLUTION_FILES):
+            continue
+        try:
+            solution_prompt_paths(child)
+        except (ImportError, OSError, RunnerError, TypeError, ValueError):
+            continue
+        names.append(child.name)
     return sorted(names, key=str.casefold)
 
 
@@ -766,23 +801,20 @@ def main() -> int:
             else source_solution / "predictor.py"
         )
         module, predict = load_predictor(predictor_path)
-        prompt_paths = {
-            "compare_year_matters": (
-                args.compare_year_matters_prompt.resolve()
-                if args.compare_year_matters_prompt is not None
-                else source_solution / "prompts" / "compare_year_matters.txt"
-            ),
-            "compare_year_not_matter": (
-                args.compare_year_not_matter_prompt.resolve()
-                if args.compare_year_not_matter_prompt is not None
-                else source_solution / "prompts" / "compare_year_not_matter.txt"
-            ),
-            "resolve_multiple_same": (
-                args.resolve_multiple_prompt.resolve()
-                if args.resolve_multiple_prompt is not None
-                else source_solution / "prompts" / "resolve_multiple_same.txt"
-            ),
+        prompt_paths = solution_prompt_paths(source_solution)
+        prompt_overrides = {
+            "compare_year_matters": args.compare_year_matters_prompt,
+            "compare_year_not_matter": args.compare_year_not_matter_prompt,
+            "resolve_multiple_same": args.resolve_multiple_prompt,
         }
+        for key, override in prompt_overrides.items():
+            if override is None:
+                continue
+            if key not in prompt_paths:
+                raise RunnerError(
+                    f"solution {args.solution!r} does not configure prompt {key!r}",
+                )
+            prompt_paths[key] = override.resolve()
         prompts = {
             key: {"path": str(path), "content": path.read_text(encoding="utf-8")}
             for key, path in prompt_paths.items()
