@@ -1,3 +1,4 @@
+import shutil
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -20,6 +21,10 @@ class TokenStore:
 
     def __len__(self) -> int:
         return len(self.lengths)
+
+    def __getstate__(self) -> dict:
+        """Воркеру уходит описание файла, а не отображённые в память токены: он откроет файл сам."""
+        return {k: v for k, v in self.__dict__.items() if k != "tokens"}
 
     @cached_property
     def offsets(self) -> np.ndarray:
@@ -54,3 +59,13 @@ class TokenStore:
                 start, longest = row, int(length)
         blocks.append(np.arange(start, len(self)))
         return blocks
+
+
+def join_parts(parts: list[Path], lengths: list[np.ndarray], path: Path, dim: int) -> TokenStore:
+    """Склеивает куски, записанные разными устройствами, в один файл в порядке сплита; куски удаляются."""
+    with path.open("wb") as out:
+        for part in parts:
+            with part.open("rb") as f:
+                shutil.copyfileobj(f, out, 1 << 24)
+            part.unlink()
+    return TokenStore(path, dim, np.concatenate(lengths))

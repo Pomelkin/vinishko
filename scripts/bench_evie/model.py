@@ -1,18 +1,22 @@
+import gc
 import os
-import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
 from PIL import Image
-from rich.progress import Progress
 from torch.utils.data import DataLoader
 
 from scripts.bench_common.data import Split
 from scripts.bench_common.data import Views
 from scripts.bench_common.data import init_worker
-from scripts.bench_evie.store import TokenStore
+from scripts.bench_common.parallel import Advance
+from scripts.bench_common.parallel import EmbedTask
+from scripts.bench_common.parallel import pick_dtype
+from scripts.bench_evie.search import SearchTask
+from scripts.bench_evie.search import search
 from vinishko.pipeline.steps.vis_searcher import ColQwen3_5
 from vinishko.pipeline.steps.vis_searcher import ColQwen3_5Processor
 from vinishko.pipeline.steps.vis_searcher.modeling_colqwen3_5 import DEFAULT_HEAD_DIMS
@@ -56,27 +60,14 @@ class Collate:
 
 
 @torch.inference_mode()
-def embed(
-    model: ColQwen3_5,
-    processor: ColQwen3_5Processor,
-    split: Split,
-    render_cfg: dict,
-    path: Path,
-    dim: int,
-    device: torch.device,
-    batch_size: int,
-    workers: int,
-    progress: Progress,
-) -> tuple[TokenStore, float]:
-    """Пишет в path токены всех картинок сплита и возвращает хранилище и время прогона в секундах вместе с чтением и предобработкой.
+def embed(model: ColQwen3_5, processor: ColQwen3_5Processor, split: Split, render_cfg: dict, path: Path, device: torch.device, batch_size: int, workers: int, advance: Advance) -> np.ndarray:
+    """Пишет в path токены всех картинок сплита подряд, в float16, и возвращает число токенов каждой картинки.
 
     Токены картинки — все позиции её последовательности, включая служебные и промпт процессора: так же документы кодирует пайплайн.
-    Векторы L2-нормированы моделью; на диск идут в float16.
+    Векторы L2-нормированы моделью.
     """
     loader = DataLoader(Views(split, keep_image, render_cfg), batch_size=batch_size, num_workers=workers, collate_fn=Collate(processor), pin_memory=device.type == "cuda", worker_init_fn=init_worker)
-    task = progress.add_task(split.role, name=f"эмбеддинги {split.role}", total=len(split))
     lengths: list[int] = []
-    started = time.perf_counter()
     with path.open("wb") as f:
         for batch, rows in loader:
             if rows != list(range(len(lengths), len(lengths) + len(rows))):
@@ -88,5 +79,34 @@ def embed(
                 kept = vectors[mask].to(torch.float16).cpu().numpy()
                 f.write(kept.tobytes())
                 lengths.append(len(kept))
-            progress.update(task, advance=len(rows))
-    return TokenStore(path, dim, np.array(lengths, np.int64)), time.perf_counter() - started
+            advance(len(rows))
+    return np.array(lengths, np.int64)
+
+
+@dataclass(frozen=True)
+class UnloadTask:
+    """Выгрузить модель: эмбеддинги посчитаны, память устройства нужна поиску."""
+
+
+class EvieWorker:
+    """Воркер одного устройства: сначала считает эмбеддинги своей части сплитов, затем выгружает модель и ищет MaxSim по своей доле запросов."""
+
+    def __init__(self, device: torch.device, model_id: str, attn: str | None, dim: int, max_visual_tokens: int | None, render_cfg: dict, batch_size: int, workers: int) -> None:
+        self.device, self.render_cfg, self.batch_size, self.workers = device, render_cfg, batch_size, workers
+        self.dtype = pick_dtype(device)
+        attn = attn or pick_attn(device, self.dtype)
+        self.model: ColQwen3_5 | None
+        self.model, self.processor = load_model(model_id, device, self.dtype, attn, dim, max_visual_tokens)
+        self.info = {"dtype": str(self.dtype), "attn": attn}
+
+    def __call__(self, task: EmbedTask | UnloadTask | SearchTask, advance: Advance) -> Any:
+        if isinstance(task, SearchTask):
+            return search(task.gallery, task.queries, task.rows, task.exclude_self, self.device, self.dtype, advance)
+        if isinstance(task, UnloadTask):
+            self.model = None
+            gc.collect()
+            torch.cuda.empty_cache()
+            return None
+        if self.model is None:
+            raise RuntimeError("модель уже выгружена: эмбеддинги считаются до поиска")
+        return embed(self.model, self.processor, task.split, self.render_cfg, task.path, self.device, self.batch_size, self.workers, advance)

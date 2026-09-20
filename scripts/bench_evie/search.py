@@ -1,16 +1,31 @@
+from dataclasses import dataclass
+
 import numpy as np
 import torch
-from rich.progress import Progress
 
-from scripts.bench_common.data import Split
 from scripts.bench_common.metrics import TOP
-from scripts.bench_common.metrics import Retrieval
+from scripts.bench_common.parallel import Advance
 from scripts.bench_evie.store import TokenStore
 from vinishko.pipeline.steps.vis_searcher.utils.maxsim import maxsim_inbatch
 
 QUERY_BATCH = 16
 BLOCK_BYTES = 1 << 30  # блок галереи на устройстве
 PAIR_BYTES = 1 << 30  # матрица сходств токенов одного вызова MaxSim, если считает эталонный einsum, а не слитое ядро
+
+
+def gallery_blocks(gallery: TokenStore, dtype: torch.dtype) -> list[np.ndarray]:
+    """Блоки галереи, которые по очереди проходят через устройство; их число нужно и главному процессу, для длины бара."""
+    return gallery.blocks(BLOCK_BYTES // (gallery.dim * dtype.itemsize))
+
+
+@dataclass(frozen=True)
+class SearchTask:
+    """Найти для запросов rows хранилища queries лучшие картинки галереи."""
+
+    gallery: TokenStore
+    queries: TokenStore
+    rows: np.ndarray
+    exclude_self: bool
 
 
 @torch.inference_mode()
@@ -21,8 +36,7 @@ def search(
     exclude_self: bool,
     device: torch.device,
     dtype: torch.dtype,
-    progress: Progress,
-    name: str,
+    advance: Advance,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Точный MaxSim каждого запроса со всей галереей: TOP лучших картинок и их скоры.
 
@@ -30,9 +44,8 @@ def search(
     Порядок выдачи деление не меняет, зато скоры запросов разной длины становятся сравнимы, а без этого порог отказа не поставить.
     Галерея проходит через устройство блоками по BLOCK_BYTES, внутри блока идут батчи запросов; exclude_self убирает из выдачи сам запрос.
     """
-    itemsize = torch.empty(0, dtype=dtype).element_size()
-    blocks = gallery.blocks(BLOCK_BYTES // (gallery.dim * itemsize))
-    task = progress.add_task(name, name=f"поиск {name}", total=len(rows) * len(blocks))
+    itemsize = dtype.itemsize
+    blocks = gallery_blocks(gallery, dtype)
     best_scores = torch.full((len(rows), TOP), -torch.inf, device=device)
     best_ids = torch.full((len(rows), TOP), -1, dtype=torch.long, device=device)
     for block in blocks:
@@ -51,16 +64,5 @@ def search(
             top = merged_scores.topk(TOP, dim=1)
             best_scores[start : start + len(batch)] = top.values
             best_ids[start : start + len(batch)] = merged_ids.gather(1, top.indices)
-            progress.update(task, advance=len(batch))
+            advance(len(batch))
     return best_scores.cpu().numpy(), best_ids.cpu().numpy()
-
-
-def retrieve_val(split: Split, store: TokenStore, rows: np.ndarray, device: torch.device, dtype: torch.dtype, progress: Progress) -> Retrieval:
-    """Каждый запрос val ищет среди всех остальных картинок val."""
-    return Retrieval(split, rows, *search(store, store, rows, True, device, dtype, progress, split.role))
-
-
-def retrieve_rejects(split: Split, store: TokenStore, gallery: TokenStore, device: torch.device, dtype: torch.dtype, progress: Progress) -> Retrieval:
-    """Запросы, которых в галерее нет: вся их выдача ложная, интересен только скор."""
-    rows = np.arange(len(split))
-    return Retrieval(split, rows, *search(gallery, store, rows, False, device, dtype, progress, split.role))

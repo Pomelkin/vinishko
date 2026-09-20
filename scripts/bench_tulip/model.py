@@ -1,15 +1,12 @@
-import time
 from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
 import open_clip
-import rich_click as click
 import torch
 import torch.nn.functional as F
 from open_clip.transform import image_transform
 from PIL import Image
-from rich.progress import Progress
 from torch import Tensor
 from torch import nn
 from torch.utils.data import DataLoader
@@ -17,6 +14,9 @@ from torch.utils.data import DataLoader
 from scripts.bench_common.data import Split
 from scripts.bench_common.data import Views
 from scripts.bench_common.data import init_worker
+from scripts.bench_common.parallel import Advance
+from scripts.bench_common.parallel import EmbedTask
+from scripts.bench_common.parallel import pick_dtype
 
 MODEL = "TULIP-so400m-14-384"
 PRETRAINED_TAG = "webli"  # из записи этого тега форк берёт предобработку TULIP: mean и std 0.5, bicubic, squash
@@ -51,18 +51,8 @@ def load_encoder(weights: Path, device: torch.device, dtype: torch.dtype, resize
 
 
 @torch.inference_mode()
-def embed(
-    visual: nn.Module,
-    preprocess: Preprocess,
-    split: Split,
-    render_cfg: dict,
-    device: torch.device,
-    dtype: torch.dtype,
-    batch_size: int,
-    workers: int,
-    progress: Progress,
-) -> tuple[np.ndarray, float]:
-    """L2-нормированные эмбеддинги картинок сплита в float32 и время прогона в секундах вместе с чтением и предобработкой."""
+def embed(visual: nn.Module, preprocess: Preprocess, split: Split, render_cfg: dict, device: torch.device, dtype: torch.dtype, batch_size: int, workers: int, advance: Advance) -> np.ndarray:
+    """L2-нормированные эмбеддинги картинок сплита в float32."""
     loader = DataLoader(
         Views(split, preprocess, render_cfg),
         batch_size=batch_size,
@@ -70,15 +60,24 @@ def embed(
         pin_memory=device.type == "cuda",
         worker_init_fn=init_worker,
     )
-    task = progress.add_task(split.role, name=f"эмбеддинги {split.role}", total=len(split))
-    out: np.ndarray | None = None
-    started = time.perf_counter()
-    for images, rows in loader:
+    batches = []
+    for images, rows in loader:  # без перемешивания батчи идут в порядке сплита
         features = F.normalize(visual(images.to(device=device, dtype=dtype, non_blocking=True)).float(), dim=-1)
-        if out is None:
-            out = np.empty((len(split), features.shape[1]), np.float32)
-        out[rows.numpy()] = features.cpu().numpy()
-        progress.update(task, advance=len(rows))
-    if out is None:
-        raise click.ClickException(f"в сплите {split.role} не осталось картинок")
-    return out, time.perf_counter() - started
+        batches.append(features.cpu().numpy())
+        advance(len(rows))
+    return np.concatenate(batches)
+
+
+class TulipWorker:
+    """Воркер одного устройства: визуальная башня TULIP, по задаче пишет эмбеддинги своей части сплита в npy."""
+
+    def __init__(self, device: torch.device, weights: Path, resize_mode: str, render_cfg: dict, batch_size: int, workers: int) -> None:
+        self.device, self.render_cfg, self.batch_size, self.workers = device, render_cfg, batch_size, workers
+        self.dtype = pick_dtype(device)
+        self.visual, self.preprocess, size = load_encoder(weights, device, self.dtype, resize_mode, tuple(render_cfg["background"]["color"]))
+        self.info = {"dtype": str(self.dtype), "вход": f"{size[0]}×{size[1]}"}
+
+    def __call__(self, task: EmbedTask, advance: Advance) -> None:
+        vectors = embed(self.visual, self.preprocess, task.split, self.render_cfg, self.device, self.dtype, self.batch_size, self.workers, advance)
+        with task.path.open("wb") as f:
+            np.save(f, vectors)

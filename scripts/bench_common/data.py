@@ -41,6 +41,10 @@ class Split:
         """Путь до картинки i."""
         return self.root / "images" / self.names[i]
 
+    def part(self, start: int, stop: int) -> "Split":
+        """Картинки с start по stop: кусок сплита для одного устройства."""
+        return replace(self, names=self.names[start:stop], labels=self.labels[start:stop], spans=None if self.spans is None else self.spans[start:stop])
+
 
 def read_split(root: Path, file: str, role: str) -> Split:
     """Сплит из json вида {имя файла: метка}, как его пишет prepare_datasets."""

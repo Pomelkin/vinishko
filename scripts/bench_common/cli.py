@@ -104,33 +104,25 @@ def output_file(output: Path, finished: datetime) -> Path:
     return output if is_html(output) else output / f"{finished:%Y-%m-%d_%H-%M-%S}.html"
 
 
-def parse_device(_ctx: click.Context, _param: click.Parameter, value: str) -> torch.device:
-    """Устройство из CLI: cpu либо cuda:<индекс> существующей видеокарты."""
-    if value == "cpu":
-        return torch.device("cpu")
-    match = re.fullmatch(r"cuda:(\d+)", value)
-    if match is None:
-        raise click.BadParameter(f"ожидается cpu либо cuda:<индекс>, например cuda:0; получено {value!r}")
-    if not torch.cuda.is_available():
-        raise click.BadParameter("CUDA недоступна: проверьте драйвер либо укажите cpu")
-    index, count = int(match[1]), torch.cuda.device_count()
-    if index >= count:
-        raise click.BadParameter(f"видеокарты {index} нет: доступны индексы 0..{count - 1}")
-    return torch.device("cuda", index)
-
-
-def pick_dtype(device: torch.device) -> torch.dtype:
-    """bfloat16, если устройство считает в нём аппаратно, иначе float32.
-
-    У CUDA это Ampere и новее, программная эмуляция не в счёт. У CPU — инструкции AVX512-BF16 либо AMX:
-    без них bfloat16 на процессоре работает, но медленнее float32.
-    """
-    if device.type == "cuda":
-        with torch.cuda.device(device):
-            supported = torch.cuda.is_bf16_supported(including_emulation=False)
-    else:
-        supported = torch.cpu._is_avx512_bf16_supported() or torch.cpu._is_amx_tile_supported()
-    return torch.bfloat16 if supported else torch.float32
+def parse_devices(_ctx: click.Context, _param: click.Parameter, value: str) -> list[torch.device]:
+    """Устройства из CLI: cpu либо список существующих видеокарт через запятую, cuda:0,cuda:1. CUDA здесь не поднимается: это дело воркеров."""
+    names = [name.strip() for name in value.split(",")]
+    if names == ["cpu"]:
+        return [torch.device("cpu")]
+    devices = []
+    for name in names:
+        match = re.fullmatch(r"cuda:(\d+)", name)
+        if match is None:
+            raise click.BadParameter(f"ожидается cpu либо видеокарты через запятую, например cuda:0 или cuda:0,cuda:1; получено {name!r}")
+        if not torch.cuda.is_available():
+            raise click.BadParameter("CUDA недоступна: проверьте драйвер либо укажите cpu")
+        index, count = int(match[1]), torch.cuda.device_count()
+        if index >= count:
+            raise click.BadParameter(f"видеокарты {index} нет: доступны индексы 0..{count - 1}")
+        devices.append(torch.device("cuda", index))
+    if len(set(devices)) < len(devices):
+        raise click.BadParameter(f"устройства повторяются: {value}")
+    return devices
 
 
 def common_options(command: Callable[..., Any]) -> Callable[..., Any]:
@@ -138,13 +130,13 @@ def common_options(command: Callable[..., Any]) -> Callable[..., Any]:
     datasets = ROOT / "datasets" / "visual-encoder"
     options = [
         click.option("-o", "--output", required=True, type=click.Path(path_type=Path), callback=check_output, help="Куда положить html-отчёт: путь с .html используется как есть, иначе это директория, имя файла — время конца прогона"),
-        click.option("--device", required=True, callback=parse_device, help="cpu либо cuda:<индекс>; bfloat16, если устройство считает в нём аппаратно, иначе float32"),
+        click.option("--device", "devices", required=True, callback=parse_devices, help="cpu, cuda:<индекс> либо несколько видеокарт через запятую, cuda:0,cuda:1: на каждой своя копия модели, картинки делятся между ними поровну. bfloat16, если устройство считает в нём аппаратно, иначе float32"),
         click.option("--mode", type=click.Choice(list(MODES)), default="both", show_default=True, help="Вход энкодера: raw — целое фото, norm — кроп нормализации по normalization.jsonl, both — оба замера в одном отчёте"),
         click.option("--winesensed", type=click.Path(exists=True, file_okay=False, path_type=Path), default=datasets / "winesensed", show_default=True),
         click.option("--negatives", type=click.Path(exists=True, file_okay=False, path_type=Path), default=datasets / "products10k", show_default=True, help="Датасет с negatives.json: запросы «не вино»"),
         click.option("--distractors/--no-distractors", default=True, show_default=True, help="Добавить запросы val_distractors.json: вина, которых нет в галерее"),
         click.option("--norm-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True, help="Конфиг нормализации: из него берутся параметры кропа и фона"),
-        click.option("--workers", type=click.IntRange(min=0), default=min(8, os.cpu_count() or 1), show_default=True, help="Процессов даталоадера: чтение, рендер кропа, предобработка"),
+        click.option("--workers", type=click.IntRange(min=0), default=min(8, os.cpu_count() or 1), show_default=True, help="Процессов даталоадера на каждое устройство: чтение, рендер кропа, предобработка"),
         click.option("--limit", type=click.IntRange(min=50), default=None, help="Не больше N картинок на роль, классы целиком; для пробного прогона"),
         click.option("--examples", type=click.IntRange(min=0), default=12, show_default=True, help="Примеров на раздел отчёта"),
     ]
