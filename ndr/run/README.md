@@ -104,4 +104,6 @@ Base64 не дублируется в результатах: вместо не�
 throughput, число запросов/generations, usage и разбивку по размеру группы. Если predictor
 содержит tie-breaker, блок `tie_breaker` показывает число переданных в него кейсов и их долю
 от всех attempted queries; неуспешный вызов tie-breaker тоже учитывается. Ошибки исключены из
-quality denominator, а `not_found` считается полноценным ответом.
+quality denominator, а `not_found` считается полноценным ответом. Поле `not_found` сохраняет
+число таких ответов; соседний блок `not_found_metrics` считает `not_found` положительным
+классом и содержит support, predicted, TP/FP/FN/TN, precision, recall, F1 и accuracy.

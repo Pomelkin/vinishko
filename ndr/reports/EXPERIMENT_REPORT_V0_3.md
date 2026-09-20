@@ -492,7 +492,7 @@ ambiguous/multi-label.
 |---|---|---|---|---|
 | `q-000034` | semantic FN, gold comparison | `stop`; OK | QUERY sparkling, card `не определено`; это объявлено конфликтом | Missing metadata превращено в `different`, несмотря на игристую упаковку Эталона |
 | `q-000039` | wrong slug | `stop`; OK | `DEMI-DOUX` не равно `BRUT`, зато соответствует полусладкому | Dataset/gold inconsistency |
-| `q-000045` | `not_found` | `stop`; OK | `BRUT` не равно `EXTRA BRUT`; год совпадает | Dataset/gold inconsistency |
+| `q-000045`  | `not_found` | `stop`; OK | `BRUT` не равно `EXTRA BRUT`; год совпадает | Dataset/gold inconsistency |
 | `q-000050` | wrong slug, resolver | `stop`; OK | QUERY читается как полусухое | Dataset/gold inconsistency |
 
 ### `v2`: 4 промаха

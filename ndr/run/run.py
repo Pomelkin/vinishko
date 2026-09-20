@@ -372,6 +372,7 @@ def build_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "accuracy": correct / total if total else None,
         "answered": total,
         "not_found": not_found,
+        "not_found_metrics": not_found_class_metrics(evaluated_rows),
         "contract_errors": sum(
             row["prediction"]["status"] == "contract_error" for row in rows
         ),
@@ -384,6 +385,45 @@ def build_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "p95": percentile(latencies, 0.95) if latencies else 0.0,
             "max": max(latencies, default=0.0),
         },
+    }
+
+
+def not_found_class_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Treat ``not_found`` as the positive class and return binary metrics."""
+    true_positives = sum(
+        row["expected_slug"] == NOT_FOUND
+        and row["prediction"]["slug"] == NOT_FOUND
+        for row in rows
+    )
+    false_positives = sum(
+        row["expected_slug"] != NOT_FOUND
+        and row["prediction"]["slug"] == NOT_FOUND
+        for row in rows
+    )
+    false_negatives = sum(
+        row["expected_slug"] == NOT_FOUND
+        and row["prediction"]["slug"] != NOT_FOUND
+        for row in rows
+    )
+    true_negatives = len(rows) - true_positives - false_positives - false_negatives
+    support = true_positives + false_negatives
+    predicted = true_positives + false_positives
+    precision = true_positives / predicted if predicted else None
+    recall = true_positives / support if support else None
+    f1_denominator = 2 * true_positives + false_positives + false_negatives
+    return {
+        "support": support,
+        "predicted": predicted,
+        "true_positives": true_positives,
+        "false_positives": false_positives,
+        "false_negatives": false_negatives,
+        "true_negatives": true_negatives,
+        "precision": precision,
+        "recall": recall,
+        "f1": 2 * true_positives / f1_denominator if f1_denominator else None,
+        "accuracy": (
+            (true_positives + true_negatives) / len(rows) if rows else None
+        ),
     }
 
 
@@ -440,6 +480,7 @@ def quality_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "accuracy": report["accuracy"],
         "answered": report["answered"],
         "not_found": report["not_found"],
+        "not_found_metrics": report["not_found_metrics"],
         "contract_errors": report["contract_errors"],
         "predictor_errors": report["predictor_errors"],
     }

@@ -32,6 +32,7 @@ from ndr.solutions.v1 import predictor as v1_predictor  # noqa: E402
 from ndr.solutions.v2 import predictor as v2_predictor  # noqa: E402
 from ndr.solutions.v3 import predictor as v3_predictor  # noqa: E402
 from ndr.solutions.v4 import predictor as v4_predictor  # noqa: E402
+from ndr.solutions.v6 import predictor as v6_predictor  # noqa: E402
 try:
     from ndr.solutions.v5 import predictor as v5_predictor  # noqa: E402
 except ModuleNotFoundError as error:  # v5 is optional until its experiment exists.
@@ -46,11 +47,12 @@ RETRY_PREDICTORS = (
     ("v2", v2_predictor),
     ("v3", v3_predictor),
 )
-if v5_predictor is not None:
-    RETRY_PREDICTORS += (("v5", v5_predictor),)
 SINGLE_ATTEMPT_PREDICTORS = (
     ("v4", v4_predictor),
+    ("v6", v6_predictor),
 )
+if v5_predictor is not None:
+    SINGLE_ATTEMPT_PREDICTORS += (("v5", v5_predictor),)
 ALL_PREDICTORS = RETRY_PREDICTORS + SINGLE_ATTEMPT_PREDICTORS
 
 
@@ -852,6 +854,7 @@ class RunnerTests(unittest.TestCase):
 
         rows = [
             {
+                "expected_slug": "a",
                 "input": {"candidate_order": ["a", "b"]},
                 "prediction": {
                     "slug": "a", "correct": True, "status": "ok", "latency_ms": 10,
@@ -868,6 +871,7 @@ class RunnerTests(unittest.TestCase):
                 }},
             },
             {
+                "expected_slug": "a",
                 "input": {"candidate_order": ["a", "b", "c"]},
                 "prediction": {
                     "slug": None, "correct": None,
@@ -894,6 +898,10 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(metrics["quality"]["accuracy"], 1.0)
         self.assertEqual(metrics["quality"]["answered"], 1)
         self.assertEqual(metrics["quality"]["not_found"], 0)
+        self.assertEqual(metrics["quality"]["not_found_metrics"]["support"], 0)
+        self.assertIsNone(metrics["quality"]["not_found_metrics"]["precision"])
+        self.assertIsNone(metrics["quality"]["not_found_metrics"]["recall"])
+        self.assertEqual(metrics["quality"]["not_found_metrics"]["accuracy"], 1.0)
         self.assertEqual(metrics["quality"]["predictor_errors"], 1)
         self.assertNotIn("accuracy_when_answered", metrics["quality"])
         self.assertNotIn("coverage", metrics["quality"])
@@ -913,6 +921,7 @@ class RunnerTests(unittest.TestCase):
 
     def test_metrics_omit_tie_breaker_for_predictor_without_one(self) -> None:
         rows = [{
+            "expected_slug": "a",
             "input": {"candidate_order": ["a"]},
             "prediction": {
                 "slug": "a", "correct": True, "status": "ok", "latency_ms": 1,
@@ -985,6 +994,7 @@ class RunnerTests(unittest.TestCase):
     def test_not_found_is_an_answer_and_stays_in_accuracy_denominator(self) -> None:
         rows = [
             {
+                "expected_slug": "a",
                 "prediction": {
                     "slug": "a",
                     "correct": True,
@@ -993,6 +1003,7 @@ class RunnerTests(unittest.TestCase):
                 },
             },
             {
+                "expected_slug": "a",
                 "prediction": {
                     "slug": NOT_FOUND,
                     "correct": False,
@@ -1008,6 +1019,66 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(quality["not_found"], 1)
         self.assertEqual(quality["correct"], 1)
         self.assertEqual(quality["accuracy"], 0.5)
+        self.assertEqual(quality["not_found_metrics"]["support"], 0)
+        self.assertEqual(quality["not_found_metrics"]["predicted"], 1)
+        self.assertEqual(quality["not_found_metrics"]["false_positives"], 1)
+        self.assertEqual(quality["not_found_metrics"]["true_negatives"], 1)
+        self.assertEqual(quality["not_found_metrics"]["precision"], 0.0)
+        self.assertIsNone(quality["not_found_metrics"]["recall"])
+        self.assertEqual(quality["not_found_metrics"]["f1"], 0.0)
+        self.assertEqual(quality["not_found_metrics"]["accuracy"], 0.5)
+
+    def test_not_found_metrics_treat_not_found_as_binary_class(self) -> None:
+        rows = [
+            {
+                "expected_slug": NOT_FOUND,
+                "prediction": {
+                    "slug": NOT_FOUND, "correct": True,
+                    "status": "ok", "latency_ms": 10,
+                },
+            },
+            {
+                "expected_slug": "catalog-a",
+                "prediction": {
+                    "slug": NOT_FOUND, "correct": False,
+                    "status": "ok", "latency_ms": 10,
+                },
+            },
+            {
+                "expected_slug": NOT_FOUND,
+                "prediction": {
+                    "slug": "catalog-a", "correct": False,
+                    "status": "ok", "latency_ms": 10,
+                },
+            },
+            {
+                "expected_slug": "catalog-a",
+                "prediction": {
+                    "slug": "catalog-a", "correct": True,
+                    "status": "ok", "latency_ms": 10,
+                },
+            },
+            {
+                "expected_slug": NOT_FOUND,
+                "prediction": {
+                    "slug": None, "correct": None,
+                    "status": "predictor_error", "latency_ms": 10,
+                },
+            },
+        ]
+
+        quality = runner.quality_metrics(rows)
+        not_found_metrics = quality["not_found_metrics"]
+        self.assertEqual(not_found_metrics["support"], 2)
+        self.assertEqual(not_found_metrics["predicted"], 2)
+        self.assertEqual(not_found_metrics["true_positives"], 1)
+        self.assertEqual(not_found_metrics["false_positives"], 1)
+        self.assertEqual(not_found_metrics["false_negatives"], 1)
+        self.assertEqual(not_found_metrics["true_negatives"], 1)
+        self.assertEqual(not_found_metrics["precision"], 0.5)
+        self.assertEqual(not_found_metrics["recall"], 0.5)
+        self.assertEqual(not_found_metrics["f1"], 0.5)
+        self.assertEqual(not_found_metrics["accuracy"], 0.5)
 
     def test_smoke_runs_are_versioned_and_never_overwrite(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

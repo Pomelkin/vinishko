@@ -70,6 +70,9 @@ python ndr/run/run.py `
 
 Ошибки predictor/контракта не превращаются в `not_found` и исключаются из знаменателя
 accuracy. `not_found` является полноценным ответом и входит в знаменатель accuracy.
+В `quality.not_found_metrics` он дополнительно оценивается как положительный класс:
+support/predicted, TP/FP/FN/TN, precision, recall, F1 и accuracy. Если знаменателя для
+precision, recall или F1 нет, соответствующее значение равно `null`.
 
 ## Основные флаги
 

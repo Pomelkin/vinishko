@@ -1,6 +1,6 @@
 ---
 name: ndr-experiments
-description: Run reproducible improvement experiments for the NDR solutions under ndr/solutions, analyze lossless run artifacts, and compare versions without retrying or hiding model failures. Use for NDR/NRP baselines, new solution versions, DeepSeek prompt or pipeline changes, and reports from ndr/results.
+description: Prepare reproducible improvement experiments for the NDR solutions under ndr/solutions, analyze user-produced lossless run artifacts, and compare versions without retrying or hiding model failures. Use for NDR/NRP baselines, new solution versions, DeepSeek prompt or pipeline changes, and reports from ndr/results.
 ---
 
 # NDR experiments
@@ -8,6 +8,18 @@ description: Run reproducible improvement experiments for the NDR solutions unde
 Treat each solution directory as an immutable experiment version. The authoritative inputs are
 `ndr/dataset/`; the runner is `ndr/run/run.py`; source versions live directly under
 `ndr/solutions/`; timestamped, lossless outputs belong under `ndr/results/`.
+
+## User-owned execution
+
+Only the user may start an NDR experiment run. Never execute `ndr/run/run.py` with a solution,
+call the model/provider directly, or start, resume, retry, or rerun any model-backed execution.
+This prohibition applies even when credentials are available and even when the task asks to conduct
+an experiment. The agent may prepare source versions and run offline validation, unit tests, and
+fully mocked/no-network tests that cannot reach a model. If it is uncertain whether a command can
+make a model request, it must not run the command.
+
+After preflight, give the user the exact runner command and stop before execution. Analyze and
+report only after the user has produced the timestamped artifacts under `ndr/results/`.
 
 ## Iteration contract
 
@@ -20,12 +32,14 @@ Treat each solution directory as an immutable experiment version. The authoritat
    hypothesis. Never edit an already-run version to represent a later experiment.
 3. Keep the model selected by `OPENROUTER_MODEL` in the root `.env` unless the user explicitly
    asks for another model. Never print or copy the API key into code, prompts, traces, or reports.
-4. Before paid calls, run `python .agents/skills/near-duplicates/scripts/validate.py`,
-   `python ndr/run/build_dataset.py --check`, the runner tests, and a no-API smoke test when the
-   changed surface warrants it.
-5. Run the new solution exactly once. A failed call or malformed generation is an experiment
-   result: do not retry the request, failed case, subset, or full run; do not add provider
-   fallbacks. A preflight failure before any model request may be corrected and started normally.
+4. Before handing the experiment to the user, run
+   `python .agents/skills/near-duplicates/scripts/validate.py`,
+   `python ndr/run/build_dataset.py --check`, the runner tests, and relevant solution unit tests.
+   All tests must be offline and incapable of reaching a model; do not invoke the runner for them.
+5. Instruct the user to run the new solution exactly once; never run it on the user's behalf. A
+   failed call or malformed generation is an experiment result: do not ask the user to retry the
+   request, failed case, or experiment, and do not add provider fallbacks. A preflight failure
+   before the user starts any model request may be corrected, after which provide the command again.
 6. Preserve the runner's timestamped result, solution fingerprint, and per-file hashes. The runner
    executes the source solution in place, so never edit that version after its run. Compare versions
    only when dataset, model, seed, sampling, provider route, and concurrency are compatible; call
