@@ -8,6 +8,7 @@ import torch
 from rich.progress import Progress
 
 from scripts.bench_common.cli import MODES
+from scripts.bench_common.cli import PROTOCOLS
 from scripts.bench_common.cli import Dropped
 from scripts.bench_common.cli import common_options
 from scripts.bench_common.cli import console
@@ -16,7 +17,7 @@ from scripts.bench_common.cli import finish
 from scripts.bench_common.cli import prepare_mode
 from scripts.bench_common.cli import read_splits
 from scripts.bench_common.data import Split
-from scripts.bench_common.data import query_rows
+from scripts.bench_common.data import protocol_rows
 from scripts.bench_common.metrics import ModeResult
 from scripts.bench_common.metrics import Retrieval
 from scripts.bench_common.metrics import make_result
@@ -42,8 +43,6 @@ Embedded = tuple[dict[str, Split], Dropped, dict[str, TokenStore], float]
 def embed_mode(mode: str, raw: dict[str, Split], pool: DevicePool, tmp: Path, dim: int) -> Embedded:
     """Эмбеддинги всех ролей одного режима во временную директорию: каждое устройство пишет свой кусок, куски склеиваются в порядке сплита."""
     splits, dropped = prepare_mode(mode, raw)
-    if not len(query_rows(splits["val"])):
-        raise click.ClickException("в val нет классов с двумя и более картинками: запросов leave-one-out не получается, увеличьте --limit")
     stores: dict[str, TokenStore] = {}
     seconds = 0.0
     with count_progress() as progress:
@@ -56,21 +55,22 @@ def embed_mode(mode: str, raw: dict[str, Split], pool: DevicePool, tmp: Path, di
     return splits, dropped, stores, seconds
 
 
-def retrieve(pool: DevicePool, split: Split, gallery: TokenStore, queries: TokenStore, rows: np.ndarray, exclude_self: bool, progress: Progress) -> Retrieval:
-    """Точный MaxSim запросов rows со всей галереей; запросы делятся между устройствами, галерею каждое проходит целиком."""
-    tasks = [SearchTask(gallery, queries, rows[start:stop], exclude_self) if stop > start else None for start, stop in shards(len(rows), len(pool))]
-    bar = progress.add_task(split.role, name=f"поиск {split.role}", total=len(rows) * len(gallery_blocks(gallery, pool.dtype)))
+def retrieve(pool: DevicePool, split: Split, gallery: TokenStore, gallery_rows: np.ndarray, queries: TokenStore, rows: np.ndarray, exclude_self: bool, progress: Progress) -> Retrieval:
+    """Точный MaxSim запросов rows с картинками gallery_rows галереи; запросы делятся между устройствами, галерею каждое проходит целиком."""
+    tasks = [SearchTask(gallery, gallery_rows, queries, rows[start:stop], exclude_self) if stop > start else None for start, stop in shards(len(rows), len(pool))]
+    bar = progress.add_task(split.role, name=f"поиск {split.role}", total=len(rows) * len(gallery_blocks(gallery, gallery_rows, pool.dtype)))
     found = [r for r in pool.map(tasks, lambda n: progress.update(bar, advance=n)) if r is not None]
     return Retrieval(split, rows, np.concatenate([scores for scores, _ in found]), np.concatenate([ids for _, ids in found]))
 
 
-def search_mode(mode: str, raw: dict[str, Split], embedded: Embedded, pool: DevicePool) -> ModeResult:
-    """Поиск по галерее val и метрики одного режима."""
+def search_mode(mode: str, protocol: str, raw: dict[str, Split], embedded: Embedded, pool: DevicePool) -> ModeResult:
+    """Поиск по галерее и метрики одного режима при одном протоколе."""
     splits, dropped, stores, seconds = embedded
+    gallery_rows, rows = protocol_rows(splits["val"], protocol)
     with count_progress() as progress:
-        val = retrieve(pool, splits["val"], stores["val"], stores["val"], query_rows(splits["val"]), True, progress)
-        rejects = {role: retrieve(pool, splits[role], stores["val"], stores[role], np.arange(len(splits[role])), False, progress) for role in splits if role != "val"}
-    return make_result(mode, raw, splits, dropped, val, rejects, seconds)
+        val = retrieve(pool, splits["val"], stores["val"], gallery_rows, stores["val"], rows, True, progress)
+        rejects = {role: retrieve(pool, splits[role], stores["val"], gallery_rows, stores[role], np.arange(len(splits[role])), False, progress) for role in splits if role != "val"}
+    return make_result(mode, protocol, raw, splits, dropped, len(gallery_rows), val, rejects, seconds)
 
 
 @click.command()
@@ -84,6 +84,7 @@ def main(
     output: Path,
     devices: list[torch.device],
     mode: str,
+    protocol: str,
     winesensed: Path,
     negatives: Path,
     distractors: bool,
@@ -99,7 +100,7 @@ def main(
 ) -> None:
     """Замер EVIE на WineSensed в роли поисковика картинка-к-картинке: recall@1/3/5 и отделимость запросов без ответа. Запуск из корня: python -m scripts.bench_evie.run.
 
-    Протокол и режимы raw и norm — те же, что у scripts.bench_tulip.run: галерея и запросы val.json по схеме leave-one-out, запросы без ответа —
+    Протоколы loo и oneshot и режимы raw и norm — те же, что у scripts.bench_tulip.run: галерея и запросы из val.json, запросы без ответа —
     val_distractors.json и negatives.json, в режиме norm вход — кроп нормализации по normalization.jsonl, отсеянные картинки выпадают.
 
     Отличие в модели: EVIE — поздняя интеракция, картинка кодируется не одним вектором, а вектором на каждый токен, и запрос, и галерея.
@@ -122,7 +123,7 @@ def main(
             console.print(f"[green]model[/] {model_id} на {', '.join(pool.names)}, {dtype}, {attn}, dim {dim}")
             embedded = {m: embed_mode(m, raw, pool, Path(tmp), int(dim)) for m in MODES[mode]}
             pool.map([UnloadTask()] * len(pool), lambda _: None)
-            results = [search_mode(m, raw, embedded[m], pool) for m in MODES[mode]]
+            results = [search_mode(m, p, raw, embedded[m], pool) for m in MODES[mode] for p in PROTOCOLS[protocol]]
 
     spec = ReportSpec(model=model_id.rstrip("/").split("/")[-1], score_name="MaxSim на токен", score_short="maxsim")
     run_info = {

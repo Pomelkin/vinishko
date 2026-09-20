@@ -27,9 +27,10 @@ from scripts.bench_common.data import Split
 from scripts.bench_common.data import index_markup
 from scripts.bench_common.data import limit_split
 from scripts.bench_common.data import normalized
+from scripts.bench_common.data import protocol_rows
 from scripts.bench_common.data import read_split
 from scripts.bench_common.metrics import ModeResult
-from scripts.bench_common.report import MODE_TITLES
+from scripts.bench_common.report import column_title
 from scripts.bench_common.report import ReportSpec
 from scripts.bench_common.report import build_html
 from scripts.bench_common.report import metric_sections
@@ -39,6 +40,7 @@ console = Console()
 
 ROOT = Path(__file__).resolve().parents[2]
 MODES = {"raw": ["raw"], "norm": ["norm"], "both": ["raw", "norm"]}
+PROTOCOLS = {"loo": ["loo"], "oneshot": ["oneshot"], "both": ["loo", "oneshot"]}
 SEED = 0
 
 Dropped = dict[str, tuple[int, int]]
@@ -132,6 +134,7 @@ def common_options(command: Callable[..., Any]) -> Callable[..., Any]:
         click.option("-o", "--output", required=True, type=click.Path(path_type=Path), callback=check_output, help="Куда положить html-отчёт: путь с .html используется как есть, иначе это директория, имя файла — время конца прогона"),
         click.option("--device", "devices", required=True, callback=parse_devices, help="cpu, cuda:<индекс> либо несколько видеокарт через запятую, cuda:0,cuda:1: на каждой своя копия модели, картинки делятся между ними поровну. bfloat16, если устройство считает в нём аппаратно, иначе float32"),
         click.option("--mode", type=click.Choice(list(MODES)), default="both", show_default=True, help="Вход энкодера: raw — целое фото, norm — кроп нормализации по normalization.jsonl, both — оба замера в одном отчёте"),
+        click.option("--protocol", type=click.Choice(list(PROTOCOLS)), default="both", show_default=True, help="Что лежит в галерее: loo — вся val, запрос ищет среди всех остальных картинок, включая прочие фото своего класса; oneshot — одно фото на класс, как в каталоге, остальные фото класса идут запросами; both — оба, эмбеддинги общие"),
         click.option("--winesensed", type=click.Path(exists=True, file_okay=False, path_type=Path), default=datasets / "winesensed", show_default=True),
         click.option("--negatives", type=click.Path(exists=True, file_okay=False, path_type=Path), default=datasets / "products10k", show_default=True, help="Датасет с negatives.json: запросы «не вино»"),
         click.option("--distractors/--no-distractors", default=True, show_default=True, help="Добавить запросы val_distractors.json: вина, которых нет в галерее"),
@@ -177,6 +180,8 @@ def prepare_mode(mode: str, raw: dict[str, Split]) -> tuple[dict[str, Split], Dr
     splits = {role: split for role, split in splits.items() if len(split)}
     if "val" not in splits:
         raise click.ClickException("после нормализации в val не осталось картинок")
+    if not len(protocol_rows(splits["val"], "loo")[1]):
+        raise click.ClickException("в val нет классов с двумя и более картинками: запросов не получается, увеличьте --limit")
     return splits, dropped
 
 
@@ -185,7 +190,7 @@ def prepare_mode(mode: str, raw: dict[str, Split]) -> tuple[dict[str, Split], Dr
 
 def metrics_table(results: list[ModeResult], spec: ReportSpec) -> Table:
     """Те же метрики, что в html: строка на метрику, столбец на режим."""
-    table = Table("метрика", *(MODE_TITLES[r.mode] for r in results), title=f"{spec.model} на WineSensed")
+    table = Table("метрика", *(column_title(r) for r in results), title=f"{spec.model} на WineSensed")
     for column in table.columns[1:]:
         column.justify = "right"
     for section, rows in metric_sections(results, spec):

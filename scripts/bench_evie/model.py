@@ -101,7 +101,7 @@ class EvieWorker:
 
     def __call__(self, task: EmbedTask | UnloadTask | SearchTask, advance: Advance) -> Any:
         if isinstance(task, SearchTask):
-            return search(task.gallery, task.queries, task.rows, task.exclude_self, self.device, self.dtype, advance)
+            return search(task.gallery, task.gallery_rows, task.queries, task.rows, task.exclude_self, self.device, self.dtype, advance)
         if isinstance(task, UnloadTask):
             self.model = None
             gc.collect()

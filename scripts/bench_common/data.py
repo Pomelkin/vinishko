@@ -107,10 +107,22 @@ def normalized(split: Split, spans: dict[str, Span]) -> Split:
     )
 
 
-def query_rows(split: Split) -> np.ndarray:
-    """Строки val, которые идут запросами leave-one-out: у класса в галерее есть ещё хотя бы одна картинка."""
-    sizes = Counter(split.labels)
-    return np.array([i for i, label in enumerate(split.labels) if sizes[label] >= 2], dtype=np.int64)
+def protocol_rows(split: Split, protocol: str) -> tuple[np.ndarray, np.ndarray]:
+    """Строки val, которые идут в галерею, и строки-запросы.
+
+    loo — leave-one-out из README датасетов: в галерее вся val, запрос ищет среди всех остальных картинок, включая прочие фото своего класса;
+    запросами идут картинки классов, где их две и больше. Попаданием считается любое из оставшихся фото класса, а их в среднем четыре.
+    oneshot — как в бою, где у позиции каталога одно фото: в галерее первая по порядку сплита картинка каждого класса, запросами идут
+    все остальные. Порядок сплита — порядок дампа, к качеству фото он не привязан. Одиночные классы остаются в галерее дистракторами.
+    """
+    if protocol == "loo":
+        sizes = Counter(split.labels)
+        return np.arange(len(split)), np.array([i for i, label in enumerate(split.labels) if sizes[label] >= 2], dtype=np.int64)
+    first: dict[str, int] = {}
+    for i, label in enumerate(split.labels):
+        first.setdefault(label, i)
+    gallery = np.array(sorted(first.values()), dtype=np.int64)
+    return gallery, np.setdiff1d(np.arange(len(split)), gallery)
 
 
 def load_view(split: Split, i: int, render_cfg: dict) -> Image.Image:

@@ -48,16 +48,16 @@ class TokenStore:
             out[n, : self.lengths[row]] = self.tokens[self.offsets[row] : self.offsets[row + 1]]
         return out
 
-    def blocks(self, max_tokens: int) -> list[np.ndarray]:
-        """Картинки подряд, разбитые на блоки так, чтобы добитый нулями блок не превышал max_tokens токенов."""
+    def blocks(self, rows: np.ndarray, max_tokens: int) -> list[np.ndarray]:
+        """Картинки rows по порядку, разбитые на блоки так, чтобы добитый нулями блок не превышал max_tokens токенов."""
         blocks: list[np.ndarray] = []
         start, longest = 0, 0
-        for row, length in enumerate(self.lengths):
+        for n, length in enumerate(self.lengths[rows]):
             longest = max(longest, int(length))
-            if row > start and (row - start + 1) * longest > max_tokens:
-                blocks.append(np.arange(start, row))
-                start, longest = row, int(length)
-        blocks.append(np.arange(start, len(self)))
+            if n > start and (n - start + 1) * longest > max_tokens:
+                blocks.append(rows[start:n])
+                start, longest = n, int(length)
+        blocks.append(rows[start:])
         return blocks
 
 

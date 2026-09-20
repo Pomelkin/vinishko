@@ -28,7 +28,7 @@ class ColQwen3_5Processor(BaseVisualRetrieverProcessor, Qwen3VLProcessor):  # no
     visual_prompt_prefix: ClassVar[str] = (
         "<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>{prompt}<|im_end|><|endoftext|>"
     )
-    query_augmentation_token: ClassVar[str] = "<|endoftext|>"
+    query_augmentation_token: ClassVar[str] = "<|endoftext|>"  # ty: ignore[invalid-attribute-override]
     image_token: ClassVar[str] = "<|image_pad|>"
 
     def __init__(

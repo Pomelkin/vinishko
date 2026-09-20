@@ -17,6 +17,7 @@ from scripts.bench_common.metrics import Retrieval
 from vinishko.pipeline.steps.normalization.seg import open_image
 
 MODE_TITLES = {"raw": "без нормализации", "norm": "с нормализацией"}
+PROTOCOL_TITLES = {"loo": "вся val в галерее", "oneshot": "одно фото класса в галерее"}
 ROLE_TITLES = {"distractors": "вина не из галереи", "negatives": "не вино, Products-10K"}
 THUMB_HEIGHT = 220
 THUMB_QUALITY = 82
@@ -40,6 +41,11 @@ MetricRow = tuple[str, list[str]]
 
 
 # ---------- таблица метрик: общая для консоли и html ----------
+
+
+def column_title(result: ModeResult) -> str:
+    """Заголовок столбца: режим входа и протокол."""
+    return f"{MODE_TITLES[result.mode]}, {PROTOCOL_TITLES[result.protocol]}"
 
 
 def percent(value: float) -> str:
@@ -80,13 +86,13 @@ def metric_sections(results: list[ModeResult], spec: ReportSpec) -> list[tuple[s
         (
             "Данные",
             [
-                ("галерея val, картинок", [str(len(r.gallery)) for r in results]),
+                ("галерея val, картинок", [str(r.gallery_size) for r in results]),
                 ("запросов val", [str(len(r.val.rows)) for r in results]),
                 ("val отсеяно нормализацией", [dropped_cell(r, "val") for r in results]),
             ],
         ),
         (
-            "Ретрив val, leave-one-out",
+            "Ретрив val",
             [
                 *((f"recall@{k}", [metric_cell(r, f"recall@{k}") for r in results]) for k in KS),
                 *((f"сквозной recall@{k}: отсеянный запрос — промах", [metric_cell(r, f"e2e_recall@{k}") for r in results]) for k in KS),
@@ -165,7 +171,7 @@ def example_row(retrieval: Retrieval, position: int, gallery: Split, render_cfg:
 
 def examples_html(result: ModeResult, sets: list[ExampleSet], render_cfg: dict, spec: ReportSpec, progress: Progress) -> str:
     """Разделы примеров одного режима."""
-    task = progress.add_task(result.mode, name=f"примеры {result.mode}", total=sum(len(s.positions) for s in sets))
+    task = progress.add_task(result.key, name=f"примеры {result.key}", total=sum(len(s.positions) for s in sets))
     parts = []
     for s in sets:
         rows = []
@@ -227,10 +233,11 @@ h1{font-size:26px;margin:0 0 4px}h2{font-size:20px;margin:40px 0 12px}h3{font-si
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
 th,td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{white-space:normal;vertical-align:bottom;min-width:120px}
 th:first-child,td:first-child{text-align:left;white-space:normal}
 tr.section td{font-weight:600;padding-top:16px;border-bottom:2px solid var(--line)}
 dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0}dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}
-nav a{color:var(--s1);margin-right:16px}
+nav a{color:var(--s1);margin-right:16px;display:inline-block}
 details{margin:12px 0}summary{cursor:pointer;font-weight:600;padding:6px 0}
 .row{display:flex;gap:8px;overflow-x:auto;padding:8px;margin:8px 0;background:var(--surface);border:1px solid var(--line);border-radius:10px}
 .card{flex:0 0 156px;margin:0;padding:4px;border:3px solid transparent;border-radius:8px}
@@ -247,7 +254,7 @@ details{margin:12px 0}summary{cursor:pointer;font-weight:600;padding:6px 0}
 
 def metrics_table_html(results: list[ModeResult], spec: ReportSpec) -> str:
     """Таблица метрик: строка на метрику, столбец на режим."""
-    head = "".join(f"<th>{escape(MODE_TITLES[r.mode])}</th>" for r in results)
+    head = "".join(f"<th>{escape(column_title(r))}</th>" for r in results)
     body = []
     for section, rows in metric_sections(results, spec):
         body.append(f'<tr class="section"><td colspan="{len(results) + 1}">{escape(section)}</td></tr>')
@@ -260,12 +267,12 @@ def build_html(results: list[ModeResult], spec: ReportSpec, run_info: dict[str, 
     all_scores = np.concatenate([values for r in results for _, values in score_groups(r)])
     lo, hi = float(np.floor(all_scores.min() * 20) / 20), float(np.ceil(all_scores.max() * 20) / 20)
     info = "".join(f"<dt>{escape(k)}</dt><dd>{escape(v)}</dd>" for k, v in run_info.items())
-    nav = "".join(f'<a href="#{r.mode}">{escape(MODE_TITLES[r.mode])}</a>' for r in results)
+    nav = "".join(f'<a href="#{r.key}">{escape(column_title(r))}</a>' for r in results)
     sections = []
     for r in results:
         sets = pick_examples(r, examples, np.random.default_rng(seed))
         sections.append(
-            f'<h2 id="{r.mode}">Режим: {escape(MODE_TITLES[r.mode])}</h2>'
+            f'<h2 id="{r.key}">{escape(column_title(r)[0].upper() + column_title(r)[1:])}</h2>'
             f'<h3>{escape(spec.score_name[0].upper() + spec.score_name[1:])} top-1 по группам запросов <span class="muted">— общая ось, высота нормирована внутри группы; точные числа по наведению</span></h3>'
             f'<div class="panel">{histogram_svg(score_groups(r), lo, hi)}</div>'
             f"<h3>Примеры выдачи</h3>{examples_html(r, sets, render_cfg, spec, progress)}"

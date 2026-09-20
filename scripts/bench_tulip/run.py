@@ -6,6 +6,7 @@ import rich_click as click
 import torch
 
 from scripts.bench_common.cli import MODES
+from scripts.bench_common.cli import PROTOCOLS
 from scripts.bench_common.cli import ROOT
 from scripts.bench_common.cli import common_options
 from scripts.bench_common.cli import console
@@ -14,7 +15,7 @@ from scripts.bench_common.cli import finish
 from scripts.bench_common.cli import prepare_mode
 from scripts.bench_common.cli import read_splits
 from scripts.bench_common.data import Split
-from scripts.bench_common.data import query_rows
+from scripts.bench_common.data import protocol_rows
 from scripts.bench_common.metrics import ModeResult
 from scripts.bench_common.metrics import make_result
 from scripts.bench_common.parallel import DevicePool
@@ -23,19 +24,15 @@ from scripts.bench_common.report import ReportSpec
 from scripts.bench_tulip.model import MODEL
 from scripts.bench_tulip.model import RESIZE_MODES
 from scripts.bench_tulip.model import TulipWorker
-from scripts.bench_tulip.search import retrieve_rejects
-from scripts.bench_tulip.search import retrieve_val
+from scripts.bench_tulip.search import retrieve
 from vinishko.pipeline.steps.normalization.normalize import load_config
 
 SPEC = ReportSpec(model=MODEL, score_name="косинус", score_short="cos")
 
 
-def run_mode(mode: str, raw: dict[str, Split], pool: DevicePool, tmp: Path) -> ModeResult:
-    """Замер одного режима: эмбеддинги всех ролей на устройствах пула, поиск по галерее val, метрики."""
+def run_mode(mode: str, protocols: list[str], raw: dict[str, Split], pool: DevicePool, tmp: Path) -> list[ModeResult]:
+    """Замер одного режима: эмбеддинги всех ролей на устройствах пула, затем по каждому протоколу поиск по галерее и метрики."""
     splits, dropped = prepare_mode(mode, raw)
-    rows = query_rows(splits["val"])
-    if not len(rows):
-        raise click.ClickException("в val нет классов с двумя и более картинками: запросов leave-one-out не получается, увеличьте --limit")
     vectors: dict[str, np.ndarray] = {}
     seconds = 0.0
     with count_progress() as progress:
@@ -43,9 +40,13 @@ def run_mode(mode: str, raw: dict[str, Split], pool: DevicePool, tmp: Path) -> M
             paths, _, elapsed = embed_parts(pool, split, tmp / f"{mode}_{role}", progress)
             vectors[role] = np.concatenate([np.load(path) for path in paths])
             seconds += elapsed
-        val = retrieve_val(splits["val"], vectors["val"], rows, progress)
-        rejects = {role: retrieve_rejects(splits[role], vectors[role], vectors["val"], progress) for role in splits if role != "val"}
-    return make_result(mode, raw, splits, dropped, val, rejects, seconds)
+        results = []
+        for protocol in protocols:
+            gallery_rows, rows = protocol_rows(splits["val"], protocol)
+            val = retrieve(splits["val"], vectors["val"], rows, vectors["val"], gallery_rows, True, progress)
+            rejects = {role: retrieve(splits[role], vectors[role], np.arange(len(splits[role])), vectors["val"], gallery_rows, False, progress) for role in splits if role != "val"}
+            results.append(make_result(mode, protocol, raw, splits, dropped, len(gallery_rows), val, rejects, seconds))
+    return results
 
 
 @click.command()
@@ -57,6 +58,7 @@ def main(
     output: Path,
     devices: list[torch.device],
     mode: str,
+    protocol: str,
     winesensed: Path,
     negatives: Path,
     distractors: bool,
@@ -70,8 +72,9 @@ def main(
 ) -> None:
     """Замер визуальной башни TULIP на WineSensed: recall@1/3/5 и отделимость запросов без ответа. Запуск из корня: python -m scripts.bench_tulip.run.
 
-    Протокол — из README датасетов. Галерея и запросы — val.json, leave-one-out: каждая картинка ищет среди всех остальных картинок val,
-    запросами идут картинки классов, где их две и больше. Запросы без ответа в галерею не попадают: val_distractors.json — вина не из галереи,
+    Галерея и запросы — val.json, два протокола, см. --protocol. loo — leave-one-out из README датасетов: каждая картинка ищет среди всех
+    остальных картинок val, попаданием считается любое из прочих фото её класса. oneshot — как в бою: в галерее одно фото на класс,
+    остальные фото класса идут запросами. Эмбеддинги у протоколов общие. Запросы без ответа в галерею не попадают: val_distractors.json — вина не из галереи,
     negatives.json датасета --negatives — не вино. По ним считается, насколько косинус top-1 и отрыв top-1 от top-2 отделяют их от запросов val.
 
     В режиме norm вход энкодера — кроп нормализации, отрендеренный по сохранённой разметке normalization.jsonl той же функцией, что в пайплайне;
@@ -87,7 +90,7 @@ def main(
             pool = DevicePool(devices, TulipWorker, (weights, resize_mode, render_cfg, batch_size, workers))
         with pool:
             console.print(f"[green]model[/] {MODEL} на {', '.join(pool.names)}, {pool.dtype}")
-            results = [run_mode(m, raw, pool, Path(tmp)) for m in MODES[mode]]
+            results = [r for m in MODES[mode] for r in run_mode(m, PROTOCOLS[protocol], raw, pool, Path(tmp))]
             info, dtype = pool.info[0], pool.dtype
     run_info = {
         "модель": f"{MODEL}, визуальная башня, {weights.name}",
