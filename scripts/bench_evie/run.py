@@ -76,7 +76,6 @@ def search_mode(mode: str, raw: dict[str, Split], embedded: Embedded, device: to
 @click.option("--max-visual-tokens", type=click.IntRange(min=64), default=None, help="Потолок визуальных токенов на картинку; по умолчанию как в конфиге процессора, 1024. Фото WineSensed 480×640 дают 300")
 @click.option("--attn", type=click.Choice(ATTN_IMPLS), default=None, help="Реализация внимания; по умолчанию flash_attention_2 на CUDA с bfloat16, иначе sdpa")
 @click.option("--batch-size", type=click.IntRange(min=1), default=8, show_default=True)
-@click.option("--tmp-dir", type=click.Path(exists=True, file_okay=False, path_type=Path), default=None, help="Где завести временную директорию под токены, по умолчанию системная. На 128 измерениях оба режима занимают около 18 ГБ; если /tmp лежит в памяти, укажите диск")
 def main(
     output: Path,
     device: torch.device,
@@ -93,7 +92,6 @@ def main(
     max_visual_tokens: int | None,
     attn: str | None,
     batch_size: int,
-    tmp_dir: Path | None,
 ) -> None:
     """Замер EVIE на WineSensed в роли поисковика картинка-к-картинке: recall@1/3/5 и отделимость запросов без ответа. Запуск из корня: python -m scripts.bench_evie.run.
 
@@ -102,7 +100,8 @@ def main(
 
     Отличие в модели: EVIE — поздняя интеракция, картинка кодируется не одним вектором, а вектором на каждый токен, и запрос, и галерея.
     Скор пары — MaxSim пайплайна, делённый на число токенов запроса. Поиск точный, перебором всей галереи на --device; индекс faiss тут неприменим.
-    Токены пишутся во временную директорию и удаляются по завершении. Сначала считаются эмбеддинги всех режимов, затем модель выгружается
+    Токены пишутся во временную директорию системы и удаляются по завершении; на 128 измерениях оба режима занимают около 18 ГБ.
+    Если /tmp мал либо лежит в оперативной памяти, место задаёт стандартная переменная окружения TMPDIR. Сначала считаются эмбеддинги всех режимов, затем модель выгружается
     и освобождает память устройства поиску.
     """
     if device.type == "cpu" and find_spec("fla") is not None:
@@ -115,7 +114,7 @@ def main(
         model, processor = load_model(model_id, device, dtype, attn, int(dim), max_visual_tokens)
     console.print(f"[green]model[/] {model_id} на {device}, {dtype}, {attn}, dim {dim}")
 
-    with TemporaryDirectory(prefix="bench_evie_", dir=tmp_dir) as tmp:
+    with TemporaryDirectory(prefix="bench_evie_") as tmp:
         embedded = {m: embed_mode(m, raw, model, processor, render_cfg, Path(tmp), int(dim), device, batch_size, workers) for m in MODES[mode]}
         del model
         gc.collect()
