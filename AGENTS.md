@@ -31,6 +31,8 @@ SLA < 3 с. Вес критериев: достоверность выдачи 5
 - Для цикла экспериментов NDR/NRP, анализа baseline, создания версий в `ndr/solutions/`
   и сравнения прогонов из `ndr/results/` **обязательно прочитать и применять**
   `.agents/skills/ndr-experiments/SKILL.md`.
+- Для разработки цифрового сомелье и файлов в `ai_somelier/` **обязательно прочитать и
+  применять** `.agents/skills/ai-somelier-dev/SKILL.md`.
 
 ## NDR — `ndr/`
 
