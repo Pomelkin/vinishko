@@ -20,6 +20,7 @@ dependencies = [
     "kostyl-toolkit[ml]>=0.2.6",
     "open-clip-torch",
     "torchvision==0.25.0",
+    "numba>=0.67.0",
 ]
 [dependency-groups]
 dev = [
