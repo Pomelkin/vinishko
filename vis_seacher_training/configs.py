@@ -37,9 +37,11 @@ class ViewAugConfig(StrictModel):
     """Доля примеров с окном во всю бутылку."""
     edge_jitter_prob: float = Field(default=0.8, ge=0, le=1)
     edge_jitter: float = Field(default=0.08, ge=0, lt=0.4)
-    """Шум бокса: каждая из четырёх граней окна сдвигается на ±долю его размера, наружу либо внутрь."""
+    """Шум окна по высоте: верхняя и нижняя грани сдвигаются на ±долю его высоты, наружу либо внутрь."""
+    edge_jitter_x: float = Field(default=0.04, ge=0, lt=0.4)
+    """Шум окна по ширине: боковые грани сдвигаются только наружу, до этой доли ширины. Внутрь нельзя: пайплайн берёт ширину по маске и бутылку по бокам не срезает."""
     rotate_prob: float = Field(default=0.6, ge=0, le=1)
-    rotate_deg: float = Field(default=12.0, ge=0, le=45)
+    rotate_deg: float = Field(default=10.0, ge=0, le=45)
     """Ошибка выравнивания: к углу из разметки добавляется ±столько градусов."""
     keep_background_prob: float = Field(default=0.2, ge=0, le=1)
     """Доля примеров с оригинальным фоном вместо заливки."""
@@ -74,6 +76,25 @@ class LabelNoiseAugConfig(StrictModel):
     prob: float = Field(default=0.4, ge=0, le=1)
 
 
+class MaskDefectsAugConfig(StrictModel):
+    """Огрехи сегментации: маска бутылки неполная либо с неровным краем. Проявляются через заливку фона, поэтому идут прямо перед ней."""
+
+    prob: float = Field(default=0.3, ge=0, le=1)
+    truncate_prob: float = Field(default=0.4, ge=0, le=1)
+    max_truncate: float = Field(default=0.6, ge=0, le=1)
+    """Маска обрывается сверху либо снизу: до этой доли её высоты в кропе уходит в фон, но не глубже min_label_visible."""
+    min_label_visible: float = Field(default=0.5, ge=0, le=1)
+    side_cut_prob: float = Field(default=0.5, ge=0, le=1)
+    """Проверяется, только если обрыва не случилось: вместе они оставляли от бутылки лоскут."""
+    max_side_cuts: int = Field(default=2, ge=1)
+    side_cut_size: tuple[float, float] = (0.05, 0.25)
+    """Выкусы с боков маски: эллипсы с центром на её границе, размер в долях высоты и ширины кропа."""
+    rough_prob: float = Field(default=0.5, ge=0, le=1)
+    rough_sigma: tuple[float, float] = (0.01, 0.03)
+    rough_amp: tuple[float, float] = (0.15, 0.4)
+    """Неровный край: граница маски гуляет по низкочастотному шуму; sigma — ширина полосы в долях большей стороны, amp — сила шума."""
+
+
 class GlareAugConfig(StrictModel):
     """Блик на стекле и глянцевой этикетке."""
 
@@ -81,6 +102,26 @@ class GlareAugConfig(StrictModel):
     max_blobs: int = Field(default=2, ge=1)
     intensity: tuple[float, float] = (0.35, 0.95)
     size_range: tuple[float, float] = (0.05, 0.25)
+    strip_prob: float = Field(default=0.4, ge=0, le=1)
+    """Доля бликов в виде узкой полосы вдоль бутылки: отражение ламп магазина в стекле; остальные — мягкие пятна."""
+    strip_width: tuple[float, float] = (0.02, 0.07)
+    """Ширина полосы в долях ширины кропа."""
+
+
+class ExposureAugConfig(StrictModel):
+    """Съёмка в полутьме либо пересвет: кадр меняет яркость равномерно или с перепадом к одному краю."""
+
+    prob: float = Field(default=0.25, ge=0, le=1)
+    dark_prob: float = Field(default=0.65, ge=0, le=1)
+    """Доля затемнений среди срабатываний; остальные — пересвет."""
+    dark_gain: tuple[float, float] = (0.25, 0.7)
+    """Какая доля яркости остаётся в самом тёмном месте кадра."""
+    bright_gain: tuple[float, float] = (1.3, 2.2)
+    """Во сколько раз ярче самое светлое место кадра; светлое выбивается в белое."""
+    bright_lift: float = Field(default=40.0, ge=0)
+    """Подъём чёрного при пересвете, до стольких уровней: тени выцветают, контраст падает."""
+    gradient_prob: float = Field(default=0.5, ge=0, le=1)
+    """Доля срабатываний с перепадом к краю; у остальных кадр меняется равномерно."""
 
 
 class PhotometricAugConfig(StrictModel):
@@ -89,16 +130,24 @@ class PhotometricAugConfig(StrictModel):
     color_prob: float = Field(default=0.8, ge=0, le=1)
     white_balance_prob: float = Field(default=0.3, ge=0, le=1)
     shadow_prob: float = Field(default=0.15, ge=0, le=1)
+    shake_prob: float = Field(default=0.05, ge=0, le=1)
+    """Сильный смаз дрогнувшей руки; лёгкий смаз входит в blur_prob."""
+    rare_color_prob: float = Field(default=0.03, ge=0, le=1)
+    """Сильный сдвиг тона и насыщенности. Редко: тон отличает вина одной серии, но баланс белого телефона иногда промахивается сильно."""
     blur_prob: float = Field(default=0.25, ge=0, le=1)
     noise_prob: float = Field(default=0.25, ge=0, le=1)
     sharpen_prob: float = Field(default=0.1, ge=0, le=1)
 
 
 class DegradeAugConfig(StrictModel):
-    """Потеря качества: мелкое фото, растянутое обратно, и JPEG."""
+    """Потеря качества: далёкая бутылка, растянутая обратно, и JPEG."""
 
-    downscale_prob: float = Field(default=0.3, ge=0, le=1)
-    downscale_range: tuple[float, float] = (0.3, 0.8)
+    downscale_prob: float = Field(default=0.35, ge=0, le=1)
+    downscale_range: tuple[float, float] = (0.12, 0.8)
+    """Во сколько раз кроп уменьшается перед растяжением обратно; масштаб берётся лог-равномерно, чтобы сильный шакал не был редкостью."""
+    small_jpeg_prob: float = Field(default=0.5, ge=0, le=1)
+    small_jpeg_quality: tuple[int, int] = (30, 80)
+    """JPEG на уменьшенном кадре: так пережимает камера, когда бутылка занимает в кадре сотню пикселей."""
     jpeg_prob: float = Field(default=0.4, ge=0, le=1)
     jpeg_quality: tuple[int, int] = (25, 90)
 
@@ -112,6 +161,8 @@ class AugmentationsConfig(StrictModel):
     occlusion: OcclusionAugConfig = OcclusionAugConfig()
     label_noise: LabelNoiseAugConfig = LabelNoiseAugConfig()
     glare: GlareAugConfig = GlareAugConfig()
+    mask_defects: MaskDefectsAugConfig = MaskDefectsAugConfig()
+    exposure: ExposureAugConfig = ExposureAugConfig()
     photometric: PhotometricAugConfig = PhotometricAugConfig()
     degrade: DegradeAugConfig = DegradeAugConfig()
     resize_interpolations: list[Interpolation] = ["nearest", "linear", "cubic", "area", "lanczos"]

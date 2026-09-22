@@ -13,7 +13,8 @@ from torchmetrics.functional.classification import binary_auroc
 KS = (1, 3, 5)
 TOP = max(KS)
 FPRS = (0.01, 0.05)
-CHUNK = 4096
+CHUNK_BYTES = 1 << 30
+"""Бюджет памяти под матрицу косинусов одного куска запросов: кусок тем меньше, чем больше галерея, и полная матрица n×n не собирается никогда."""
 SERIES_COLORS = ("#2a78d6", "#eb6834", "#1baf7a", "#eda100")
 """Первые слоты категориальной палитры отчётов scripts/bench_*: порядок фиксирован, цвет привязан к группе запросов."""
 
@@ -34,10 +35,11 @@ def search(queries: torch.Tensor, gallery: torch.Tensor, exclude: torch.Tensor |
     exclude — для каждого запроса номер строки галереи, которую нельзя находить, либо −1: так из выдачи убирается сам запрос.
     """
     scores, ids = [], []
-    for start in range(0, len(queries), CHUNK):
-        sim = queries[start : start + CHUNK] @ gallery.T
+    chunk = max(1, min(len(queries), CHUNK_BYTES // max(1, gallery.shape[0] * queries.element_size())))
+    for start in range(0, len(queries), chunk):
+        sim = queries[start : start + chunk] @ gallery.T
         if exclude is not None:
-            rows = exclude[start : start + CHUNK]
+            rows = exclude[start : start + chunk]
             own = rows >= 0
             sim[torch.nonzero(own).squeeze(1), rows[own]] = -torch.inf
         top = sim.topk(min(TOP, gallery.shape[0]), dim=1)

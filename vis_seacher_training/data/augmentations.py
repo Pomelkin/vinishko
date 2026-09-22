@@ -3,6 +3,11 @@ import cv2
 import numpy as np
 
 from vis_seacher_training.configs import AugmentationsConfig
+from vis_seacher_training.data.kernels import apply_gain
+from vis_seacher_training.data.kernels import blend_images
+from vis_seacher_training.data.kernels import gain_gradient
+from vis_seacher_training.data.kernels import screen_gauss
+from vis_seacher_training.data.kernels import screen_map
 from vis_seacher_training.data.views import View
 from vis_seacher_training.data.views import ViewParams
 from vis_seacher_training.data.views import mute_background
@@ -11,7 +16,9 @@ from vis_seacher_training.data.views import render_view
 INTERPOLATIONS = {"nearest": cv2.INTER_NEAREST, "linear": cv2.INTER_LINEAR, "cubic": cv2.INTER_CUBIC, "area": cv2.INTER_AREA, "lanczos": cv2.INTER_LANCZOS4}
 FULL_BOTTLE_PAD = 100.0  # запас заведомо больше бутылки: окно упирается в её маску
 OCCLUDER_ATTEMPTS = 6
-DOWNSCALE_PAIRS = [(cv2.INTER_NEAREST, cv2.INTER_NEAREST), (cv2.INTER_AREA, cv2.INTER_LINEAR), (cv2.INTER_LINEAR, cv2.INTER_CUBIC), (cv2.INTER_AREA, cv2.INTER_NEAREST)]
+# чем уменьшать и чем растягивать обратно: area — как сенсор камеры, nearest и linear — быстрые и с алиасингом
+DOWNSCALE_PAIRS = [(cv2.INTER_NEAREST, cv2.INTER_NEAREST), (cv2.INTER_AREA, cv2.INTER_LINEAR), (cv2.INTER_LINEAR, cv2.INTER_CUBIC), (cv2.INTER_AREA, cv2.INTER_NEAREST), (cv2.INTER_AREA, cv2.INTER_CUBIC), (cv2.INTER_LINEAR, cv2.INTER_LINEAR)]
+MIN_SMALL_PX = 8
 
 
 def fit_size(height: int, width: int, target: tuple[int, int]) -> tuple[int, int]:
@@ -32,8 +39,8 @@ class TrainAugmenter:
     """Аугментации обучения: фото и разметка бутылки → кроп, вписанный в размер входа.
 
     Порядок повторяет жизнь кадра. Сначала то, что случается при съёмке: как нормализатор вырезал бутылку (запас вокруг этикетки,
-    шум бокса, ошибка выравнивания), перспектива, перекрытия, порча этикетки, блик, свет и шум, потеря качества. Затем то, что пайплайн
-    делает с уже снятым кадром: заглушение фона по маске, у части примеров пропускается, и ресайз случайной интерполяцией.
+    шум бокса, ошибка выравнивания), перспектива, перекрытия, порча этикетки, блик, полутьма или пересвет, свет и шум, потеря качества. Затем то, что пайплайн
+    делает с уже снятым кадром: заглушение фона по маске с огрехами сегментации, у части примеров пропускается, и ресайз случайной интерполяцией.
     Фон заливается после цветовых аугментаций, иначе он перестал бы быть нулём на входе модели.
     """
 
@@ -42,7 +49,8 @@ class TrainAugmenter:
         self.default_pad = float(render_cfg["crop"]["padding_y"])
         fill = tuple(render_cfg["background"]["color"])
         ph, dg = cfg.photometric, cfg.degrade
-        self.perspective = A.Compose([A.Perspective(scale=cfg.perspective.scale, keep_size=True, border_mode=cv2.BORDER_CONSTANT, fill=fill, fill_mask=0, p=cfg.perspective.prob)])
+        # fit_output: без него Perspective увеличивает кадр и срезает бутылку прямой гранью окна, чего пайплайн по бокам не делает
+        self.perspective = A.Compose([A.Perspective(scale=cfg.perspective.scale, keep_size=True, fit_output=True, border_mode=cv2.BORDER_CONSTANT, fill=fill, fill_mask=0, p=cfg.perspective.prob)])
         self.label_noise = A.Compose(
             [
                 A.OneOf(
@@ -53,6 +61,9 @@ class TrainAugmenter:
                         A.GaussNoise(std_range=(0.03, 0.09), p=1),
                         A.ISONoise(color_shift=(0.01, 0.04), intensity=(0.1, 0.45), p=1),
                         A.ImageCompression(quality_range=(10, 40), p=1),
+                        A.SaltAndPepper(amount=(0.01, 0.06), p=1),
+                        # брызги и грязь на бумаге: порог задаёт плотность, от густой сыпи до редких капель; выше 0.76 пятен уже нет
+                        A.Spatter(mode="mud", cutout_threshold=(0.68, 0.76), p=1),
                     ],
                     p=1,
                 )
@@ -66,17 +77,15 @@ class TrainAugmenter:
                 # диапазон уже стандартного 3000–15000 К: на его краях оранжевая этикетка уходила в зелёную
                 A.PlanckianJitter(mode="blackbody", temperature_limit=(4500, 8500), p=ph.white_balance_prob),
                 A.RandomShadow(shadow_roi=(0, 0, 1, 1), shadow_intensity_range=(0.3, 0.6), p=ph.shadow_prob),
+                # редкий сильный промах баланса белого; яркость не трогает, ею занимается expose
+                A.HueSaturationValue(hue_shift_limit=(-25, 25), sat_shift_limit=(-60, 60), val_shift_limit=(0, 0), p=ph.rare_color_prob),
                 A.OneOf([A.GaussianBlur(sigma_limit=(0.5, 2.5), p=1), A.MotionBlur(blur_limit=(3, 11), p=1), A.Defocus(radius=(1, 3), p=1)], p=ph.blur_prob),
+                A.MotionBlur(blur_limit=(13, 31), allow_shifted=True, p=ph.shake_prob),
                 A.OneOf([A.GaussNoise(std_range=(0.02, 0.1), p=1), A.ISONoise(p=1)], p=ph.noise_prob),
                 A.Sharpen(p=ph.sharpen_prob),
             ]
         )
-        self.degrade = A.Compose(
-            [
-                A.OneOf([A.Downscale(scale_range=dg.downscale_range, interpolation_pair={"downscale": down, "upscale": up}, p=1) for down, up in DOWNSCALE_PAIRS], p=dg.downscale_prob),
-                A.ImageCompression(quality_range=dg.jpeg_quality, p=dg.jpeg_prob),
-            ]
-        )
+        self.degrade = A.Compose([A.ImageCompression(quality_range=dg.jpeg_quality, p=dg.jpeg_prob)])
         self.rng = np.random.default_rng(seed)
         self.reseed(seed)
 
@@ -97,7 +106,10 @@ class TrainAugmenter:
             pad_top = pad_bottom = FULL_BOTTLE_PAD
         else:
             pad_top, pad_bottom = self.rng.uniform(*view.pad_y_range, size=2)
-        jitter = self.rng.uniform(-view.edge_jitter, view.edge_jitter, size=4) if self.chance(view.edge_jitter_prob) else np.zeros(4)
+        jitter = np.zeros(4)
+        if self.chance(view.edge_jitter_prob):
+            jitter[[1, 3]] = self.rng.uniform(-view.edge_jitter, view.edge_jitter, size=2)
+            jitter[[0, 2]] = self.rng.uniform(0, view.edge_jitter_x, size=2)
         angle = self.rng.uniform(-view.rotate_deg, view.rotate_deg) if self.chance(view.rotate_prob) else 0.0
         return ViewParams(float(pad_top), float(pad_bottom), (float(jitter[0]), float(jitter[1]), float(jitter[2]), float(jitter[3])), float(angle))
 
@@ -154,25 +166,108 @@ class TrainAugmenter:
         if not view.label.any():
             return
         spoiled = self.label_noise(image=view.image)["image"]
-        alpha = cv2.GaussianBlur(view.label.astype(np.float32) / 255, (0, 0), 2.0)[..., None]
-        view.image = (alpha * spoiled + (1 - alpha) * view.image).round().astype(np.uint8)
+        alpha = cv2.GaussianBlur(view.label.astype(np.float32) / 255, (0, 0), 2.0)
+        view.image = blend_images(np.ascontiguousarray(spoiled), np.ascontiguousarray(view.image), alpha)
 
     def add_glare(self, view: View) -> None:
-        """Блики: вытянутые вдоль бутылки светлые пятна с центром на ней, смешение «экран»."""
+        """Блики с центром на бутылке, смешение «экран»: мягкие пятна, вытянутые вдоль неё, либо узкие полосы — отражения ламп магазина в стекле."""
         cfg = self.cfg.glare
         ys, xs = np.nonzero(view.bottle)
         if not len(ys):
             return
         H, W = view.image.shape[:2]
-        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
         image = view.image.astype(np.float32)
         for _ in range(int(self.rng.integers(1, cfg.max_blobs + 1))):
             at = self.rng.integers(len(ys))
-            sx = max(1.0, float(self.rng.uniform(*cfg.size_range)) * W * 0.5)
-            sy = sx * float(self.rng.uniform(1.0, 4.0))
-            blob = np.exp(-(((xx - xs[at]) / sx) ** 2 + ((yy - ys[at]) / sy) ** 2) / 2) * float(self.rng.uniform(*cfg.intensity))
-            image += blob[..., None] * (255 - image)
+            intensity = float(self.rng.uniform(*cfg.intensity))
+            if self.chance(cfg.strip_prob):
+                w = max(2.0, float(self.rng.uniform(*cfg.strip_width)) * W)
+                h = float(self.rng.uniform(0.3, 1.2)) * H
+                strip = np.zeros((H, W), np.float32)
+                box = cv2.boxPoints(((float(xs[at]), float(ys[at])), (w, h), float(self.rng.uniform(-8, 8))))
+                cv2.fillPoly(strip, [np.round(box).astype(np.int32)], 1.0)
+                screen_map(image, cv2.GaussianBlur(strip, (0, 0), max(0.5, w * 0.3)) * intensity)
+            else:
+                sx = max(1.0, float(self.rng.uniform(*cfg.size_range)) * W * 0.5)
+                sy = sx * float(self.rng.uniform(1.0, 4.0))
+                screen_gauss(image, int(xs[at]), int(ys[at]), sx, sy, intensity)
         view.image = image.round().astype(np.uint8)
+
+    def shrink(self, image: np.ndarray) -> np.ndarray:
+        """Далёкая бутылка: кроп уменьшается быстрым методом, пережимается JPEG на малом размере и растягивается обратно, как это сделал бы пайплайн с мелким кропом."""
+        cfg = self.cfg.degrade
+        h, w = image.shape[:2]
+        scale = float(np.exp(self.rng.uniform(*np.log(cfg.downscale_range))))
+        down, up = DOWNSCALE_PAIRS[int(self.rng.integers(len(DOWNSCALE_PAIRS)))]
+        small = cv2.resize(image, (max(MIN_SMALL_PX, round(w * scale)), max(MIN_SMALL_PX, round(h * scale))), interpolation=down)
+        if self.chance(cfg.small_jpeg_prob):
+            quality = int(self.rng.integers(cfg.small_jpeg_quality[0], cfg.small_jpeg_quality[1] + 1))
+            _, encoded = cv2.imencode(".jpg", cv2.cvtColor(small, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, quality])
+            decoded = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+            if decoded is None:
+                raise RuntimeError(f"JPEG {small.shape[1]}×{small.shape[0]} с качеством {quality} не раскодировался")
+            small = cv2.cvtColor(decoded, cv2.COLOR_BGR2RGB)
+        return cv2.resize(small, (w, h), interpolation=up)
+
+    def spoil_mask(self, view: View) -> None:
+        """Огрехи сегментации в маске бутылки: обрыв сверху или снизу либо выкусы с боков, и независимо от них неровный край. Заливка фона потом съест эти места."""
+        cfg = self.cfg.mask_defects
+        H, W = view.bottle.shape
+        rows = np.nonzero(view.bottle.any(axis=1))[0]
+        if not len(rows):
+            return
+        if self.chance(cfg.truncate_prob):
+            # маска покрыла бутылку не целиком; срез не глубже, чем оставляет min_label_visible этикетки
+            from_top = self.chance(0.5)
+            label_rows = (view.label > 0).sum(axis=1).astype(np.float64)
+            cut = int(self.rng.uniform(0, cfg.max_truncate) * len(rows))
+            if label_rows.sum() > 0:
+                cum = np.cumsum(label_rows if from_top else label_rows[::-1])
+                allowed = int(np.searchsorted(cum, (1 - cfg.min_label_visible) * label_rows.sum(), side="right"))
+                cut = min(cut, max(0, allowed - (rows[0] if from_top else H - 1 - rows[-1])))
+            if cut > 0:
+                edge = rows[0] + cut if from_top else rows[-1] - cut
+                tilt = np.tan(np.radians(self.rng.uniform(-10, 10))) * W / 2
+                far = -1 if from_top else H
+                cv2.fillPoly(view.bottle, [np.array([[0, far], [W, far], [W, round(edge + tilt)], [0, round(edge - tilt)]], np.int32)], 0)
+        elif self.chance(cfg.side_cut_prob):
+            # обрыв и выкусы вместе оставляли от бутылки лоскут, поэтому либо одно, либо другое
+            for _ in range(int(self.rng.integers(1, cfg.max_side_cuts + 1))):
+                y = int(self.rng.choice(rows))
+                xs = np.nonzero(view.bottle[y])[0]
+                if not len(xs):
+                    continue
+                x = int(xs[0] if self.chance(0.5) else xs[-1])
+                h, w = (int(self.rng.uniform(*cfg.side_cut_size) * side) for side in (H, W))
+                cv2.ellipse(view.bottle, (x, y), (max(1, w // 2), max(1, h // 2)), float(self.rng.uniform(0, 180)), 0, 360, 0, -1)
+        if self.chance(cfg.rough_prob):
+            # граница гуляет по низкочастотному шуму; внутрь и наружу дальше полосы размытия шум не достаёт
+            sigma = float(self.rng.uniform(*cfg.rough_sigma)) * max(H, W)
+            cells = max(2, round(max(H, W) / (4 * sigma)))
+            noise = cv2.resize(self.rng.normal(size=(max(2, round(H * cells / max(H, W))), max(2, round(W * cells / max(H, W))))).astype(np.float32), (W, H), interpolation=cv2.INTER_CUBIC)
+            soft = cv2.GaussianBlur(view.bottle.astype(np.float32) / 255, (0, 0), sigma)
+            band = (soft > 0.001) & (soft < 0.999)
+            rough = soft + float(self.rng.uniform(*cfg.rough_amp)) * noise > 0.5
+            view.bottle = np.where(band, rough, soft >= 0.999).astype(np.uint8) * 255
+
+    def expose(self, view: View) -> None:
+        """Полутьма либо пересвет: коэффициент яркости один на кадр или растёт к случайному краю. Идёт до шума матрицы: в тёмном кадре шум остаётся заметным."""
+        cfg = self.cfg.exposure
+        dark = self.chance(cfg.dark_prob)
+        if dark:
+            low = float(self.rng.uniform(*cfg.dark_gain))
+            high = float(self.rng.uniform(low, 1.0))  # светлый край тоже не обязан остаться как в оригинале
+        else:
+            high = float(self.rng.uniform(*cfg.bright_gain))
+            low = float(self.rng.uniform(1.0, high))
+        H, W = view.image.shape[:2]
+        if self.chance(cfg.gradient_prob):
+            angle = float(self.rng.uniform(0, 2 * np.pi))
+            gain = gain_gradient(H, W, float(np.cos(angle)), float(np.sin(angle)), low, high)
+        else:
+            gain = np.full((H, W), low if dark else high, np.float32)
+        lift = 0.0 if dark else float(self.rng.uniform(0, cfg.bright_lift))
+        view.image = apply_gain(np.ascontiguousarray(view.image), gain, np.array(lift, gain.dtype), np.array(max(high - 1, 1e-6), gain.dtype))
 
     def __call__(self, rgb: np.ndarray, cand: dict) -> tuple[np.ndarray, tuple[float, float]]:
         """Кроп uint8, вписанный в размер входа, и его положение внутри полей: доли свободного места сверху и слева."""
@@ -186,11 +281,18 @@ class TrainAugmenter:
             self.noise_label(view)
         if self.chance(cfg.glare.prob):
             self.add_glare(view)
-        image = self.degrade(image=self.photometric(image=view.image)["image"])["image"]
+        if self.chance(cfg.exposure.prob):
+            self.expose(view)
+        image = self.photometric(image=view.image)["image"]
+        if self.chance(cfg.degrade.downscale_prob):
+            image = self.shrink(image)
+        image = self.degrade(image=image)["image"]
         if self.chance(cfg.view.keep_background_prob):
             # за краем исходного кадра настоящего фона нет: там растянутые крайние пиксели, в бою их закрыла бы заливка
             image[view.inside == 0] = self.render_cfg["background"]["color"]
         else:
+            if self.chance(cfg.mask_defects.prob):
+                self.spoil_mask(view)
             image = mute_background(image, view.bottle, self.render_cfg, float(self.rng.uniform(*cfg.view.mask_jitter)))
         image = resize_to_fit(image, self.input_size, INTERPOLATIONS[str(self.rng.choice(cfg.resize_interpolations))])
         offset = (float(self.rng.random()), float(self.rng.random())) if cfg.random_pad_position else (0.5, 0.5)

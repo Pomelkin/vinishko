@@ -9,9 +9,13 @@ from transformers import initialization as init
 from transformers.models.dinov3_vit import DINOv3ViTConfig
 from transformers.models.dinov3_vit import DINOv3ViTModel
 from transformers.models.dinov3_vit.modeling_dinov3_vit import DINOv3ViTPreTrainedModel
+from kostyl.ml.integrations.lightning import (
+    LightningCheckpointLoader,
+    LightningConfigLoader,
+)
 
 
-class DinoV3ForWineConfig(PreTrainedConfig):
+class DinoV3ForWineConfig(PreTrainedConfig, LightningConfigLoader):
     r"""
     backbone_config (`dict | DINOv3ViTConfig`, *optional*):
         Конфиг бэкбона DINOv3; словарь превращается в `DINOv3ViTConfig`, без значения берётся конфиг по умолчанию.
@@ -75,7 +79,7 @@ class GeM(nn.Module):
         return tokens.float().clamp(min=self.eps).pow(p).mean(dim=1).pow(1.0 / p)
 
 
-class DinoV3ForWine(DINOv3ViTPreTrainedModel):
+class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
     """DINOv3 с головой под метрик-лёрнинг: CLS ⊕ GeM по патч-токенам → BN → Linear → BN → вектор embed_dim.
 
     От DINOv3ViTPreTrainedModel наследуются признаки семейства: поддержка sdpa, flash attention и flex attention, неделимые при шардировании
@@ -165,7 +169,11 @@ class DinoV3ForWine(DINOv3ViTPreTrainedModel):
         """Эмбеддинг картинок (B, embed_dim) в float32."""
         self.check_input_size(pixel_values.shape[-2], pixel_values.shape[-1])
         tokens = self.backbone(pixel_values=pixel_values).last_hidden_state
+
+        tokens_dtype = tokens.dtype
         with torch.autocast(device_type=pixel_values.device.type, enabled=False):
             pooled = self.pool(tokens)
-            embedding = self.head(pooled.to(self.head_dtype)).float()
-        return F.normalize(embedding, dim=-1) if normalize else embedding
+            embedding = self.head(pooled)
+
+        embedding = F.normalize(embedding, dim=-1) if normalize else embedding
+        return embedding.to(tokens_dtype)

@@ -67,16 +67,19 @@ data:
       pad_y_range: [0.0, 0.6]
       full_bottle_prob: 0.05
       edge_jitter_prob: 0.8
-      edge_jitter: 0.08
+      edge_jitter: 0.08       # по высоте, в обе стороны
+      edge_jitter_x: 0.04     # по ширине, только наружу
       rotate_prob: 0.6
-      rotate_deg: 12
+      rotate_deg: 10
       keep_background_prob: 0.2
       mask_jitter: [0.5, 2.0]
     perspective: {prob: 0.4, scale: [0.02, 0.07]}
     occlusion: {prob: 0.35, max_occluders: 3, size_range: [0.08, 0.35], min_label_visible: 0.6, min_bottle_visible: 0.6, cut_from_mask_prob: 0.5}
     label_noise: {prob: 0.4}
-    glare: {prob: 0.3, max_blobs: 2, intensity: [0.35, 0.95], size_range: [0.05, 0.25]}
-    photometric: {color_prob: 0.8, white_balance_prob: 0.3, shadow_prob: 0.15, blur_prob: 0.25, noise_prob: 0.25, sharpen_prob: 0.1}
-    degrade: {downscale_prob: 0.3, downscale_range: [0.3, 0.8], jpeg_prob: 0.4, jpeg_quality: [25, 90]}
+    glare: {prob: 0.3, max_blobs: 2, intensity: [0.35, 0.95], size_range: [0.05, 0.25], strip_prob: 0.4, strip_width: [0.02, 0.07]}
+    mask_defects: {prob: 0.3, truncate_prob: 0.4, max_truncate: 0.7, min_label_visible: 0.5, side_cut_prob: 0.5, max_side_cuts: 2, side_cut_size: [0.05, 0.25], rough_prob: 0.5, rough_sigma: [0.01, 0.03], rough_amp: [0.15, 0.4]}
+    exposure: {prob: 0.25, dark_prob: 0.65, dark_gain: [0.25, 0.7], bright_gain: [1.3, 2.2], bright_lift: 40, gradient_prob: 0.5}
+    photometric: {color_prob: 0.8, white_balance_prob: 0.3, shadow_prob: 0.15, shake_prob: 0.05, rare_color_prob: 0.03, blur_prob: 0.25, noise_prob: 0.25, sharpen_prob: 0.1}
+    degrade: {downscale_prob: 0.35, downscale_range: [0.12, 0.8], small_jpeg_prob: 0.5, small_jpeg_quality: [30, 80], jpeg_prob: 0.4, jpeg_quality: [25, 90]}
     resize_interpolations: [nearest, linear, cubic, area, lanczos]
     random_pad_position: true

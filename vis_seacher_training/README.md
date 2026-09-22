@@ -8,6 +8,7 @@ uv sync --all-groups                        # albumentations, tensorboard, accel
 hf auth login                               # репозитории DINOv3 на HF закрытые
 
 python -m vis_seacher_training.preview_augs -c vis_seacher_training/experiments/dinov3_vitb16_512/config.yaml -o /tmp/augs.png
+python -m vis_seacher_training.augs_fixture save -c vis_seacher_training/experiments/dinov3_vitb16_512/config.yaml -o /tmp/augs_ref.npz  # эталон перед правкой аугментаций, потом check
 python -m vis_seacher_training.run -d vis_seacher_training/experiments/dinov3_vitb16_512
 tensorboard --logdir vis_seacher_training/experiments/dinov3_vitb16_512
 ```
