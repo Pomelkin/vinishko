@@ -1,11 +1,11 @@
 # AI sommelier solution v1
 
-`ai_somelier.solution` is a stateless Python package. It does not start a server and keeps no
+`ai_somelier.solution.v1` is a stateless Python package. It does not start a server and keeps no
 session state. A future runner can call `respond(request)` once per turn and persist the returned
 raw `message` in its own dialogue history.
 
 ```python
-from ai_somelier.solution import respond
+from ai_somelier.solution.v1 import respond
 
 request = {
     "wine": recognized_catalog_row,

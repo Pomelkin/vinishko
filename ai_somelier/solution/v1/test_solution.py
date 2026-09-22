@@ -8,15 +8,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ai_somelier.solution.config import DEFAULT_KNOWLEDGE_PATH
-from ai_somelier.solution.knowledge import NO_DATA
-from ai_somelier.solution.knowledge import PROMPT_CARD_FIELDS
-from ai_somelier.solution.knowledge import TEMPLATE_PATH
-from ai_somelier.solution.knowledge import compile_expert_knowledge
-from ai_somelier.solution.knowledge import load_expert_knowledge
-from ai_somelier.solution.knowledge import normalize_catalog_card
-from ai_somelier.solution.knowledge import selected_knowledge_values
-from ai_somelier.solution.sommelier import prepare_request
+from ai_somelier.solution.v1.config import DEFAULT_KNOWLEDGE_PATH
+from ai_somelier.solution.v1.knowledge import NO_DATA
+from ai_somelier.solution.v1.knowledge import PROMPT_CARD_FIELDS
+from ai_somelier.solution.v1.knowledge import TEMPLATE_PATH
+from ai_somelier.solution.v1.knowledge import compile_expert_knowledge
+from ai_somelier.solution.v1.knowledge import load_expert_knowledge
+from ai_somelier.solution.v1.knowledge import normalize_catalog_card
+from ai_somelier.solution.v1.knowledge import selected_knowledge_values
+from ai_somelier.solution.v1.sommelier import prepare_request
 
 
 def wine_card(**overrides: str | None) -> dict[str, str | None]:

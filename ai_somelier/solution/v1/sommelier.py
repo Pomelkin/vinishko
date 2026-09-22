@@ -12,16 +12,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ai_somelier.solution.config import SETTINGS
-from ai_somelier.solution.config import SommelierSettings
-from ai_somelier.solution.config import settings_with_overrides
-from ai_somelier.solution.knowledge import NO_DATA
-from ai_somelier.solution.knowledge import compile_expert_knowledge
-from ai_somelier.solution.knowledge import load_expert_knowledge
-from ai_somelier.solution.knowledge import normalize_catalog_card
-from ai_somelier.solution.models import OutputContractError
-from ai_somelier.solution.models import response_format
-from ai_somelier.solution.models import validate_first_turn
+from ai_somelier.solution.v1.config import SETTINGS
+from ai_somelier.solution.v1.config import SommelierSettings
+from ai_somelier.solution.v1.config import settings_with_overrides
+from ai_somelier.solution.v1.knowledge import NO_DATA
+from ai_somelier.solution.v1.knowledge import compile_expert_knowledge
+from ai_somelier.solution.v1.knowledge import load_expert_knowledge
+from ai_somelier.solution.v1.knowledge import normalize_catalog_card
+from ai_somelier.solution.v1.models import OutputContractError
+from ai_somelier.solution.v1.models import response_format
+from ai_somelier.solution.v1.models import validate_first_turn
 
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
