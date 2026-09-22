@@ -10,6 +10,8 @@ from pathlib import Path
 
 from ai_somelier.solution.config import DEFAULT_KNOWLEDGE_PATH
 from ai_somelier.solution.knowledge import NO_DATA
+from ai_somelier.solution.knowledge import PROMPT_CARD_FIELDS
+from ai_somelier.solution.knowledge import TEMPLATE_PATH
 from ai_somelier.solution.knowledge import compile_expert_knowledge
 from ai_somelier.solution.knowledge import load_expert_knowledge
 from ai_somelier.solution.knowledge import normalize_catalog_card
@@ -53,6 +55,17 @@ class KnowledgeTests(unittest.TestCase):
         self.assertEqual(normalized["Винтаж"], NO_DATA)
         self.assertEqual(normalized["Игристое"], "не определено")
 
+    def test_every_missing_representation_becomes_no_data(self) -> None:
+        missing_values = (None, "", "   ", float("nan"))
+        card = {
+            field: missing_values[index % len(missing_values)]
+            for index, field in enumerate(PROMPT_CARD_FIELDS)
+        }
+        self.assertEqual(
+            set(normalize_catalog_card(card).values()),
+            {NO_DATA},
+        )
+
     def test_axes_preserve_unknown_positive_flags(self) -> None:
         selected = selected_knowledge_values(wine_card())
         self.assertEqual(selected["effervescence"], "unknown")
@@ -61,7 +74,7 @@ class KnowledgeTests(unittest.TestCase):
         self.assertEqual(selected["alcohol_band"], "standard")
 
     def test_only_recognized_wine_blocks_are_compiled(self) -> None:
-        template = json.loads(DEFAULT_KNOWLEDGE_PATH.read_text(encoding="utf-8"))
+        template = json.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
         template["color"]["white"] = ["Знание о белом вине."]
         template["color"]["red"] = ["Не должно попасть в промпт."]
         with tempfile.TemporaryDirectory() as directory:
@@ -82,6 +95,23 @@ class KnowledgeTests(unittest.TestCase):
                 },
             ],
         )
+
+    def test_default_knowledge_is_filled_and_valid(self) -> None:
+        knowledge = load_expert_knowledge(DEFAULT_KNOWLEDGE_PATH)
+        self.assertTrue(
+            all(bullets for values in knowledge.values() for bullets in values.values()),
+        )
+
+    def test_fully_missing_wine_uses_only_safe_unknown_blocks(self) -> None:
+        missing_card: dict[str, None] = dict.fromkeys(PROMPT_CARD_FIELDS)
+        knowledge = load_expert_knowledge(DEFAULT_KNOWLEDGE_PATH)
+        selections, blocks = compile_expert_knowledge(missing_card, knowledge)
+        self.assertEqual(set(selections.values()), {"unknown"})
+        self.assertEqual(len(blocks), 10)
+        self.assertNotIn("color", {block["axis"] for block in blocks})
+        self.assertNotIn("region", {block["axis"] for block in blocks})
+        self.assertNotIn("brand", {block["axis"] for block in blocks})
+        self.assertTrue(all(block["value"] == "unknown" for block in blocks))
 
 
 class PromptTests(unittest.TestCase):
@@ -125,6 +155,29 @@ class PromptTests(unittest.TestCase):
         self.assertIs(
             prepared.payload["messages"][1]["reasoning_details"],
             reasoning_details,
+        )
+
+    def test_missing_cards_are_grounded_without_candidate_knowledge(self) -> None:
+        missing_card: dict[str, None] = dict.fromkeys(PROMPT_CARD_FIELDS)
+        candidate = wine_card(
+            **{
+                "Категория": "Красное",
+                "Регион": "Кубань",
+                "Сорт винограда": "Саперави",
+                "Винодельня": "Фанагория",
+            },
+        )
+        prepared = prepare_request(
+            {"wine": missing_card, "candidates": [candidate], "history": []},
+        )
+        prompt = prepared.payload["messages"][0]["content"]
+        self.assertGreaterEqual(prompt.count(NO_DATA), len(PROMPT_CARD_FIELDS))
+        self.assertEqual(len(prepared.injected_expert_blocks), 10)
+        self.assertTrue(
+            all(
+                block["value"] == "unknown"
+                for block in prepared.injected_expert_blocks
+            ),
         )
 
 

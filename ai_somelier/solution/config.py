@@ -30,7 +30,7 @@ ReasoningEffort = Literal[
 PACKAGE_DIR = Path(__file__).resolve().parent
 AI_SOMELIER_DIR = PACKAGE_DIR.parent
 DEFAULT_KNOWLEDGE_PATH = (
-    AI_SOMELIER_DIR / "docs" / "EXPERT_KNOWLEDGE_TEMPLATE.json"
+    AI_SOMELIER_DIR / "kb" / "EXPERT_KNOWLEDGE.json"
 )
 
 

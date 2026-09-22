@@ -38,8 +38,8 @@ result = respond(
 Later turns request ordinary text rather than structured output, so `suggestions` is `None` and
 `content` is the provider message content. `message` remains suitable for the next history turn.
 
-The default expert file is `ai_somelier/docs/EXPERT_KNOWLEDGE_TEMPLATE.json`. A runner may point
-to a filled file and override other settings without changing solution code:
+The default expert file is the filled `ai_somelier/kb/EXPERT_KNOWLEDGE.json`. A runner may point
+to another compatible file and override other settings without changing solution code:
 
 ```python
 request["runtime"] = {
@@ -52,4 +52,3 @@ The call uses `deepseek/deepseek-v4.1-flash` through OpenRouter and reads the AP
 `OPENROUTER_API_KEY`. `OPENROUTER_SITE_URL` and `OPENROUTER_APP_TITLE` are optional. The result's
 `_trace` records model, prompt version/hash, selected knowledge axes, request, and raw response for
 future reproducible runs.
-
