@@ -229,3 +229,5 @@ data/test
 .DS_Store
 
 ndr/results
+
+candidates/results
