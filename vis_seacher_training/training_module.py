@@ -33,7 +33,7 @@ from kostyl.ml.configs.structs.training_settings import (
     FSDP2StrategyConfig,
 )
 from torch.distributed._composable.replicate_with_fsdp import replicate
-from torch.distributed.fsdp import fully_shard
+from torch.distributed.fsdp import fully_shard, ShardingStrategy
 from kostyl.ml.dist_utils.fsdp import (
     get_fsdp2_policies,
     get_fsdp1_policies,
@@ -116,7 +116,7 @@ class WineTrainingModule(KostylLightningModule):
             )
             self.loss_fn = FSDP(
                 module=self.loss_fn,
-                sharding_strategy=FSDP.NO_SHARD,
+                sharding_strategy= ShardingStrategy.NO_SHARD,
                 use_orig_params=True,
                 **policies,
             )
