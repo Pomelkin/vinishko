@@ -30,6 +30,7 @@ hyperparams:
     base_value: 0.05
   grad_clip_val: 1.0
   backbone_lr_multiplier: 0.02 # бэкбон учится на 2e-5
+  backbone_freeze_ratio: 0.03
 
 checkpointing:
   save_top_k: 3
@@ -39,7 +40,7 @@ checkpointing:
   save_weights_only: true
 
 model:
-  backbone: "facebook/dinov3-vitl16-pretrain-lvd1689m"
+  init_from: /workspace/vinishko/weights/init/dinov3_vitl16_512
   patch_size: 16
   embed_dim: 512
   gem_p: 3.0
@@ -53,6 +54,7 @@ loss:
   m_a: 0.5
   m_b: 0.05
   m_lambda: 0.25
+  centers_init: /workspace/vinishko/weights/init/dinov3_vitl16_512/arcface_centers.pt
 
 data:
   datasets_dir: /workspace/vinishko/datasets

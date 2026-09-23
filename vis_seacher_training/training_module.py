@@ -83,13 +83,23 @@ class WineTrainingModule(KostylLightningModule):
         if self.model is not None:
             return
         cfg, datamodule = self.config, self.datamodule
-        model = DinoV3ForWine.from_backbone(
-            cfg.model.backbone,
-            embed_dim=cfg.model.embed_dim,
-            gem_p=cfg.model.gem_p,
-            device_map=self.trainer.strategy.root_device,
-            attn_implementation=cfg.model.attn_implementation,
-        )
+        if cfg.model.init_from is not None:
+            # готовая модель, например из init_model.py: голова уже осмысленная, а не случайная
+            model = DinoV3ForWine.from_pretrained(
+                cfg.model.init_from,
+                device_map=self.trainer.strategy.root_device,
+                attn_implementation=cfg.model.attn_implementation,
+            )
+            if model.config.embed_dim != cfg.model.embed_dim:
+                raise ValueError(f"model.embed_dim={cfg.model.embed_dim} в конфиге, а у модели из {cfg.model.init_from} — {model.config.embed_dim}")
+        else:
+            model = DinoV3ForWine.from_backbone(
+                cfg.model.backbone,
+                embed_dim=cfg.model.embed_dim,
+                gem_p=cfg.model.gem_p,
+                device_map=self.trainer.strategy.root_device,
+                attn_implementation=cfg.model.attn_implementation,
+            )
 
         if model.config.patch_size != cfg.model.patch_size:
             raise ValueError(
@@ -110,6 +120,7 @@ class WineTrainingModule(KostylLightningModule):
             m_a=cfg.loss.m_a,
             m_b=cfg.loss.m_b,
             m_lambda=cfg.loss.m_lambda,
+            centers=self._initial_centers(),
         )
 
         if isinstance(self.trainer.strategy, FSDPStrategy):
@@ -200,6 +211,23 @@ class WineTrainingModule(KostylLightningModule):
             fully_shard(self.model, mesh=dp_mesh, **policies)
             replicate(self.loss_fn, mesh=dp_mesh, **fp32_policies)  # ty: ignore[no-matching-overload]
         return
+
+    def _initial_centers(self) -> torch.Tensor | None:
+        """Стартовые центры ArcFace из loss.centers_init в порядке классов датамодуля; классам без записи достаётся случайный вектор."""
+        path = self.config.loss.centers_init
+        if path is None:
+            return None
+        saved = torch.load(path, map_location="cpu", weights_only=True)
+        by_name = dict(zip(saved["class_names"], saved["centers"], strict=True))
+        centers = torch.empty(self.datamodule.num_classes, self.config.model.embed_dim)
+        torch.nn.init.xavier_uniform_(centers)
+        found = 0
+        for row, name in enumerate(self.datamodule.class_names):
+            if name in by_name:
+                centers[row] = by_name[name]
+                found += 1
+        logger.log_rank_zero("INFO", f"Центры ArcFace из {path}: {found} из {len(centers)} классов, остальные случайные")
+        return centers
 
     def load_weights(self, path: Path) -> None:
         """Веса чекпоинта в живую, возможно шардированную, модель на всех рангах: директория — DCP от FSDP2, файл — полный state dict.
@@ -311,12 +339,14 @@ class WineTrainingModule(KostylLightningModule):
             dp_process_group=self.data_parallel_group,
             verbosity_level="rank-zero-only",
         )
+        freeze_ratio = hp.backbone_freeze_ratio or 0.0
         groups = create_param_groups(
             self,
             lr=hp.lr.base_value,
             weight_decay=hp.weight_decay.base_value,
             backbone_prefix="model.backbone.",
             backbone_lr_multiplier=hp.backbone_lr_multiplier,
+            backbone_frozen=freeze_ratio > 0,
         )
         optim = create_optimizer(
             parameters_groups=groups,
@@ -326,7 +356,26 @@ class WineTrainingModule(KostylLightningModule):
         )
 
         schedulers: dict[str, BaseScheduler] = {}
-        if hp.lr.scheduler_type is not None:
+        if hp.lr.scheduler_type is not None and freeze_ratio > 0:
+            # бэкбон стоит первые freeze_ratio шагов, затем свой разогрев и косинус; голова и центры идут по обычному расписанию с первого шага
+            schedulers["backbone_lr"] = create_scheduler(
+                config=hp.lr,
+                optim=optim,
+                num_iters=total_steps,
+                param_group_field="lr",
+                apply_if_field="is_backbone",
+                multiplier_field="lr_multiplier",
+                freeze_ratio=freeze_ratio,
+            )
+            schedulers["head_lr"] = create_scheduler(
+                config=hp.lr,
+                optim=optim,
+                num_iters=total_steps,
+                param_group_field="lr",
+                ignore_if_field="is_backbone",
+                multiplier_field="lr_multiplier",
+            )
+        elif hp.lr.scheduler_type is not None:
             scheduler = create_scheduler(
                 config=hp.lr,
                 optim=optim,

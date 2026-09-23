@@ -221,6 +221,8 @@ class ModelConfig(StrictModel):
     """Архитектура DinoV3ForWine."""
 
     backbone: str = "facebook/dinov3-vitb16-pretrain-lvd1689m"
+    init_from: Path | None = None
+    """Директория save_pretrained готовой DinoV3ForWine, например из init_model.py: голова из PCA-whitening вместо случайной. backbone тогда не читается."""
     patch_size: int = 16
     """Патч бэкбона; по нему data.input_size проверяется при чтении конфига, а при сборке модели сверяется с её настоящим патчем."""
     embed_dim: int = Field(default=512, gt=0)
@@ -239,6 +241,8 @@ class LossConfig(StrictModel):
     m_a: float = 0.5
     m_b: float = 0.05
     m_lambda: float = 0.25
+    centers_init: Path | None = None
+    """arcface_centers.pt из init_model.py: центры классов из средних эмбеддингов стартовой модели; классов без записи в файле — случайные."""
 
 
 class HyperparamsConfig(KostylHyperparamsConfig):
@@ -246,6 +250,8 @@ class HyperparamsConfig(KostylHyperparamsConfig):
 
     backbone_lr_multiplier: float | None = Field(default=None, gt=0)
     """Во сколько раз скорость обучения бэкбона отличается от скорости головы и лосса."""
+    backbone_freeze_ratio: float | None = Field(default=None, ge=0, lt=1)
+    """Доля шагов, на которых бэкбон стоит: его lr равен нулю, потом разогрев и косинус своим планировщиком; голова и центры учатся с первого шага."""
 
 
 class TrainingConfig(BaseModel, ConfigLoadingMixin):

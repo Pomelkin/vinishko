@@ -1,3 +1,4 @@
+import math
 from typing import ClassVar
 from typing import cast
 
@@ -65,20 +66,24 @@ class DinoV3ForWineConfig(PreTrainedConfig, LightningConfigLoader):
 class GeM(nn.Module):
     """Generalized mean по токенам с обучаемой степенью: p=1 — среднее, большие p тянут к максимуму.
 
+    Степень хранится логарифмом: p = exp(log_p) всегда положительна, а шаг оптимизатора меняет её в разы, а не на единицы.
     Считается в float32: степень и корень в половинной точности теряют мелкие активации.
     Токены после LayerNorm бывают отрицательными, дробная степень от них не определена, поэтому они поджимаются к eps.
     """
 
     def __init__(self, p: float, eps: float) -> None:
         super().__init__()
-        self.p = nn.Parameter(torch.full((1,), float(p)))
+        self.log_p = nn.Parameter(torch.full((1,), math.log(float(p))))
         self.eps = eps
 
+    @property
+    def p(self) -> torch.Tensor:
+        """Степень, не ниже 1: меньше — уже не обобщённое среднее, а сжатие к геометрическому."""
+        return self.log_p.float().clamp(min=0.0).exp()
+
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
-        original_dtype = tokens.dtype
-        tokens = tokens.float().clamp(min=self.eps)
-        p = self.p.float().clamp(min=1.0)
-        return tokens.pow(p).mean(dim=1).pow(1.0 / p).to(original_dtype)
+        p = self.p
+        return tokens.float().clamp(min=self.eps).pow(p).mean(dim=1).pow(1.0 / p).to(tokens.dtype)
 
 
 class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
@@ -137,14 +142,14 @@ class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
         )
         model = cls(config)
         model.backbone.load_state_dict(backbone.state_dict(), strict=True)
-        return model
+        return model.to(backbone.device)  # новая модель собирается на CPU, device_map переносил только временный бэкбон  # ty: ignore[invalid-argument-type]
 
     @torch.no_grad()
     def _init_weights(self, module: nn.Module) -> None:
         """Linear и BatchNorm головы инициализирует родитель, здесь — только степень GeM. Модули бэкбона до этого метода не доходят: вложенная модель инициализирует их сама."""
         super()._init_weights(module)
         if isinstance(module, GeM):
-            init.constant_(module.p, float(self.config.gem_p))
+            init.constant_(module.log_p, math.log(float(self.config.gem_p)))
 
     def check_input_size(self, height: int, width: int) -> None:
         """Размер входа обязан делиться на патч нацело: иначе свёртка патчей молча отбросит край картинки."""
@@ -177,7 +182,7 @@ class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
         tokens_dtype = tokens.dtype
         with torch.autocast(device_type=pixel_values.device.type, enabled=False):
             tokens = tokens.float()
-            
+
             pooled = self.pool(tokens)
             embedding = self.head(pooled)
 
