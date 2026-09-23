@@ -3,14 +3,18 @@ seed: 42
 
 trainer_params:
   accelerator: "cuda"
-  devices: [ 0 ]
+  devices: [ 0, 1 ]
   strategy:
-    type: "single_device" # для двух карт: devices: [0, 1] и type: "ddp"
-  max_epochs: 15
+    type: "fsdp1" # для двух карт: devices: [0, 1] и type: "ddp"
+    param_dtype: bfloat16
+    reduce_dtype: float32
+    buffer_dtype: float32
+  max_epochs: 1
   precision: bf16-mixed
   val_check_interval: 0.25
   log_every_n_steps: 25
   accumulate_grad_batches: 1
+  limit_train_batches: 400
 
 hyperparams:
   optimizer:
@@ -51,10 +55,10 @@ loss:
   m_lambda: 0.25
 
 data:
-  datasets_dir: /home/pomelk1n/Workspace/vinishko/datasets/visual-encoder
+  datasets_dir: /workspace/vinishko/datasets
   input_size: [ 512, 512 ] # высота и ширина, обе кратны model.patch_size
-  batch_size: 64
-  eval_batch_size: 128
+  batch_size: 32
+  eval_batch_size: 32
   num_workers: 12
   log_train_images_every_n_epochs: 1
   eval:
