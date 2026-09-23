@@ -1,0 +1,5 @@
+[core]
+    remote = selectel
+['remote "selectel"']
+    url = s3://vino/dvc
+    endpointurl = https://s3.ru-6.storage.selcloud.ru
