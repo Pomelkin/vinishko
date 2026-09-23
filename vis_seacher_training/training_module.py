@@ -123,7 +123,6 @@ class WineTrainingModule(KostylLightningModule):
             )
             self.trainer.strategy.model = FSDP(
                 module=self,
-                auto_wrap_policy=wrap_policy,
                 device_id=self.trainer.strategy.root_device,
                 use_orig_params=True,
                 **policies,
