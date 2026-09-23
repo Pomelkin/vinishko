@@ -116,7 +116,8 @@ class WineTrainingModule(KostylLightningModule):
             )
             self.loss_fn = FSDP(
                 module=self.loss_fn,
-                sharding_strategy= ShardingStrategy.NO_SHARD,
+                sharding_strategy=ShardingStrategy.NO_SHARD,
+                device_id=self.trainer.strategy.root_device,
                 use_orig_params=True,
                 **policies,
             )
