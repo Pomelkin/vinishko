@@ -33,7 +33,7 @@ DEFAULT_RESULTS_DIR = AI_SOMELIER_DIR / "results"
 DEFAULT_ENV_PATH = REPO_ROOT / ".env"
 DEFAULT_CONCURRENCY = 10
 SOLUTION_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
-UNSAFE_EXPERIMENT_CHARS = re.compile(r"[^\w.-]+", flags=re.UNICODE)
+UNSAFE_FILENAME_CHARS = re.compile(r"[^\w.-]+", flags=re.UNICODE)
 Respond = Callable[[Mapping[str, Any]], Mapping[str, Any]]
 
 
@@ -68,14 +68,6 @@ def _write_json(path: Path, payload: Any) -> None:
         encoding="utf-8",
     )
     temporary.replace(path)
-
-
-def _safe_experiment_name(value: str) -> str:
-    """Convert a human experiment name to one safe path component."""
-    normalized = UNSAFE_EXPERIMENT_CHARS.sub("-", value.strip()).strip(". -")
-    if not normalized:
-        raise RunnerError("experiment name must contain a letter or number")
-    return normalized
 
 
 def _positive_int(value: str) -> int:
@@ -337,7 +329,7 @@ def _run_case(
 
 def _case_filename(index: int, case_id: Any) -> str:
     """Build a stable JSON filename independent of case execution order."""
-    safe_id = UNSAFE_EXPERIMENT_CHARS.sub("-", str(case_id)).strip(". -") or "case"
+    safe_id = UNSAFE_FILENAME_CHARS.sub("-", str(case_id)).strip(". -") or "case"
     return f"{index:04d}_{safe_id}.json"
 
 
@@ -360,7 +352,6 @@ def run_experiment(
     dataset: dict[str, Any],
     dataset_path: Path,
     dataset_sha256: str,
-    experiment_name: str,
     solution_name: str,
     responder: Respond,
     results_dir: Path = DEFAULT_RESULTS_DIR,
@@ -370,12 +361,13 @@ def run_experiment(
     """Run all cases concurrently and write complete, generation-only JSON logs."""
     if concurrency < 1:
         raise RunnerError("concurrency must be at least 1")
+    if not SOLUTION_NAME.fullmatch(solution_name):
+        raise RunnerError("solution must be a Python package name such as 'v2'")
     cases = dataset.get("cases")
     if not isinstance(cases, list) or not cases:
         raise RunnerError("dataset.cases must be a non-empty array")
 
-    safe_experiment_name = _safe_experiment_name(experiment_name)
-    run_id = f"{safe_experiment_name}_{_directory_timestamp()}"
+    run_id = f"{solution_name}_{_directory_timestamp()}"
     resolved_results_dir = results_dir.resolve()
     output_dir = resolved_results_dir / run_id
     cases_dir = output_dir / "cases"
@@ -389,8 +381,6 @@ def run_experiment(
         "schema_version": "1.0",
         "mode": "generation_only",
         "run_id": run_id,
-        "experiment_name": experiment_name,
-        "directory_experiment_name": safe_experiment_name,
         "output_directory": str(output_dir),
         "status": "running",
         "started_at": started_at,
@@ -493,14 +483,9 @@ def _parser() -> argparse.ArgumentParser:
         description="Generate complete AI sommelier dialogue logs without scoring.",
     )
     parser.add_argument(
-        "--experiment",
-        required=True,
-        help="experiment name used as the result-directory prefix",
-    )
-    parser.add_argument(
         "--solution",
-        default="v1",
-        help="package under ai_somelier/solution (default: v1)",
+        required=True,
+        help="package under ai_somelier/solution; also names the result directory",
     )
     parser.add_argument(
         "--dataset",
@@ -542,7 +527,6 @@ def main(argv: list[str] | None = None) -> int:
             dataset=dataset,
             dataset_path=args.dataset,
             dataset_sha256=dataset_sha256,
-            experiment_name=args.experiment,
             solution_name=args.solution,
             responder=responder,
             results_dir=args.results_dir,

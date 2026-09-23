@@ -6,11 +6,14 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from collections.abc import Mapping
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
 from ai_somelier.run.run import DEFAULT_CONCURRENCY
+from ai_somelier.run.run import _parser
 from ai_somelier.run.run import run_experiment
 
 
@@ -85,6 +88,14 @@ class RunTests(unittest.TestCase):
     def test_default_concurrency_is_ten(self) -> None:
         self.assertEqual(DEFAULT_CONCURRENCY, 10)
 
+    def test_cli_requires_solution_and_has_no_experiment_flag(self) -> None:
+        parser = _parser()
+        self.assertEqual(parser.parse_args(["--solution", "v2"]).solution, "v2")
+        with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args([])
+        with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["--experiment", "v2"])
+
     def test_run_keeps_full_inputs_reasoning_and_ordered_history(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -92,7 +103,6 @@ class RunTests(unittest.TestCase):
                 dataset=_dataset(),
                 dataset_path=root / "golden.json",
                 dataset_sha256="dataset-hash",
-                experiment_name="unit test",
                 solution_name="fake",
                 responder=_responder,
                 results_dir=root / "results",
@@ -100,9 +110,11 @@ class RunTests(unittest.TestCase):
                 environment={"api_key_present": True},
             )
 
-            self.assertTrue(output_dir.name.startswith("unit-test_"))
+            self.assertTrue(output_dir.name.startswith("fake_"))
             self.assertEqual(run_record["status"], "completed")
             self.assertEqual(run_record["mode"], "generation_only")
+            self.assertEqual(run_record["solution"]["name"], "fake")
+            self.assertNotIn("experiment_name", run_record)
             self.assertFalse(run_record["runner"]["scoring_enabled"])
             self.assertEqual(run_record["progress"]["successful_cases"], 2)
 
@@ -165,7 +177,6 @@ class RunTests(unittest.TestCase):
                 dataset=dataset,
                 dataset_path=Path(directory) / "golden.json",
                 dataset_sha256="dataset-hash",
-                experiment_name="failure",
                 solution_name="fake",
                 responder=fail,
                 results_dir=Path(directory) / "results",

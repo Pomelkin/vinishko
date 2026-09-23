@@ -8,17 +8,16 @@ Runner генерирует диалоги для всех кейсов `ai_some
 Из корня репозитория:
 
 ```powershell
-python -m ai_somelier.run --experiment v1-baseline
+python -m ai_somelier.run --solution v2
 ```
 
-Можно вызвать и сам файл: `python ai_somelier/run/run.py --experiment v1-baseline`.
+Можно вызвать и сам файл: `python ai_somelier/run/run.py --solution v2`.
 
-Явный эквивалент с параметрами по умолчанию:
+Та же команда с явными значениями остальных параметров:
 
 ```powershell
 python -m ai_somelier.run `
-  --experiment v1-baseline `
-  --solution v1 `
+  --solution v2 `
   --dataset ai_somelier/golden_dataset.json `
   --results-dir ai_somelier/results `
   --concurrency 10 `
@@ -26,10 +25,10 @@ python -m ai_somelier.run `
 ```
 
 Независимые кейсы выполняются параллельно. Первое сообщение и пользовательские вопросы
-внутри одного кейса всегда выполняются последовательно в одной истории. Повторных запросов
-после ошибки нет.
+внутри одного кейса всегда выполняются последовательно в одной истории. Runner сам не повторяет
+запросы; solution v2 делает один повтор при ошибке проверки первого ответа.
 
-Каждый запуск создаёт `ai_somelier/results/<experiment>_<UTC timestamp>/`:
+Каждый запуск создаёт `ai_somelier/results/<solution>_<UTC timestamp>/`:
 
 ```text
 run.json

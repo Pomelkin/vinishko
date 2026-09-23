@@ -7,7 +7,7 @@
 ### 1. Запустить прогон сомелье
 
 ```powershell
-python -m ai_somelier.run --experiment v1-baseline
+python -m ai_somelier.run --solution v2
 ```
 
 Runner сохранит результат в новой папке `ai_somelier/results/<run-id>`.
@@ -32,7 +32,8 @@ Codex сам выполняет создание чеклиста, смысло�
 
 ## Что находится в пакете
 
-- `solution/v1/` — текущая реализация цифрового сомелье и промпты;
+- `solution/v1/` — исходная версия цифрового сомелье;
+- `solution/v2/` — текущая реализация цифрового сомелье и промпты;
 - `golden_dataset.json` — 10 сценариев, эталонные ответы и атомарные `must_include`;
 - `run/` — lossless runner, сохраняющий полные ответы и трассировку;
 - `eval/` — JSON-чеклист, проверка provenance и расчёт метрик;
