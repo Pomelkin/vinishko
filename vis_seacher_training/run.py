@@ -17,7 +17,6 @@ from kostyl.utils import setup_logger
 from lightning import Callback
 from lightning import Trainer
 from lightning.pytorch.callbacks import LearningRateMonitor
-from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.strategies import (
@@ -35,9 +34,7 @@ from kostyl.ml.configs.structs.training_settings import (
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
 from vinishko.pipeline.steps.normalization.normalize import load_config
 from vis_seacher_training.configs import TrainingConfig
-from vis_seacher_training.dino_modeling import DinoV3ForWine
 from vis_seacher_training.export import export_model
-from vis_seacher_training.export import load_best
 from vis_seacher_training.datamodule import WineDataModule
 from vis_seacher_training.training_module import WineTrainingModule
 
@@ -102,40 +99,6 @@ def resolve_run_name(run_name: str | None) -> str:
     return os.environ.setdefault(
         RUN_NAME_ENV,
         run_name or f"{datetime.now(tz=UTC).astimezone():%Y-%m-%d_%H-%M-%S}",
-    )
-
-
-def export_best(
-    trainer: Trainer, module: WineTrainingModule, config: TrainingConfig, output: Path
-) -> None:
-    """Лучший чекпоинт — в директорию модели: save_pretrained, ONNX с вшитой нормировкой и описание входа. Без чекпоинта уходят текущие веса."""
-    checkpoint = trainer.checkpoint_callback
-    path = (
-        checkpoint.best_model_path
-        if isinstance(checkpoint, ModelCheckpoint) and checkpoint.best_model_path
-        else None
-    )
-    if path is not None:
-        logger.info(f"Экспортирую лучший чекпоинт {path}")
-        model = load_best(Path(path))
-    else:
-        logger.warning(
-            "Лучшего чекпоинта нет: валидация не прошла ни разу, экспортирую веса на момент остановки"
-        )
-        model = cast(DinoV3ForWine, module.model_instance).cpu().float().eval()
-    fill = tuple(
-        int(v)
-        for v in load_config(
-            config.data.normalize_config or NORM_DIR / "normalize.toml", []
-        )["background"]["color"]
-    )
-    export_model(
-        model,
-        output,
-        config.data.input_size,
-        cast(tuple[int, int, int], fill),
-        config.data.img_mean,
-        config.data.img_std,
     )
 
 
@@ -206,8 +169,23 @@ def run(experiment_dir: Path, run_name: str | None) -> None:
         ],
     )
     trainer.fit(training_module, datamodule=datamodule)
-    if trainer.is_global_zero:
-        export_best(trainer, training_module, config, work_dir / "model")
+    model = training_module.best_model()
+    if model is not None and trainer.is_global_zero:
+        model.float()
+        fill = tuple(
+            int(v)
+            for v in load_config(
+                config.data.normalize_config or NORM_DIR / "normalize.toml", []
+            )["background"]["color"]
+        )
+        export_model(
+            model,
+            work_dir / "model",
+            config.data.input_size,
+            cast(tuple[int, int, int], fill),
+            config.data.img_mean,
+            config.data.img_std,
+        )
 
 
 if __name__ == "__main__":

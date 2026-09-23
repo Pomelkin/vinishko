@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 from typing import cast
 from typing import override
@@ -13,7 +14,12 @@ from kostyl.ml.optim import create_scheduler
 from kostyl.ml.optim.schedulers import BaseScheduler
 from kostyl.ml.optim.schedulers import CompositeScheduler
 from kostyl.utils import setup_logger
+from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
+from torch.distributed.checkpoint import load as dcp_load
+from torch.distributed.checkpoint.state_dict import StateDictOptions
+from torch.distributed.checkpoint.state_dict import get_model_state_dict
+from torch.distributed.checkpoint.state_dict import set_model_state_dict
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
 from transformers import PreTrainedConfig
@@ -33,7 +39,12 @@ from kostyl.ml.configs.structs.training_settings import (
     FSDP2StrategyConfig,
 )
 from torch.distributed._composable.replicate_with_fsdp import replicate
-from torch.distributed.fsdp import fully_shard, ShardingStrategy
+from torch.distributed.fsdp import (
+    MixedPrecisionPolicy,
+    fully_shard,
+    ShardingStrategy,
+    MixedPrecision,
+)
 from kostyl.ml.dist_utils.fsdp import (
     get_fsdp2_policies,
     get_fsdp1_policies,
@@ -107,19 +118,50 @@ class WineTrainingModule(KostylLightningModule):
             policies = get_fsdp1_policies(self.config.trainer_params.strategy)
             wrap_policy = select_wrap_policy(model=self.model)
 
-            self.model = FSDP(
-                module=self.model,
+            self.model.backbone = FSDP(  # ty: ignore[invalid-assignment]
+                module=self.model.backbone,
                 auto_wrap_policy=wrap_policy,
                 device_id=self.trainer.strategy.root_device,
                 use_orig_params=True,
                 **policies,
             )
+
+            fp32_policies = {
+                **policies,
+                "mixed_precision": MixedPrecision(
+                    param_dtype=torch.float32,
+                    reduce_dtype=torch.float32,
+                    buffer_dtype=torch.float32,
+                ),
+            }
+
+            self.model.gem = FSDP(  # ty: ignore[invalid-assignment]
+                module=self.model.gem,
+                sharding_strategy=ShardingStrategy.NO_SHARD,
+                device_id=self.trainer.strategy.root_device,
+                use_orig_params=True,
+                **fp32_policies,  # ty: ignore[invalid-argument-type]
+            )
+            self.model.head = FSDP(  # ty: ignore[invalid-assignment]
+                module=self.model.head,
+                sharding_strategy=ShardingStrategy.NO_SHARD,
+                device_id=self.trainer.strategy.root_device,
+                use_orig_params=True,
+                **fp32_policies,  # ty: ignore[invalid-argument-type]
+            )
+            self.model = FSDP(
+                module=self.model,
+                device_id=self.trainer.strategy.root_device,
+                use_orig_params=True,
+                **policies,
+            )
+            # лосс в fp32, как и голова: training_step считает ArcFace без autocast, а bf16-политика сделала бы центры классов bf16
             self.loss_fn = FSDP(
                 module=self.loss_fn,
                 sharding_strategy=ShardingStrategy.NO_SHARD,
                 device_id=self.trainer.strategy.root_device,
                 use_orig_params=True,
-                **policies,
+                **fp32_policies,  # ty: ignore[invalid-argument-type]
             )
             self.trainer.strategy.model = FSDP(
                 module=self,
@@ -133,18 +175,85 @@ class WineTrainingModule(KostylLightningModule):
                     "ModelParallelStrategy is required for this training setup."
                 )
             policies = get_fsdp2_policies(self.config.trainer_params.strategy)
+            dp_mesh = self.trainer.strategy.device_mesh["data_parallel"]
             modules_to_shard = get_transformer_shard_modules(self.model)
             if modules_to_shard is None:
                 raise ValueError(
                     "No modules to shard found in the model. Check the model architecture."
                 )
-            for module in self.model.modules():
+            for module in self.model.backbone.modules():
                 if type(module) in modules_to_shard:
-                    fully_shard(
-                        module, mesh=self.trainer.strategy.device_mesh, **policies
-                    )
-            fully_shard(self.model, mesh=self.trainer.strategy.device_mesh, **policies)
-            replicate(self.loss_fn, mesh=self.trainer.strategy.device_mesh, **policies)
+                    fully_shard(module, mesh=dp_mesh, **policies)
+            fp32_policies = {
+                **policies,
+                "mp_policy": MixedPrecisionPolicy(
+                    param_dtype=torch.float32,
+                    reduce_dtype=torch.float32,
+                ),
+            }
+            for module in (self.model.gem, self.model.head):
+                fully_shard(
+                    module,
+                    mesh=dp_mesh,
+                    **fp32_policies,
+                )  # ty: ignore[no-matching-overload]
+            fully_shard(self.model, mesh=dp_mesh, **policies)
+            replicate(self.loss_fn, mesh=dp_mesh, **fp32_policies)  # ty: ignore[no-matching-overload]
+        return
+
+    def load_weights(self, path: Path) -> None:
+        """Веса чекпоинта в живую, возможно шардированную, модель на всех рангах: директория — DCP от FSDP2, файл — полный state dict.
+
+        load_checkpoint стратегии не годится: после fit он тянет и состояние оптимизатора, которого при save_weights_only в чекпоинте нет.
+        set_model_state_dict сам раскладывает полный state dict по шардам FSDP1 и FSDP2 либо кладёт в обычный модуль.
+        """
+        if path.is_dir():
+            state = {"state_dict": get_model_state_dict(self)}
+            dcp_load(state, checkpoint_id=str(path))
+            set_model_state_dict(
+                self, state["state_dict"], options=StateDictOptions(strict=True)
+            )
+        else:
+            state_dict = torch.load(
+                path, map_location="cpu", mmap=True, weights_only=False
+            )["state_dict"]
+            set_model_state_dict(
+                self,
+                state_dict,
+                options=StateDictOptions(full_state_dict=True, strict=True),
+            )
+
+    def best_model(self) -> DinoV3ForWine | None:
+        """Лучший чекпоинт собранной с рангов моделью в float32 на CPU: на ранге 0 модель, на остальных None. Зовётся после fit на всех рангах.
+
+        Под FSDP веса лежат шардами, поэтому лучшие веса сначала грузятся в живую модель на всех рангах, затем полный state dict снимается
+        через DCP API: он одинаково собирает FSDP1, FSDP2 и обычный модуль. Без лучшего чекпоинта — валидация не прошла ни разу — уходят
+        веса на момент остановки.
+        """
+        checkpoint = self.trainer.checkpoint_callback
+        path = (
+            checkpoint.best_model_path
+            if isinstance(checkpoint, ModelCheckpoint) and checkpoint.best_model_path
+            else None
+        )
+        if path:
+            logger.info(f"Собираю лучший чекпоинт {path}")
+            self.load_weights(Path(path))
+        else:
+            logger.warning(
+                "Лучшего чекпоинта нет: валидация не прошла ни разу, собираю веса на момент остановки"
+            )
+        full_state = get_model_state_dict(
+            self.model,  # ty: ignore[invalid-argument-type]
+            options=StateDictOptions(full_state_dict=True, cpu_offload=True),
+        )
+        if not self.trainer.is_global_zero:
+            return None
+        model = DinoV3ForWine._from_config(
+            self.model_config, attn_implementation="sdpa", dtype=torch.float32
+        )  # flash attention на CPU не собирается, а веса от него не зависят
+        model.load_state_dict(full_state, strict=True)
+        return model.eval()
 
     @property
     def datamodule(self) -> WineDataModule:

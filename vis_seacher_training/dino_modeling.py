@@ -75,8 +75,10 @@ class GeM(nn.Module):
         self.eps = eps
 
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+        original_dtype = tokens.dtype
+        tokens = tokens.float().clamp(min=self.eps)
         p = self.p.float().clamp(min=1.0)
-        return tokens.float().clamp(min=self.eps).pow(p).mean(dim=1).pow(1.0 / p)
+        return tokens.pow(p).mean(dim=1).pow(1.0 / p).to(original_dtype)
 
 
 class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
@@ -154,7 +156,7 @@ class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
 
     def pool(self, tokens: torch.Tensor) -> torch.Tensor:
         """Последовательность бэкбона (B, 1 + регистры + патчи, C) → CLS ⊕ GeM по патчам, (B, 2C)."""
-        cls_token = tokens[:, 0].float()
+        cls_token = tokens[:, 0]
         patches = tokens[:, self.num_prefix_tokens :]
         return torch.cat([cls_token, self.gem(patches)], dim=1)
 
@@ -164,7 +166,9 @@ class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
         return next(self.head.parameters()).dtype
 
     def forward(
-        self, pixel_values: torch.Tensor, normalize: bool = True
+        self,
+        pixel_values: torch.Tensor,
+        normalize: bool = True,
     ) -> torch.Tensor:
         """Эмбеддинг картинок (B, embed_dim) в float32."""
         self.check_input_size(pixel_values.shape[-2], pixel_values.shape[-1])
@@ -172,6 +176,8 @@ class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
 
         tokens_dtype = tokens.dtype
         with torch.autocast(device_type=pixel_values.device.type, enabled=False):
+            tokens = tokens.float()
+            
             pooled = self.pool(tokens)
             embedding = self.head(pooled)
 
