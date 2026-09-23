@@ -7,6 +7,7 @@ import os
 import unittest
 from unittest.mock import patch
 
+from ai_somelier.solution.v2.models import OutputContractError
 from ai_somelier.solution.v2.models import validate_first_turn
 from ai_somelier.solution.v2.sommelier import prepare_request
 from ai_somelier.solution.v2.sommelier import respond
@@ -80,20 +81,47 @@ class V2RequestTests(unittest.TestCase):
         self.assertNotIn("response_format", prepared.payload)
 
     def test_first_turn_validator_does_not_count_chars_or_words(self) -> None:
-        content = "Длинное описание вина. " * 50 + "Чем я могу вам помочь?"
+        content = "Длинное описание вина. " * 50 + "\nЧем я могу помочь?"
         suggestion = "Расскажите подробнее о подаче этого вина"
         output = validate_first_turn(
             {"content": content, "suggestions": [suggestion, "Что во вкусе?"]},
         )
         self.assertEqual(output["content"], content)
         self.assertEqual(output["suggestions"][0], suggestion)
+        self.assertEqual(output["suggestions"][1], "Что во вкусе")
+
+    def test_first_turn_requires_exact_closing_on_its_own_line(self) -> None:
+        for content in (
+            "Проверочное вино. Чем я могу помочь?",
+            "Проверочное вино.\nЧем я могу вам помочь?",
+        ):
+            with self.subTest(content=content), self.assertRaises(OutputContractError):
+                validate_first_turn(
+                    {"content": content, "suggestions": ["Вкус", "Подача"]},
+                )
+
+    def test_suggestions_strip_trailing_question_marks_and_reject_empty(self) -> None:
+        output = validate_first_turn(
+            {
+                "content": "Проверочное вино.\nЧем я могу помочь?",
+                "suggestions": ["Что во вкусе?? ", "Как подавать？？"],
+            },
+        )
+        self.assertEqual(output["suggestions"], ["Что во вкусе", "Как подавать"])
+        with self.assertRaises(OutputContractError):
+            validate_first_turn(
+                {
+                    "content": "Проверочное вино.\nЧем я могу помочь?",
+                    "suggestions": ["?", "Как подавать"],
+                },
+            )
 
 
 class V2RetryTests(unittest.TestCase):
     def test_one_retry_after_invalid_first_turn_json(self) -> None:
         valid = json.dumps(
             {
-                "content": "Проверочное вино. Чем я могу вам помочь?",
+                "content": "Проверочное вино.\nЧем я могу помочь?",
                 "suggestions": ["Что во вкусе?", "Как подавать?"],
             },
             ensure_ascii=False,
@@ -109,6 +137,8 @@ class V2RetryTests(unittest.TestCase):
 
         self.assertEqual(send.call_count, 2)
         self.assertEqual(result["_status"], "ok")
+        self.assertEqual(result["suggestions"], ["Что во вкусе", "Как подавать"])
+        self.assertEqual(result["message"]["content"], valid)
         self.assertEqual(len(result["_trace"]["attempts"]), 2)
         self.assertIn("invalid first-turn JSON", result["_trace"]["attempts"][0]["validation_error"])
         self.assertEqual(

@@ -129,7 +129,7 @@ def validate(path: Path) -> None:
         first_lengths.append(len(content))
         require(350 <= len(content) <= 750, f"{cid}: first turn has {len(content)} characters")
         require(len(content.split()) <= 100, f"{cid}: first turn exceeds 100 words")
-        require(content.count("?") == 1 and content.endswith("Чем я могу вам помочь?"), f"{cid}: closing question differs")
+        require(content.count("?") == 1 and content.endswith("\nЧем я могу помочь?"), f"{cid}: closing question differs")
         # Suitable for this corpus: decimal commas, no dotted abbreviations in openings.
         sentences = re.findall(r"[.!?](?=\s|$)", content)
         require(4 <= len(sentences) <= 5, f"{cid}: expected 4–5 sentences, found {len(sentences)}")
@@ -138,6 +138,7 @@ def validate(path: Path) -> None:
         for suggestion in suggestions:
             nonempty(suggestion, f"{cid}.suggestion")
             require(len(suggestion) < 30, f"{cid}: suggestion too long")
+            require(not suggestion.endswith(("?", "？")), f"{cid}: suggestion ends with question mark")
         require(suggestions[0] != suggestions[1], f"{cid}: repeated suggestion")
         turns = golden["turns"]
         require(isinstance(turns, list), f"{cid}: turns must be an array")
@@ -154,10 +155,10 @@ def validate(path: Path) -> None:
             )
 
     require(lengths == {0: 1, 1: 5, 2: 3, 3: 1}, "Dialogue length distribution differs")
-    require(must_include_count == 241, "Expected 241 must_include criteria")
+    require(must_include_count == 251, "Expected 251 must_include criteria")
     print("OK: 10 cases, 14 follow-ups, 60 Catalog cards; SHA-256 and structure match.")
     print(f"First turns: {min(first_lengths)}–{max(first_lengths)} characters; sentence, word and suggestion limits pass.")
-    print("Must-include: 24 evaluated responses, 241 atomic binary criteria.")
+    print("Must-include: 24 evaluated responses, 251 atomic binary criteria.")
     print("Factual accuracy, natural wording and scenario coverage require structured evaluation.")
 
 

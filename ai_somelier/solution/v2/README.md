@@ -17,7 +17,8 @@ result = respond(request)
 
 For the first turn, `history` is empty. Candidate cards are omitted from the system prompt. The
 provider receives a strict JSON Schema and the result
-contains parsed `content`, exactly two `suggestions`, and the raw OpenRouter assistant `message`.
+contains parsed `content`, exactly two `suggestions` with trailing question marks removed, and the
+raw OpenRouter assistant `message`.
 The raw message retains `reasoning` and `reasoning_details` and should be stored unchanged.
 If the first answer fails local response validation, v2 makes one more provider request. Both
 responses and the first validation error are recorded in `_trace.attempts`.

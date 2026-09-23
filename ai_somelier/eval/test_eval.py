@@ -68,7 +68,7 @@ class EvalTests(unittest.TestCase):
             report = compute_metrics(evaluation)
 
         self.assertEqual(report["summary"]["tasks"]["total"], 24)
-        self.assertEqual(report["summary"]["must_include"]["total"], 241)
+        self.assertEqual(report["summary"]["must_include"]["total"], 251)
         self.assertEqual(report["summary"]["must_include"]["rate"], 1.0)
         self.assertEqual(report["summary"]["wrong_claims"]["count"], 0)
         self.assertEqual(report["summary"]["tone_of_voice"]["rate"], 1.0)

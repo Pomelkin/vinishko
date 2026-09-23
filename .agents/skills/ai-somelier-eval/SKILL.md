@@ -43,6 +43,13 @@ the whole criterion in the required response field; paraphrases and different se
 valid. Do not award partial credit, infer an omitted idea from general context, or use the reference
 answer as a substring template. A criterion contradicted elsewhere in the same response is `false`.
 
+The first-turn layout checks in the golden dataset are exact-format exceptions. Pass
+`closing_question` only when `content` ends with `Чем я могу помочь?` on its own line. Pass
+`suggestion_punctuation` only when neither returned `suggestions` string ends with `?` or `？`
+after trimming whitespace. Check `task.actual_response`, not the raw provider message: v2 removes trailing
+question marks from suggestions in code before returning them. Keep these formatting failures
+separate from factual `wrong_claims` and tone-of-voice decisions.
+
 For a failed or missing generation, mark every must-include and tone criterion `false`, cite the
 generation status/error as evidence, and leave `wrong_claims` empty because there is no claim to
 extract.

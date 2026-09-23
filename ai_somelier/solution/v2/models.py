@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from pydantic import model_validator
 
 
-FIRST_TURN_CLOSING = "Чем я могу вам помочь?"
+FIRST_TURN_CLOSING = "Чем я могу помочь?"
 
 
 class OutputContractError(ValueError):
@@ -35,11 +35,14 @@ class FirstTurnOutput(BaseModel):
         """Check requirements that JSON Schema cannot express cleanly."""
         if not self.content.strip():
             raise ValueError("content must not be empty")
-        if any(not suggestion.strip() for suggestion in self.suggestions):
+        self.suggestions = [
+            suggestion.rstrip(" \t\r\n?？") for suggestion in self.suggestions
+        ]
+        if any(not suggestion for suggestion in self.suggestions):
             raise ValueError("suggestions must not be empty")
-        if not self.content.endswith(FIRST_TURN_CLOSING):
+        if not self.content.endswith("\n" + FIRST_TURN_CLOSING):
             raise ValueError(
-                f"content must end with {FIRST_TURN_CLOSING!r}",
+                f"content must end with {FIRST_TURN_CLOSING!r} on a separate line",
             )
         return self
 
