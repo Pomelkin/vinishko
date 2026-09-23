@@ -27,6 +27,20 @@ from vis_seacher_training.losses import SubCenterArcFace
 from vis_seacher_training.metrics import evaluate_retrieval
 from vis_seacher_training.metrics import scores_figure
 from vis_seacher_training.optimization import create_param_groups
+from lightning.pytorch.strategies import ModelParallelStrategy, FSDPStrategy
+from kostyl.ml.configs.structs.training_settings import (
+    FSDP1StrategyConfig,
+    FSDP2StrategyConfig,
+)
+from torch.distributed._composable.replicate_with_fsdp import replicate
+from torch.distributed.fsdp import fully_shard
+from kostyl.ml.dist_utils.fsdp import (
+    get_fsdp2_policies,
+    get_fsdp1_policies,
+    select_wrap_policy,
+    get_transformer_shard_modules,
+)
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 
 logger = setup_logger(fmt="detailed")
 
@@ -48,13 +62,13 @@ class WineTrainingModule(KostylLightningModule):
         super().__init__()
         self.config = config
         self.hyperparams = config.hyperparams
-        self.model: DinoV3ForWine | None = None
-        self.loss_fn: SubCenterArcFace | None = None
+        self.model: DinoV3ForWine | FSDP | None = None
+        self.loss_fn: SubCenterArcFace | FSDP | None = None
         self._val_embeddings: list[list[torch.Tensor]] = [[] for _ in VAL_LOADERS]
         self._val_indices: list[list[torch.Tensor]] = [[] for _ in VAL_LOADERS]
 
     @override
-    def configure_model(self) -> None:
+    def configure_model(self) -> None:  # noqa: C901
         if self.model is not None:
             return
         cfg, datamodule = self.config, self.datamodule
@@ -65,6 +79,7 @@ class WineTrainingModule(KostylLightningModule):
             device_map=self.trainer.strategy.root_device,
             attn_implementation=cfg.model.attn_implementation,
         )
+
         if model.config.patch_size != cfg.model.patch_size:
             raise ValueError(
                 f"model.patch_size={cfg.model.patch_size} в конфиге, а у бэкбона {cfg.model.backbone} патч {model.config.patch_size}"
@@ -85,6 +100,51 @@ class WineTrainingModule(KostylLightningModule):
             m_b=cfg.loss.m_b,
             m_lambda=cfg.loss.m_lambda,
         )
+
+        if isinstance(self.trainer.strategy, FSDPStrategy):
+            if not isinstance(self.config.trainer_params.strategy, FSDP1StrategyConfig):
+                raise ValueError("FSDPStrategy is required for this training setup.")
+            policies = get_fsdp1_policies(self.config.trainer_params.strategy)
+            wrap_policy = select_wrap_policy(model=self.model)
+
+            self.model = FSDP(
+                module=self.model,
+                auto_wrap_policy=wrap_policy,
+                device_id=self.trainer.strategy.root_device,
+                use_orig_params=True,
+                **policies,
+            )
+            self.loss_fn = FSDP(
+                module=self.loss_fn,
+                sharding_strategy=FSDP.NO_SHARD,
+                use_orig_params=True,
+                **policies,
+            )
+            self.trainer.strategy.model = FSDP(
+                module=self,
+                auto_wrap_policy=wrap_policy,
+                device_id=self.trainer.strategy.root_device,
+                use_orig_params=True,
+                **policies,
+            )
+        elif isinstance(self.trainer.strategy, ModelParallelStrategy):
+            if not isinstance(self.config.trainer_params.strategy, FSDP2StrategyConfig):
+                raise ValueError(
+                    "ModelParallelStrategy is required for this training setup."
+                )
+            policies = get_fsdp2_policies(self.config.trainer_params.strategy)
+            modules_to_shard = get_transformer_shard_modules(self.model)
+            if modules_to_shard is None:
+                raise ValueError(
+                    "No modules to shard found in the model. Check the model architecture."
+                )
+            for module in self.model.modules():
+                if type(module) in modules_to_shard:
+                    fully_shard(
+                        module, mesh=self.trainer.strategy.device_mesh, **policies
+                    )
+            fully_shard(self.model, mesh=self.trainer.strategy.device_mesh, **policies)
+            replicate(self.loss_fn, mesh=self.trainer.strategy.device_mesh, **policies)
 
     @property
     def datamodule(self) -> WineDataModule:
@@ -108,6 +168,8 @@ class WineTrainingModule(KostylLightningModule):
     def model_instance(self) -> PreTrainedModel:
         if self.model is None:
             raise ValueError("Model is not configured. Call `configure_model()` first.")
+        if isinstance(self.model, FSDP):
+            return self.model.module
         return self.model
 
     @override

@@ -13,7 +13,7 @@ from vis_seacher_training.data.markup import read_items
 
 
 def to_image(pixels: np.ndarray, mean: tuple[float, ...], std: tuple[float, ...]) -> np.ndarray:
-    """Вход модели обратно в uint8; нулевые поля выходят цветом среднего."""
+    """Вход модели обратно в uint8; поля выходят цветом заливки фона, которым и были добавлены."""
     return ((pixels.transpose(1, 2, 0) * np.array(std) + np.array(mean)) * 255).clip(0, 255).round().astype(np.uint8)
 
 

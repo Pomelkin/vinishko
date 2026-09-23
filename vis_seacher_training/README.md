@@ -14,7 +14,10 @@ tensorboard --logdir vis_seacher_training/experiments/dinov3_vitb16_512
 ```
 
 Эксперимент — директория с `config.yaml`. Прогон пишет в её поддиректорию с временем запуска: `config.yaml`, `label2id.json`, `tb_logs/`,
-`logs/` (csv), `checkpoints/` и `model/` — лучшие веса в формате `DinoV3ForWine.from_pretrained`, без Lightning и центров ArcFace.
+`logs/` (csv), `checkpoints/` и `model/` — лучший чекпоинт, поднятый через `DinoV3ForWine.from_lightning_checkpoint`, в трёх видах:
+веса `save_pretrained` без Lightning и центров ArcFace; `model.onnx` одним файлом, батч и стороны картинки динамические (кратные патчу),
+на входе float32 RGB NCHW со значениями 0…255 — нормировка ImageNet вшита в граф, на выходе L2-нормированные эмбеддинги; `preprocess.json`
+с описанием входа. Экспорт сверяется с PyTorch через onnxruntime на двух формах. Отдельно: `python -m vis_seacher_training.export -c <ckpt> -o <dir>`.
 Две видеокарты: `trainer_params.devices: [0, 1]` и `strategy.type: "ddp"`; скорости обучения при этом умножаются на число карт.
 Внимание бэкбона выбирает `model.attn_implementation`: `sdpa` по умолчанию, `flash_attention_2` — только с `precision: bf16-mixed`.
 У сохранённой модели то же задаётся при загрузке: `DinoV3ForWine.from_pretrained(path, attn_implementation="flash_attention_2", dtype=torch.bfloat16)`.
@@ -24,7 +27,7 @@ tensorboard --logdir vis_seacher_training/experiments/dinov3_vitb16_512
 `data.datasets_dir` — раскладка `scripts/prepare_datasets.py` с разметкой `scripts/normalize_dataset.py`; обязаны быть `winesensed`, `off`
 и `products10k`, проверяется при чтении конфига. Вход модели — кроп нормализации по сохранённой разметке `normalization.jsonl`: без
 аугментаций он совпадает с `render_bottle` пайплайна пиксель в пиксель. Кроп вписывается в `data.input_size` с сохранением пропорций,
-поля — нули после нормировки. Обе стороны `input_size` обязаны делиться на `model.patch_size`: проверяется в конфиге, при сборке модели
+поля добавляются в uint8 цветом заливки фона из normalize.toml до нормировки, как сделает пайплайн перед энкодером. Обе стороны `input_size` обязаны делиться на `model.patch_size`: проверяется в конфиге, при сборке модели
 сверяется с настоящим патчем бэкбона и ещё раз в `forward`.
 
 ## Аугментации
