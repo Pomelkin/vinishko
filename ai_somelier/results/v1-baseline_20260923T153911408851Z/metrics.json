@@ -1,0 +1,416 @@
+{
+  "schema_version": "1.0",
+  "evaluation_id": "v1-baseline_20260923T153911408851Z_codex_eval",
+  "source_run_id": "v1-baseline_20260923T153911408851Z",
+  "generated_at": "2026-09-23T15:44:56.714272+00:00",
+  "summary": {
+    "tasks": {
+      "total": 24,
+      "strict_passed": 0,
+      "strict_pass_rate": 0.0
+    },
+    "must_include": {
+      "passed": 70,
+      "total": 241,
+      "rate": 0.290456,
+      "tasks_all_passed": 0,
+      "task_pass_rate": 0.0
+    },
+    "wrong_claims": {
+      "count": 0,
+      "tasks_without_wrong_claims": 24,
+      "wrong_claim_free_task_rate": 1.0
+    },
+    "tone_of_voice": {
+      "passed": 64,
+      "total": 144,
+      "rate": 0.444444,
+      "tasks_all_passed": 9,
+      "task_pass_rate": 0.375
+    }
+  },
+  "cases": [
+    {
+      "case_id": "opening_unknown_method",
+      "strict_tasks_passed": 0,
+      "tasks_total": 1,
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "must_include_passed": 0,
+          "must_include_total": 15,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        }
+      ]
+    },
+    {
+      "case_id": "sibirkovy_acidity",
+      "strict_tasks_passed": 0,
+      "tasks_total": 2,
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "must_include_passed": 0,
+          "must_include_total": 14,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "must_include_passed": 0,
+          "must_include_total": 8,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        }
+      ]
+    },
+    {
+      "case_id": "merlot_duck",
+      "strict_tasks_passed": 0,
+      "tasks_total": 2,
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "must_include_passed": 0,
+          "must_include_total": 14,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "must_include_passed": 0,
+          "must_include_total": 6,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        }
+      ]
+    },
+    {
+      "case_id": "organic_extra_brut",
+      "strict_tasks_passed": 0,
+      "tasks_total": 2,
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "must_include_passed": 0,
+          "must_include_total": 16,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "must_include_passed": 0,
+          "must_include_total": 8,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        }
+      ]
+    },
+    {
+      "case_id": "orange_no_alcohol",
+      "strict_tasks_passed": 0,
+      "tasks_total": 2,
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "must_include_passed": 11,
+          "must_include_total": 15,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 6,
+          "tone_total": 6,
+          "tone_all_passed": true,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "must_include_passed": 2,
+          "must_include_total": 7,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 6,
+          "tone_total": 6,
+          "tone_all_passed": true,
+          "strict_pass": false
+        }
+      ]
+    },
+    {
+      "case_id": "madeira_driving",
+      "strict_tasks_passed": 0,
+      "tasks_total": 2,
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "must_include_passed": 11,
+          "must_include_total": 15,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 6,
+          "tone_total": 6,
+          "tone_all_passed": true,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "must_include_passed": 4,
+          "must_include_total": 6,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 6,
+          "tone_total": 6,
+          "tone_all_passed": true,
+          "strict_pass": false
+        }
+      ]
+    },
+    {
+      "case_id": "shiraz_lighter_candidate",
+      "strict_tasks_passed": 0,
+      "tasks_total": 3,
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "must_include_passed": 0,
+          "must_include_total": 15,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "must_include_passed": 0,
+          "must_include_total": 7,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 2,
+          "kind": "follow_up",
+          "must_include_passed": 0,
+          "must_include_total": 6,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        }
+      ]
+    },
+    {
+      "case_id": "rose_gift",
+      "strict_tasks_passed": 0,
+      "tasks_total": 3,
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "must_include_passed": 11,
+          "must_include_total": 15,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 5,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "must_include_passed": 3,
+          "must_include_total": 4,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 6,
+          "tone_total": 6,
+          "tone_all_passed": true,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 2,
+          "kind": "follow_up",
+          "must_include_passed": 7,
+          "must_include_total": 9,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 5,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        }
+      ]
+    },
+    {
+      "case_id": "wrong_recognition",
+      "strict_tasks_passed": 0,
+      "tasks_total": 3,
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "must_include_passed": 0,
+          "must_include_total": 13,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "must_include_passed": 0,
+          "must_include_total": 1,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 2,
+          "kind": "follow_up",
+          "must_include_passed": 0,
+          "must_include_total": 9,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 0,
+          "tone_total": 6,
+          "tone_all_passed": false,
+          "strict_pass": false
+        }
+      ]
+    },
+    {
+      "case_id": "semisweet_context",
+      "strict_tasks_passed": 0,
+      "tasks_total": 4,
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "must_include_passed": 9,
+          "must_include_total": 15,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 6,
+          "tone_total": 6,
+          "tone_all_passed": true,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "must_include_passed": 3,
+          "must_include_total": 6,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 6,
+          "tone_total": 6,
+          "tone_all_passed": true,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 2,
+          "kind": "follow_up",
+          "must_include_passed": 3,
+          "must_include_total": 7,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 6,
+          "tone_total": 6,
+          "tone_all_passed": true,
+          "strict_pass": false
+        },
+        {
+          "turn_index": 3,
+          "kind": "follow_up",
+          "must_include_passed": 6,
+          "must_include_total": 10,
+          "must_include_all_passed": false,
+          "wrong_claims_count": 0,
+          "wrong_claim_free": true,
+          "tone_passed": 6,
+          "tone_total": 6,
+          "tone_all_passed": true,
+          "strict_pass": false
+        }
+      ]
+    }
+  ]
+}

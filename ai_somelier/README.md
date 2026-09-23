@@ -1,31 +1,31 @@
 # AI-сомелье
 
-## Быстрый запуск и оценка
+## Запуск и оценка
 
 Все команды выполняются из корня репозитория.
 
-Запустить прогон golden dataset:
+### 1. Запустить прогон сомелье
 
 ```powershell
 python -m ai_somelier.run --experiment v1-baseline
 ```
 
-Runner напечатает путь вида `ai_somelier/results/<run-id>`. Создать для него чеклист оценки:
+Runner сохранит результат в новой папке `ai_somelier/results/<run-id>`.
+
+### 2. Запустить Codex и вставить готовый промпт
 
 ```powershell
-python -m ai_somelier.eval scaffold `
-  --run ai_somelier/results/<run-id> `
-  --output ai_somelier/results/<run-id>/evaluation.json
+codex
 ```
 
-Попросить Codex оценить этот прогон с помощью `$ai-somelier-eval`. После заполнения
-`evaluation.json` посчитать итоговые метрики:
+Скопировать в открывшийся Codex весь следующий текст:
 
-```powershell
-python -m ai_somelier.eval metrics `
-  ai_somelier/results/<run-id>/evaluation.json `
-  --output ai_somelier/results/<run-id>/metrics.json
+```text
+Используй $ai-somelier-eval. Найди самый свежий прогон сомелье с run.json в ai_somelier/results и полностью оцени его без дополнительных вопросов ко мне. Сам создай рядом evaluation.json через eval scaffold, затем оцени каждый фактический ответ по всем must_include и глобальным tone-of-voice критериям, извлеки все подтверждённые wrong_claims, заполни evidence и установи status=complete. После этого сам запусти eval metrics и создай рядом metrics.json. Не запускай сомелье или provider повторно и не изменяй run.json, case-файлы, golden_dataset.json либо criteria.json. В конце проверь оба JSON и сообщи их пути и краткую итоговую сводку метрик.
 ```
+
+Codex сам выполняет создание чеклиста, смысловую оценку и подсчёт метрик. Вручную запускать
+команды из `ai_somelier/eval/` или редактировать `evaluation.json` не требуется.
 
 Для модельного прогона в корневом `.env` должен быть задан `OPENROUTER_API_KEY`; шаблон —
 `.env.example`. Eval-пакет работает локально и сам модель не вызывает.

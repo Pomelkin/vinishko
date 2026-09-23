@@ -1,0 +1,270 @@
+{
+  "schema_version": "1.0",
+  "mode": "generation_only",
+  "run_id": "v1-baseline_20260923T153911408851Z",
+  "experiment_name": "v1-baseline",
+  "directory_experiment_name": "v1-baseline",
+  "output_directory": "C:\\Users\\eryom\\GitHub\\vinishko\\ai_somelier\\results\\v1-baseline_20260923T153911408851Z",
+  "status": "completed_with_errors",
+  "started_at": "2026-09-23T15:39:11.411Z",
+  "finished_at": "2026-09-23T15:39:31.584Z",
+  "duration_seconds": 20.173,
+  "dataset": {
+    "path": "C:\\Users\\eryom\\GitHub\\vinishko\\ai_somelier\\golden_dataset.json",
+    "sha256": "2f557efd46aa4613ef1cfd901cb67d9bdaa3d434e558af0c91bcb172659d696c",
+    "metadata": {
+      "schema_version": "1.1",
+      "dataset_id": "ai_somelier_golden_v1",
+      "language": "ru",
+      "catalog": {
+        "path": "data/strapi/catalog_dataset.csv",
+        "sha256": "f064650fe339a0279f4cf1bbd81dad3f87a60985806244062e727017bee72e35",
+        "card_fields": [
+          "Название вина",
+          "Категория",
+          "Цвет",
+          "Регион",
+          "Сорт винограда",
+          "Описание",
+          "Винодельня",
+          "Slug",
+          "Винтаж",
+          "Крепость, %",
+          "Крепость от, %",
+          "Крепость до, %",
+          "Сахар",
+          "Игристое",
+          "Метод игристого",
+          "Креплёное",
+          "Безалкогольное",
+          "Органическое",
+          "Выдержка или резерв"
+        ]
+      }
+    },
+    "case_count": 10,
+    "case_ids": [
+      "opening_unknown_method",
+      "sibirkovy_acidity",
+      "merlot_duck",
+      "organic_extra_brut",
+      "orange_no_alcohol",
+      "madeira_driving",
+      "shiraz_lighter_candidate",
+      "rose_gift",
+      "wrong_recognition",
+      "semisweet_context"
+    ]
+  },
+  "solution": {
+    "name": "v1",
+    "module": "ai_somelier.solution.v1",
+    "files": [
+      {
+        "path": "ai_somelier/solution/v1/__init__.py",
+        "size_bytes": 202,
+        "sha256": "2a1d1c45b335b7e2a4764c138cf1ea6c09ff639fe0aac79ff1198749e506c39d"
+      },
+      {
+        "path": "ai_somelier/solution/v1/config.py",
+        "size_bytes": 3892,
+        "sha256": "c4fd4635d53b04be31a6c8a565cec78d528b707cff5b8dff9d0d4835f11843f7"
+      },
+      {
+        "path": "ai_somelier/solution/v1/knowledge.py",
+        "size_bytes": 10069,
+        "sha256": "062147d639b576b5fcf6d6b578960112b76051e3bb3e969bac1f75c1b47a065b"
+      },
+      {
+        "path": "ai_somelier/solution/v1/models.py",
+        "size_bytes": 2316,
+        "sha256": "4148f6a1ae39eadbdb7293bc356a2b439b6c1d8e39c65986d68bdf2406337508"
+      },
+      {
+        "path": "ai_somelier/solution/v1/prompts/common.txt",
+        "size_bytes": 3708,
+        "sha256": "52d9af3dde88307bf46d54ca3cb22d63a124854aaf93c7b668a6851d1569f6a6"
+      },
+      {
+        "path": "ai_somelier/solution/v1/prompts/first_turn.txt",
+        "size_bytes": 1893,
+        "sha256": "ec021fd59a3b84550b66a725f98326b8bbf79ab7b6d7e46c7ef356b7934a60d1"
+      },
+      {
+        "path": "ai_somelier/solution/v1/prompts/follow_up.txt",
+        "size_bytes": 1758,
+        "sha256": "a926fc53756c6aa81e0e01fff3c9661260d9c13f38782feb27e5d2a225edcdf2"
+      },
+      {
+        "path": "ai_somelier/solution/v1/README.md",
+        "size_bytes": 1960,
+        "sha256": "532a660349b69018f53983419d31646e2d7accb4b5e9cd36804fdaddeefbd14c"
+      },
+      {
+        "path": "ai_somelier/solution/v1/sommelier.py",
+        "size_bytes": 13088,
+        "sha256": "dd50054490805ed16a886f885cd647a02e2c4143efefea601034869f506aea17"
+      },
+      {
+        "path": "ai_somelier/solution/v1/test_solution.py",
+        "size_bytes": 7748,
+        "sha256": "484a404eadda764df9a95b7dd298d44d2f4a4087322c28cc5e4facfb5f134425"
+      }
+    ]
+  },
+  "runner": {
+    "concurrency": 10,
+    "retry_count": 0,
+    "scoring_enabled": false,
+    "files": [
+      {
+        "path": "ai_somelier/run/__init__.py",
+        "size_bytes": 185,
+        "sha256": "426a032f6c679cdf3a541329de2c3cbe5b6e7b05be01c8e632e53425baf0ddf7"
+      },
+      {
+        "path": "ai_somelier/run/__main__.py",
+        "size_bytes": 120,
+        "sha256": "3d143e745407363787686d4e09d902482023368534aad3bfdbcb091a8095c58a"
+      },
+      {
+        "path": "ai_somelier/run/README.md",
+        "size_bytes": 2056,
+        "sha256": "9d897978e12b8876f0b6d2207bfffae23f599ea64e69f0efc51448917818a98f"
+      },
+      {
+        "path": "ai_somelier/run/run.py",
+        "size_bytes": 20396,
+        "sha256": "1c3e1a14861fef5cd99335087b5390835ca6c87da53935f141f7847094555c69"
+      },
+      {
+        "path": "ai_somelier/run/test_run.py",
+        "size_bytes": 7053,
+        "sha256": "d9cdc0f0f065847dd4a2f7b41f738c2662626e400403b524b5a89b1174052798"
+      }
+    ],
+    "python": "3.13.15 (main, Sep  1 2026, 14:16:48) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "process_id": 23852,
+    "working_directory": "C:\\Users\\eryom\\GitHub\\vinishko",
+    "command": [
+      "C:\\Users\\eryom\\GitHub\\vinishko\\ai_somelier\\run\\__main__.py",
+      "--experiment",
+      "v1-baseline"
+    ]
+  },
+  "environment": {
+    "dotenv_path": "C:\\Users\\eryom\\GitHub\\vinishko\\.env",
+    "dotenv_exists": true,
+    "dotenv_loaded": true,
+    "api_key_present": true
+  },
+  "progress": {
+    "total_cases": 10,
+    "finished_cases": 10,
+    "successful_cases": 4,
+    "failed_cases": 6
+  },
+  "cases": [
+    {
+      "case_index": 0,
+      "case_id": "opening_unknown_method",
+      "status": "failed",
+      "error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)",
+      "turns_completed": 0,
+      "follow_up_turns_completed": 0,
+      "duration_ms": 10028.307,
+      "file": "cases/0000_opening_unknown_method.json"
+    },
+    {
+      "case_index": 1,
+      "case_id": "sibirkovy_acidity",
+      "status": "failed",
+      "error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)",
+      "turns_completed": 0,
+      "follow_up_turns_completed": 0,
+      "duration_ms": 9413.955,
+      "file": "cases/0001_sibirkovy_acidity.json"
+    },
+    {
+      "case_index": 2,
+      "case_id": "merlot_duck",
+      "status": "failed",
+      "error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)",
+      "turns_completed": 0,
+      "follow_up_turns_completed": 0,
+      "duration_ms": 9336.345,
+      "file": "cases/0002_merlot_duck.json"
+    },
+    {
+      "case_index": 3,
+      "case_id": "organic_extra_brut",
+      "status": "failed",
+      "error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)",
+      "turns_completed": 0,
+      "follow_up_turns_completed": 0,
+      "duration_ms": 9213.984,
+      "file": "cases/0003_organic_extra_brut.json"
+    },
+    {
+      "case_index": 4,
+      "case_id": "orange_no_alcohol",
+      "status": "completed",
+      "error": null,
+      "turns_completed": 2,
+      "follow_up_turns_completed": 1,
+      "duration_ms": 11124.654,
+      "file": "cases/0004_orange_no_alcohol.json"
+    },
+    {
+      "case_index": 5,
+      "case_id": "madeira_driving",
+      "status": "completed",
+      "error": null,
+      "turns_completed": 2,
+      "follow_up_turns_completed": 1,
+      "duration_ms": 12050.817,
+      "file": "cases/0005_madeira_driving.json"
+    },
+    {
+      "case_index": 6,
+      "case_id": "shiraz_lighter_candidate",
+      "status": "failed",
+      "error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)",
+      "turns_completed": 0,
+      "follow_up_turns_completed": 0,
+      "duration_ms": 8999.655,
+      "file": "cases/0006_shiraz_lighter_candidate.json"
+    },
+    {
+      "case_index": 7,
+      "case_id": "rose_gift",
+      "status": "completed",
+      "error": null,
+      "turns_completed": 3,
+      "follow_up_turns_completed": 2,
+      "duration_ms": 15154.236,
+      "file": "cases/0007_rose_gift.json"
+    },
+    {
+      "case_index": 8,
+      "case_id": "wrong_recognition",
+      "status": "failed",
+      "error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)",
+      "turns_completed": 0,
+      "follow_up_turns_completed": 0,
+      "duration_ms": 8964.846,
+      "file": "cases/0008_wrong_recognition.json"
+    },
+    {
+      "case_index": 9,
+      "case_id": "semisweet_context",
+      "status": "completed",
+      "error": null,
+      "turns_completed": 4,
+      "follow_up_turns_completed": 3,
+      "duration_ms": 19705.861,
+      "file": "cases/0009_semisweet_context.json"
+    }
+  ]
+}

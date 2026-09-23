@@ -1,0 +1,2775 @@
+{
+  "schema_version": "1.0",
+  "evaluation_id": "v1-baseline_20260923T153911408851Z_codex_eval",
+  "status": "complete",
+  "created_at": "2026-09-23T15:40:40.771557+00:00",
+  "source": {
+    "run_path": "ai_somelier/results/v1-baseline_20260923T153911408851Z/run.json",
+    "run_id": "v1-baseline_20260923T153911408851Z",
+    "run_fingerprint_sha256": "ca3ac5ab19e109b7976fd50f9bf8f6486f4e23ee4d6b32b9e1d116753ef31470",
+    "dataset_path": "ai_somelier/golden_dataset.json",
+    "dataset_id": "ai_somelier_golden_v1",
+    "dataset_sha256": "2f557efd46aa4613ef1cfd901cb67d9bdaa3d434e558af0c91bcb172659d696c",
+    "tone_criteria_path": "ai_somelier/eval/criteria.json",
+    "tone_criteria_id": "ai_somelier_tone_v1",
+    "tone_criteria_sha256": "fe6aa6f4b1d966ec9df31590079f7ecf3880e4ef3730651fed473b709d1495d6"
+  },
+  "cases": [
+    {
+      "case_id": "opening_unknown_method",
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "user_message": null,
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "contract_error",
+            "generation_error": "invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "wine_name",
+              "criterion": "Называет вино «Method Classic Кокур».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "producer",
+              "criterion": "Называет производителя — Винодельню Братьев Мельниковых.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "color",
+              "criterion": "Говорит, что вино белое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "region",
+              "criterion": "Указывает Крым как регион вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "peach",
+              "criterion": "Упоминает ожидаемую ноту персика.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "pear",
+              "criterion": "Упоминает ожидаемую ноту груши.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "creamy_finish",
+              "criterion": "Упоминает сливочное послевкусие.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "classic_method",
+              "criterion": "Сообщает, что в карточке указан классический метод.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "sparkling_unknown",
+              "criterion": "Не выдаёт наличие пузырьков за известный факт и отмечает неопределённость.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "sweetness_unknown",
+              "criterion": "Отмечает, что сладость не указана.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "strength_unknown",
+              "criterion": "Отмечает, что крепость не указана.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Советует подать вино охлаждённым примерно до 10 °C.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "closing_question",
+              "criterion": "Завершает основной текст вопросом «Чем я могу вам помочь?».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "taste_suggestion",
+              "criterion": "Один suggestion предлагает узнать о вкусе вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "cooling_suggestion",
+              "criterion": "Один suggestion предлагает узнать об охлаждении вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "sibirkovy_acidity",
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "user_message": null,
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "contract_error",
+            "generation_error": "invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "wine_name",
+              "criterion": "Называет вино «Сибирьковый».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "producer",
+              "criterion": "Называет производителя «Ведерниковъ».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "color",
+              "criterion": "Говорит, что вино белое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "dry",
+              "criterion": "Говорит, что вино сухое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "region",
+              "criterion": "Указывает Долину Дона как регион вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "strength",
+              "criterion": "Указывает крепость 11%.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "fresh_taste",
+              "criterion": "Передаёт заявленную в описании свежесть вкуса.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "green_apple",
+              "criterion": "Упоминает ноту зелёного яблока.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "grapefruit_bitterness",
+              "criterion": "Упоминает лёгкую грейпфрутовую горчинку.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "local_don_grape",
+              "criterion": "Объясняет, что Сибирьковый — местный донской сорт винограда.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Советует температуру подачи 9–11 °C.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "closing_question",
+              "criterion": "Завершает основной текст вопросом «Чем я могу вам помочь?».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "acidity_suggestion",
+              "criterion": "Один suggestion предлагает узнать о кислотности вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "cooling_suggestion",
+              "criterion": "Один suggestion предлагает узнать об охлаждении вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "user_message": "Не люблю, когда вино прямо кислое. А этот Сибирьковый как? И что это вообще за сорт?",
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "missing",
+            "generation_error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "fit_warning",
+              "criterion": "Предупреждает, что при нелюбви к выраженной кислотности выбор спорный.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "local_don_grape",
+              "criterion": "Объясняет, что Сибирьковый — местный донской сорт.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "typical_apple",
+              "criterion": "Называет яблоко типичной нотой вин из Сибирькового.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "typical_citrus",
+              "criterion": "Называет цитрус типичной нотой вин из Сибирькового.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "typical_herbs",
+              "criterion": "Называет травяные оттенки типичными для вин из Сибирькового.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "bitterness_not_acidity",
+              "criterion": "Различает грейпфрутовую горечь и кислотность.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "acidity_unknown",
+              "criterion": "Говорит, что резкость кислотности именно этой бутылки по карточке определить нельзя.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "no_softness_promise",
+              "criterion": "Не обещает, что вкус будет совсем мягким.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "merlot_duck",
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "user_message": null,
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "contract_error",
+            "generation_error": "invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "wine_name",
+              "criterion": "Называет вино «Шато Тамань Резерв Мерло Лимитед Эдишн 2018».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "producer",
+              "criterion": "Называет производителя «Кубань-Вино».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "color",
+              "criterion": "Говорит, что вино красное.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "dry",
+              "criterion": "Говорит, что вино сухое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "strength",
+              "criterion": "Указывает крепость 12,5%.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "soft_taste",
+              "criterion": "Передаёт заявленную мягкость вкуса.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "velvety_taste",
+              "criterion": "Передаёт заявленную бархатистость вкуса.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "long_finish",
+              "criterion": "Упоминает долгое послевкусие.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "aging_duration_unknown",
+              "criterion": "Не выводит срок выдержки из слова «резерв» и отмечает отсутствие данных.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "aging_vessel_unknown",
+              "criterion": "Не выводит бочковую выдержку из слова «резерв» и отмечает отсутствие данных.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Советует температуру подачи 16–17 °C.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "closing_question",
+              "criterion": "Завершает основной текст вопросом «Чем я могу вам помочь?».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "taste_suggestion",
+              "criterion": "Один suggestion предлагает узнать о вкусе вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "serving_suggestion",
+              "criterion": "Один suggestion предлагает узнать о подаче вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "user_message": "Запекаю утку, к ней будет вишнёвый соус. Это вино подойдёт?",
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "missing",
+            "generation_error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "conditional_match",
+              "criterion": "Рекомендует вино к утке при условии, что соус не слишком сладкий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "soft_astringency",
+              "criterion": "Опирается на мягкую терпкость вина при объяснении сочетания.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "velvety_taste",
+              "criterion": "Опирается на бархатистый вкус вина при объяснении сочетания.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "typical_merlot_notes",
+              "criterion": "Говорит о вишнёвых или сливовых оттенках как о типичных для мерло, а не как о подтверждённом описании этой бутылки.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "sauce_acidity",
+              "criterion": "Советует сохранить в соусе кислинку.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "sweet_sauce_risk",
+              "criterion": "Предупреждает, что очень сладкий соус может сделать сухое вино субъективно кислее или жёстче.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "organic_extra_brut",
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "user_message": null,
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "contract_error",
+            "generation_error": "invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "wine_name",
+              "criterion": "Называет вино «Blush #1».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "producer",
+              "criterion": "Называет производителя AYA Organic Wine & Vineyards.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "color",
+              "criterion": "Говорит, что вино розовое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "sparkling",
+              "criterion": "Говорит, что вино игристое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "region",
+              "criterion": "Указывает Крым как регион вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "extra_brut",
+              "criterion": "Называет стиль экстра-брют.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "very_dry",
+              "criterion": "Объясняет экстра-брют как очень сухой стиль.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "strength",
+              "criterion": "Указывает крепость 13,5%.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "juicy_taste",
+              "criterion": "Упоминает заявленный сочный вкус.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "berry_aroma",
+              "criterion": "Упоминает заявленный ягодный аромат.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "grapefruit_bitterness",
+              "criterion": "Упоминает грейпфрутовую горчинку.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "organic_status",
+              "criterion": "Сообщает, что в карточке вино отмечено как органическое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Советует температуру подачи 8–10 °C.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "closing_question",
+              "criterion": "Завершает основной текст вопросом «Чем я могу вам помочь?».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "dryness_suggestion",
+              "criterion": "Один suggestion предлагает узнать о сухости вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "cooling_suggestion",
+              "criterion": "Один suggestion предлагает узнать об охлаждении вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "user_message": "Экстра-брют — это совсем без сахара? И раз органическое, оно полезнее обычного?",
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "missing",
+            "generation_error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "extra_brut_not_zero",
+              "criterion": "Объясняет, что экстра-брют не обязательно означает полное отсутствие сахара.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "extra_brut_very_dry",
+              "criterion": "Объясняет, что экстра-брют — очень сухая категория игристого.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "european_range",
+              "criterion": "Приводит 0–6 г/л как ориентир европейской шкалы экстра-брют, а не точное значение этой бутылки.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "bottle_sugar_unknown",
+              "criterion": "Говорит, что точное количество сахара в этой бутылке не указано.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "organic_rules",
+              "criterion": "Объясняет органический статус через правила выращивания винограда и производства вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "certificate_unknown",
+              "criterion": "Отмечает отсутствие подробностей сертификата в карточке.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "not_healthier",
+              "criterion": "Не называет органический алкоголь полезным или безопасным для здоровья.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "sulfites_unknown",
+              "criterion": "Объясняет, что органический статус не означает полного отсутствия сульфитов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "orange_no_alcohol",
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "user_message": null,
+          "actual_response": {
+            "content": "Перед вами «Цитрон оранж» от Denisov Winery — оранжевое сухое вино из сорта Цитронный Магарача. В описании стиль читается как сбалансированный и питкий, с фруктово-пряными оттенками, медом и тонкими цветочными нюансами. Можно попробовать подать его умеренно охлаждённым, около 10–12 °C, чтобы сохранить свежесть и не заглушить аромат. Чем я могу вам помочь?",
+            "suggestions": [
+              "Что во вкусе?",
+              "Как подавать?"
+            ],
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "wine_name",
+              "criterion": "Называет вино «Цитрон оранж».",
+              "passed": true,
+              "evidence": "В ответе: ««Цитрон оранж» от Denisov Winery»."
+            },
+            {
+              "id": "producer",
+              "criterion": "Называет производителя Denisov Winery.",
+              "passed": true,
+              "evidence": "В ответе: ««Цитрон оранж» от Denisov Winery»."
+            },
+            {
+              "id": "region",
+              "criterion": "Указывает Самару как регион вина.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Указывает Самару как регион вина."
+            },
+            {
+              "id": "dry",
+              "criterion": "Говорит, что вино сухое.",
+              "passed": true,
+              "evidence": "В ответе: «оранжевое сухое вино из сорта Цитронный Магарача»."
+            },
+            {
+              "id": "orange",
+              "criterion": "Говорит, что вино оранжевое.",
+              "passed": true,
+              "evidence": "В ответе: «оранжевое сухое вино из сорта Цитронный Магарача»."
+            },
+            {
+              "id": "strength",
+              "criterion": "Указывает крепость 10,5%.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Указывает крепость 10,5%."
+            },
+            {
+              "id": "orange_process",
+              "criterion": "Объясняет оранжевый стиль контактом белого винограда с кожицей.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Объясняет оранжевый стиль контактом белого винограда с кожицей."
+            },
+            {
+              "id": "grape",
+              "criterion": "Называет сорт Цитронный Магарача.",
+              "passed": true,
+              "evidence": "В ответе: «оранжевое сухое вино из сорта Цитронный Магарача»."
+            },
+            {
+              "id": "fruit_notes",
+              "criterion": "Упоминает фруктовые оттенки из описания.",
+              "passed": true,
+              "evidence": "В ответе: «с фруктово-пряными оттенками, медом и тонкими цветочными нюансами»."
+            },
+            {
+              "id": "spice_notes",
+              "criterion": "Упоминает пряные оттенки из описания.",
+              "passed": true,
+              "evidence": "В ответе: «с фруктово-пряными оттенками, медом и тонкими цветочными нюансами»."
+            },
+            {
+              "id": "floral_notes",
+              "criterion": "Упоминает лёгкие цветочные оттенки из описания.",
+              "passed": true,
+              "evidence": "В ответе: «с фруктово-пряными оттенками, медом и тонкими цветочными нюансами»."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Советует температуру подачи 10–12 °C.",
+              "passed": true,
+              "evidence": "В ответе: «около 10–12 °C»."
+            },
+            {
+              "id": "closing_question",
+              "criterion": "Завершает основной текст вопросом «Чем я могу вам помочь?».",
+              "passed": true,
+              "evidence": "В ответе: «Чем я могу вам помочь?»."
+            },
+            {
+              "id": "taste_suggestion",
+              "criterion": "Один suggestion предлагает узнать о вкусе вина.",
+              "passed": true,
+              "evidence": "В ответе: «Что во вкусе?»."
+            },
+            {
+              "id": "cooling_suggestion",
+              "criterion": "Один suggestion предлагает узнать об охлаждении вина.",
+              "passed": false,
+              "evidence": "Suggestion «Как подавать?» спрашивает о подаче вообще, не об охлаждении."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Перед вами «Цитрон оранж» от Denisov Winery — оранжевое сухое вино из сорта Цитронный Магарача»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": true,
+              "evidence": "Мысль изложена короткими понятными фразами без мешающего жаргона."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "user_message": "А из этих похожих есть что-нибудь вообще без алкоголя?",
+          "actual_response": {
+            "content": "Среди этих пяти альтернатив безалкогольных нет: у всех указана крепость от 10,5% до 13%, а у найденного «Цитрон оранж» — 10,5%. Так что по карточкам это обычные алкогольные вина, и замена внутри списка не решит задачу.\n\nЕсли нужен именно безалкогольный вариант, ищите бутылку с пометкой «безалкогольное» на этикетке — обычно это отдельная категория, а не оранжевое вино классического брожения. Ориентир по стилю: безалкогольное белое или «оранж-стайл» с цитрусовыми и медовыми нотами, например на основе мускатных сортов. Отсканируйте такую бутылку — и я помогу разобраться с её вкусом и подачей.",
+            "suggestions": null,
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "none_alcohol_free",
+              "criterion": "Прямо отвечает, что среди пяти кандидатов нет безалкогольного вина.",
+              "passed": true,
+              "evidence": "В ответе: «Среди этих пяти альтернатив безалкогольных нет»."
+            },
+            {
+              "id": "candidate_strengths",
+              "criterion": "Указывает диапазон крепости кандидатов 10,5–13%.",
+              "passed": true,
+              "evidence": "В ответе: «у всех указана крепость от 10,5% до 13%»."
+            },
+            {
+              "id": "aromatic_white",
+              "criterion": "Предлагает искать ароматное белое вино как замену по фруктово-цветочному профилю.",
+              "passed": false,
+              "evidence": "Предлагает белое с цитрусовыми и медовыми нотами, но не фруктово-цветочный профиль целиком."
+            },
+            {
+              "id": "zero_marking",
+              "criterion": "Советует искать маркировку 0,0%.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Советует искать маркировку 0,0%."
+            },
+            {
+              "id": "verify_content",
+              "criterion": "Советует проверить указанное содержание алкоголя, если важно исключить остаточный алкоголь.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Советует проверить указанное содержание алкоголя, если важно исключить остаточный алкоголь."
+            },
+            {
+              "id": "taste_difference",
+              "criterion": "Предупреждает, что замена будет отличаться по вкусу от оранжевого вина.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Предупреждает, что замена будет отличаться по вкусу от оранжевого вина."
+            },
+            {
+              "id": "scan_replacement",
+              "criterion": "Предлагает отсканировать найденную бутылку для проверки её карточки.",
+              "passed": false,
+              "evidence": "Сканирование предложено ради обсуждения вкуса и подачи, не ради проверки карточки новой бутылки."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Среди этих пяти альтернатив безалкогольных нет: у всех указана крепость от 10,5% до 13%, а у найденного «Цитрон оранж» — 10,5%»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": true,
+              "evidence": "Мысль изложена короткими понятными фразами без мешающего жаргона."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "madeira_driving",
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "user_message": null,
+          "actual_response": {
+            "content": "Найдено вино «Мадера» от винодельни «ЗМВ Коктебель»: белое креплёное, сладкое, крепостью 19%, винтаж не указан. В стиле мадеры ожидаются сухофрукты, мёд и ореховые оттенки, а во вкусе — остро-жгучий характер с черносливом и ржаной корочкой. Подайте его слегка охлаждённым, небольшими порциями в маленьком бокале, чтобы спиртуозность не перебивала аромат. Чем я могу вам помочь?",
+            "suggestions": [
+              "Что во вкусе?",
+              "Как подавать?"
+            ],
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "wine_name",
+              "criterion": "Называет вино «Мадера».",
+              "passed": true,
+              "evidence": "В ответе: ««Мадера» от винодельни «ЗМВ Коктебель»»."
+            },
+            {
+              "id": "producer",
+              "criterion": "Называет производителя ЗМВ Коктебель.",
+              "passed": true,
+              "evidence": "В ответе: ««Мадера» от винодельни «ЗМВ Коктебель»»."
+            },
+            {
+              "id": "color",
+              "criterion": "Говорит, что вино белое.",
+              "passed": true,
+              "evidence": "В ответе: «белое креплёное, сладкое, крепостью 19%»."
+            },
+            {
+              "id": "sweet",
+              "criterion": "Говорит, что вино сладкое.",
+              "passed": true,
+              "evidence": "В ответе: «белое креплёное, сладкое, крепостью 19%»."
+            },
+            {
+              "id": "fortified",
+              "criterion": "Говорит, что вино креплёное.",
+              "passed": true,
+              "evidence": "В ответе: «белое креплёное, сладкое, крепостью 19%»."
+            },
+            {
+              "id": "region",
+              "criterion": "Указывает Крым как регион вина.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Указывает Крым как регион вина."
+            },
+            {
+              "id": "strength",
+              "criterion": "Указывает крепость 19%.",
+              "passed": true,
+              "evidence": "В ответе: «белое креплёное, сладкое, крепостью 19%»."
+            },
+            {
+              "id": "dried_fruit",
+              "criterion": "Упоминает ноты сухофруктов.",
+              "passed": true,
+              "evidence": "В ответе: «сухофрукты, мёд и ореховые оттенки»."
+            },
+            {
+              "id": "honey",
+              "criterion": "Упоминает ноту мёда.",
+              "passed": true,
+              "evidence": "В ответе: «сухофрукты, мёд и ореховые оттенки»."
+            },
+            {
+              "id": "nuts",
+              "criterion": "Упоминает ореховые ноты.",
+              "passed": true,
+              "evidence": "В ответе: «сухофрукты, мёд и ореховые оттенки»."
+            },
+            {
+              "id": "fortified_explanation",
+              "criterion": "Объясняет крепление добавлением спирта при производстве.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Объясняет крепление добавлением спирта при производстве."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Советует температуру подачи 12–14 °C.",
+              "passed": false,
+              "evidence": "Советует «слегка охлаждённым», без ориентира 12–14 °C."
+            },
+            {
+              "id": "closing_question",
+              "criterion": "Завершает основной текст вопросом «Чем я могу вам помочь?».",
+              "passed": true,
+              "evidence": "В ответе: «Чем я могу вам помочь?»."
+            },
+            {
+              "id": "taste_suggestion",
+              "criterion": "Один suggestion предлагает узнать о вкусе вина.",
+              "passed": true,
+              "evidence": "В ответе: «Что во вкусе?»."
+            },
+            {
+              "id": "cooling_suggestion",
+              "criterion": "Один suggestion предлагает узнать об охлаждении вина.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Один suggestion предлагает узнать об охлаждении вина."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Найдено вино «Мадера» от винодельни «ЗМВ Коктебель»: белое креплёное, сладкое, крепостью 19%, винтаж не указан»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": true,
+              "evidence": "Мысль изложена короткими понятными фразами без мешающего жаргона."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "user_message": "Мне через пару часов за руль. Один маленький бокал ведь можно?",
+          "actual_response": {
+            "content": "Лучше не пить: даже один небольшой бокал креплёного вина крепостью 19% может повлиять на реакцию и внимание, а через пару часов алкоголь не обязательно полностью выведется. Индивидуальная переносимость не отменяет риска, поэтому за руль после алкоголя садиться не стоит. Если бокал уже выпит, надёжнее воспользоваться такси, общественным транспортом или трезвым водителем.",
+            "suggestions": null,
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "do_not_drink",
+              "criterion": "Однозначно советует совсем не пить алкоголь перед поездкой.",
+              "passed": true,
+              "evidence": "В ответе: «Лучше не пить»."
+            },
+            {
+              "id": "strength",
+              "criterion": "Напоминает, что крепость мадеры 19%.",
+              "passed": true,
+              "evidence": "В ответе: «креплёного вина крепостью 19%»."
+            },
+            {
+              "id": "small_glass_risk",
+              "criterion": "Предупреждает, что даже маленький бокал может повлиять на вождение.",
+              "passed": true,
+              "evidence": "В ответе: «даже один небольшой бокал креплёного вина крепостью 19% может повлиять на реакцию и внимание»."
+            },
+            {
+              "id": "two_hours_no_guarantee",
+              "criterion": "Говорит, что два часа не гарантируют прекращения действия алкоголя.",
+              "passed": true,
+              "evidence": "В ответе: «через пару часов алкоголь не обязательно полностью выведется»."
+            },
+            {
+              "id": "nonalcoholic_alternative",
+              "criterion": "Предлагает сейчас выбрать безалкогольный напиток, например воду или чай.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Предлагает сейчас выбрать безалкогольный напиток, например воду или чай."
+            },
+            {
+              "id": "save_wine",
+              "criterion": "Советует оставить вино на случай, когда не нужно садиться за руль.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Советует оставить вино на случай, когда не нужно садиться за руль."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Лучше не пить: даже один небольшой бокал креплёного вина крепостью 19% может повлиять на реакцию и внимание, а через пару часов алкоголь не обязательно полностью выведется»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": true,
+              "evidence": "Мысль изложена короткими понятными фразами без мешающего жаргона."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "shiraz_lighter_candidate",
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "user_message": null,
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "contract_error",
+            "generation_error": "invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "wine_name",
+              "criterion": "Называет вино «Шираз Резерв».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "producer",
+              "criterion": "Называет производителя Chateau de Talu.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "color",
+              "criterion": "Говорит, что вино красное.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "dry",
+              "criterion": "Говорит, что вино сухое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "strength",
+              "criterion": "Указывает крепость 14%.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "grape",
+              "criterion": "Называет сорт Сира.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "full_bodied",
+              "criterion": "Передаёт заявленную насыщенность вкуса.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "silky",
+              "criterion": "Передаёт заявленное шелковистое ощущение во рту.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "cherry_chocolate_finish",
+              "criterion": "Упоминает вишнёво-шоколадное послевкусие.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "aging_duration_unknown",
+              "criterion": "Не выводит срок выдержки из слова «резерв» и отмечает отсутствие данных.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "aging_vessel_unknown",
+              "criterion": "Не выводит тип ёмкости выдержки из слова «резерв» и отмечает отсутствие данных.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Советует температуру подачи 16–18 °C.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "closing_question",
+              "criterion": "Завершает основной текст вопросом «Чем я могу вам помочь?».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "astringency_suggestion",
+              "criterion": "Один suggestion предлагает узнать о терпкости вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "cooling_suggestion",
+              "criterion": "Один suggestion предлагает узнать об охлаждении вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "user_message": "Хочется тоже красное, но полегче и чтобы рот не вязало. Что из этих взять?",
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "missing",
+            "generation_error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "recommend_adagum",
+              "criterion": "Выбирает «Adagum Pinot Noir» от Olymp Winery.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "red",
+              "criterion": "Сообщает, что выбранное вино красное.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "dry",
+              "criterion": "Сообщает, что выбранное вино сухое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "lighter_body",
+              "criterion": "Обосновывает более лёгкое ощущение средней полнотой Pinot Noir по сравнению с насыщенным ширазом.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "soft_tannins",
+              "criterion": "Объясняет шелковистые танины выбранного вина как мягкую терпкость.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "strength_comparison",
+              "criterion": "Сравнивает крепость: 11% у Pinot Noir против 14% у шираза.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "no_zero_astringency_promise",
+              "criterion": "Не обещает полного отсутствия терпкости.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        },
+        {
+          "turn_index": 2,
+          "kind": "follow_up",
+          "user_message": "Будем есть пиццу с грибами. Этот пино к ней лучше, чем тот шираз?",
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "missing",
+            "generation_error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "choose_pinot",
+              "criterion": "Выбирает Adagum Pinot Noir к грибной пицце с учётом желания более лёгкого вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "fresh_acidity",
+              "criterion": "Опирается на свежую кислотность Pinot Noir из его карточки.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "soft_astringency",
+              "criterion": "Опирается на мягкую терпкость Pinot Noir.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "mushroom_pairing",
+              "criterion": "Объясняет, что Pinot Noir не должен заглушить грибы так легко, как более насыщенное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "shiraz_profile",
+              "criterion": "Сопоставляет выбор с более насыщенным профилем шираза и его кофейно-табачными оттенками.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "smoked_meat_caveat",
+              "criterion": "Оговаривает, что при большом количестве копчёного мяса шираз тоже может быть уместен.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "rose_gift",
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "user_message": null,
+          "actual_response": {
+            "content": "Найдено вино Fanagoria Extra Brut Rose 2019 от винодельни «Фанагория» — розовое игристое, экстра брют, винтаж 2019. В аромате карточка обещает красные ягоды, цитрус и бриошь, а вкус описывает как свежий с ягодно-сливочным послевкусием. Это очень сухой игристый стиль, где свежесть и ягодность звучат довольно деликатно. Подайте хорошо охлаждённым, примерно до 6–8 °C, в бокале для игристого или белого вина, не встряхивая бутылку. Чем я могу вам помочь?",
+            "suggestions": [
+              "Что за ягоды во вкусе?",
+              "Как охладить бутылку?"
+            ],
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "wine_name",
+              "criterion": "Называет вино «Fanagoria Extra Brut Rose 2019».",
+              "passed": true,
+              "evidence": "В ответе: «Fanagoria Extra Brut Rose 2019 от винодельни «Фанагория»»."
+            },
+            {
+              "id": "producer",
+              "criterion": "Называет производителя «Фанагория».",
+              "passed": true,
+              "evidence": "В ответе: «Fanagoria Extra Brut Rose 2019 от винодельни «Фанагория»»."
+            },
+            {
+              "id": "color",
+              "criterion": "Говорит, что вино розовое.",
+              "passed": true,
+              "evidence": "В ответе: «розовое игристое, экстра брют»."
+            },
+            {
+              "id": "sparkling",
+              "criterion": "Говорит, что вино игристое.",
+              "passed": true,
+              "evidence": "В ответе: «розовое игристое, экстра брют»."
+            },
+            {
+              "id": "vintage",
+              "criterion": "Указывает урожай 2019 года.",
+              "passed": true,
+              "evidence": "В ответе: «Fanagoria Extra Brut Rose 2019 от винодельни «Фанагория»»."
+            },
+            {
+              "id": "extra_brut",
+              "criterion": "Объясняет экстра-брют как очень сухой стиль.",
+              "passed": true,
+              "evidence": "В ответе: «очень сухой игристый стиль»."
+            },
+            {
+              "id": "strength",
+              "criterion": "Указывает крепость 12%.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Указывает крепость 12%."
+            },
+            {
+              "id": "red_berries",
+              "criterion": "Упоминает в аромате красные ягоды.",
+              "passed": true,
+              "evidence": "В ответе: «красные ягоды, цитрус и бриошь»."
+            },
+            {
+              "id": "citrus",
+              "criterion": "Упоминает в аромате цитрус.",
+              "passed": true,
+              "evidence": "В ответе: «красные ягоды, цитрус и бриошь»."
+            },
+            {
+              "id": "brioche",
+              "criterion": "Упоминает бриошь в аромате.",
+              "passed": true,
+              "evidence": "В ответе: «красные ягоды, цитрус и бриошь»."
+            },
+            {
+              "id": "brioche_explanation",
+              "criterion": "Понятно объясняет аромат бриоши через сдобную выпечку.",
+              "passed": false,
+              "evidence": "«Бриошь» названа, но как сдобная выпечка не объяснена."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Советует температуру подачи 8–10 °C.",
+              "passed": false,
+              "evidence": "Советует 6–8 °C, а критерий требует 8–10 °C."
+            },
+            {
+              "id": "closing_question",
+              "criterion": "Завершает основной текст вопросом «Чем я могу вам помочь?».",
+              "passed": true,
+              "evidence": "В ответе: «Чем я могу вам помочь?»."
+            },
+            {
+              "id": "dryness_suggestion",
+              "criterion": "Один suggestion предлагает узнать о сухости вина.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Один suggestion предлагает узнать о сухости вина."
+            },
+            {
+              "id": "cooling_suggestion",
+              "criterion": "Один suggestion предлагает узнать об охлаждении вина.",
+              "passed": true,
+              "evidence": "В ответе: «Как охладить бутылку?»."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Найдено вино Fanagoria Extra Brut Rose 2019 от винодельни «Фанагория» — розовое игристое, экстра брют, винтаж 2019»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Термин «бриошь» оставлен без пояснения для обычного читателя."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "user_message": "Думаю подарить начальнику. Нормальный вариант?",
+          "actual_response": {
+            "content": "Как подарок начальнику — скорее да, если он или она пьёт вино и любит сухие игристые. Fanagoria Extra Brut Rose 2019 — розовое игристое экстра брют: праздничный, но не тяжёлый формат, с ягодно-цитрусовым ароматом и свежим вкусом, уместный для аперитива, морепродуктов и лёгких закусок. Важно, что это очень сухой стиль: если начальник предпочитает полусладкие или сладкие вина, подарок может оказаться спорным. Данных о подарочной упаковке, цене, наградах или потенциале хранения в карточке нет, поэтому как «беспроигрышный» вариант я бы его не гарантировал. Вы знаете, что начальник обычно выбирает сухие игристые, а не полусладкие?",
+            "suggestions": null,
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "provisional_yes",
+              "criterion": "Даёт предварительный положительный ответ о подарке, а не безусловную гарантию.",
+              "passed": true,
+              "evidence": "В ответе: «скорее да, если он или она пьёт вино и любит сухие игристые»."
+            },
+            {
+              "id": "dry_sparkling_condition",
+              "criterion": "Связывает пригодность подарка с предпочтением очень сухого игристого.",
+              "passed": true,
+              "evidence": "В ответе: «скорее да, если он или она пьёт вино и любит сухие игристые»."
+            },
+            {
+              "id": "ask_preference",
+              "criterion": "Уточняет, какое вино обычно пьёт получатель.",
+              "passed": true,
+              "evidence": "В ответе: «Вы знаете, что начальник обычно выбирает сухие игристые, а не полусладкие?»."
+            },
+            {
+              "id": "ask_occasion",
+              "criterion": "Уточняет повод для подарка.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Уточняет повод для подарка."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Как подарок начальнику — скорее да, если он или она пьёт вино и любит сухие игристые»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": true,
+              "evidence": "Мысль изложена короткими понятными фразами без мешающего жаргона."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        },
+        {
+          "turn_index": 2,
+          "kind": "follow_up",
+          "user_message": "Как раз любит очень сухое игристое. У него юбилей.",
+          "actual_response": {
+            "content": "Тогда это очень удачное попадание: Extra Brut — как раз категория очень сухих игристых, так что вкус начальника она отражает. Для юбилея розовое игристое выглядит празднично, а ягодно-цитрусовый профиль с бриошью в аромате делает его достаточно нарядным и при этом не тяжёлым. Подайте хорошо охлаждённым, около 6–8 °C, и откройте аккуратно, не встряхивая бутылку — под аперитив, морепродукты, лёгкие закуски или жареное оно подойдёт. Если хотите усилить впечатление, добавьте к бутылке два бокала для игристого — это уместный и нейтральный жест.",
+            "suggestions": null,
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "recommend_bottle",
+              "criterion": "Рекомендует эту бутылку после полученных уточнений.",
+              "passed": true,
+              "evidence": "В ответе: «Тогда это очень удачное попадание»."
+            },
+            {
+              "id": "preference_match",
+              "criterion": "Обосновывает выбор совпадением экстра-брюта с любовью получателя к очень сухому игристому.",
+              "passed": true,
+              "evidence": "В ответе: «Extra Brut — как раз категория очень сухих игристых»."
+            },
+            {
+              "id": "occasion_match",
+              "criterion": "Объясняет уместность игристого для юбилея.",
+              "passed": true,
+              "evidence": "В ответе: «Для юбилея розовое игристое выглядит празднично»."
+            },
+            {
+              "id": "berry_story",
+              "criterion": "Упоминает ягодные оттенки как часть описания подарка.",
+              "passed": true,
+              "evidence": "В ответе: «ягодно-цитрусовый профиль с бриошью в аромате»."
+            },
+            {
+              "id": "citrus_story",
+              "criterion": "Упоминает цитрусовые оттенки как часть описания подарка.",
+              "passed": true,
+              "evidence": "В ответе: «ягодно-цитрусовый профиль с бриошью в аромате»."
+            },
+            {
+              "id": "brioche_story",
+              "criterion": "Упоминает оттенок сдобной выпечки как часть описания подарка.",
+              "passed": true,
+              "evidence": "В ответе: «ягодно-цитрусовый профиль с бриошью в аромате»."
+            },
+            {
+              "id": "vintage_not_guarantee",
+              "criterion": "Не выдаёт 2019 год за гарантию улучшения или качества вина.",
+              "passed": true,
+              "evidence": "Ответ не утверждает, что год 2019 гарантирует улучшение или качество."
+            },
+            {
+              "id": "storage_matters",
+              "criterion": "Отмечает важность условий хранения.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Отмечает важность условий хранения."
+            },
+            {
+              "id": "ask_seller",
+              "criterion": "Советует уточнить хранение у продавца перед покупкой.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Советует уточнить хранение у продавца перед покупкой."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Тогда это очень удачное попадание: Extra Brut — как раз категория очень сухих игристых, так что вкус начальника она отражает»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Термин «бриошь» снова оставлен без пояснения."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "wrong_recognition",
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "user_message": null,
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "contract_error",
+            "generation_error": "invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "wine_name",
+              "criterion": "Называет вино «Мускатель белый».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "producer",
+              "criterion": "Называет производителя «Массандра».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "color",
+              "criterion": "Говорит, что вино белое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "sweet",
+              "criterion": "Говорит, что вино сладкое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "strength",
+              "criterion": "Указывает крепость 16%.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "flowers",
+              "criterion": "Упоминает цветочные ноты.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "honey",
+              "criterion": "Упоминает ноту мёда.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "peach",
+              "criterion": "Упоминает ноту персика.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "sweetness_explicit",
+              "criterion": "Объясняет, что сладость прямо указана в карточке, а не выведена только из аромата.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Советует температуру подачи 10–12 °C.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "closing_question",
+              "criterion": "Завершает основной текст вопросом «Чем я могу вам помочь?».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "sweetness_suggestion",
+              "criterion": "Один suggestion предлагает узнать о сладости вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "cooling_suggestion",
+              "criterion": "Один suggestion предлагает узнать об охлаждении вина.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=contract_error; error=invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "user_message": "Так это не та бутылка, у меня на фото другая.",
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "missing",
+            "generation_error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "report_error",
+              "criterion": "Направляет пользователя нажать «Сообщить об ошибке».",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        },
+        {
+          "turn_index": 2,
+          "kind": "follow_up",
+          "user_message": "Ладно, а про этот мускатель всё-таки расскажите. Какой он на вкус?",
+          "actual_response": {
+            "content": null,
+            "suggestions": null,
+            "generation_status": "missing",
+            "generation_error": "solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)"
+          },
+          "must_include": [
+            {
+              "id": "resume_found_wine",
+              "criterion": "После явной просьбы снова обсуждает именно найденный мускатель.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "sweet",
+              "criterion": "Говорит, что вино сладкое.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "flowers",
+              "criterion": "Упоминает аромат цветов из карточки.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "honey",
+              "criterion": "Упоминает аромат мёда из карточки.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "peach",
+              "criterion": "Упоминает аромат персика из карточки.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "finish",
+              "criterion": "Упоминает долгое медово-цветочное послевкусие.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "alcohol_warmth",
+              "criterion": "Связывает крепость 16% с возможным заметным теплом от алкоголя.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "grapes_unknown",
+              "criterion": "Не придумывает точные сорта и сообщает, что в карточке указаны только белые сорта винограда.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "fortified_unknown",
+              "criterion": "Не выводит креплёность только из 16% и отмечает отсутствие подтверждения в карточке.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": false,
+              "evidence": "Генерация отсутствует: status=missing; error=solution status 'contract_error': invalid first-turn JSON: Expecting value: line 1 column 1 (char 0)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "semisweet_context",
+      "tasks": [
+        {
+          "turn_index": 0,
+          "kind": "opening",
+          "user_message": null,
+          "actual_response": {
+            "content": "Найденное вино — Cantiani Semisweet от винодельни Шато АЛВИСА: белое полусладкое, без указанного винтажа. В описании это сбалансированный и мягкий стиль с фруктовыми нотами, лёгкой кислинкой и освежающим цветочно-фруктовым ароматом. Попробуйте подать его охлаждённым, примерно до 8–10 °C, в бокале для белого вина — так свежесть и мягкая сладость проявятся аккуратнее. Чем я могу вам помочь?",
+            "suggestions": [
+              "Какие ноты во вкусе?",
+              "Как правильно подавать?"
+            ],
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "wine_name",
+              "criterion": "Называет вино «Cantiani Semisweet».",
+              "passed": true,
+              "evidence": "В ответе: «Cantiani Semisweet от винодельни Шато АЛВИСА»."
+            },
+            {
+              "id": "producer",
+              "criterion": "Называет производителя «Шато АЛВИСА».",
+              "passed": true,
+              "evidence": "В ответе: «Cantiani Semisweet от винодельни Шато АЛВИСА»."
+            },
+            {
+              "id": "color",
+              "criterion": "Говорит, что вино белое.",
+              "passed": true,
+              "evidence": "В ответе: «белое полусладкое»."
+            },
+            {
+              "id": "semisweet",
+              "criterion": "Говорит, что вино полусладкое.",
+              "passed": true,
+              "evidence": "В ответе: «белое полусладкое»."
+            },
+            {
+              "id": "grape",
+              "criterion": "Называет сорт Ркацители.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Называет сорт Ркацители."
+            },
+            {
+              "id": "soft_taste",
+              "criterion": "Упоминает мягкий вкус из описания.",
+              "passed": true,
+              "evidence": "В ответе: «сбалансированный и мягкий стиль с фруктовыми нотами, лёгкой кислинкой»."
+            },
+            {
+              "id": "fruit_notes",
+              "criterion": "Упоминает фруктовые оттенки из описания.",
+              "passed": true,
+              "evidence": "В ответе: «сбалансированный и мягкий стиль с фруктовыми нотами, лёгкой кислинкой»."
+            },
+            {
+              "id": "light_acidity",
+              "criterion": "Упоминает лёгкую кислинку из описания.",
+              "passed": true,
+              "evidence": "В ответе: «сбалансированный и мягкий стиль с фруктовыми нотами, лёгкой кислинкой»."
+            },
+            {
+              "id": "strength_unknown",
+              "criterion": "Отмечает, что крепость не указана.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Отмечает, что крепость не указана."
+            },
+            {
+              "id": "charmat_in_description",
+              "criterion": "Сообщает, что метод Шарма упомянут в описании.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Сообщает, что метод Шарма упомянут в описании."
+            },
+            {
+              "id": "sparkling_unknown",
+              "criterion": "Не выдаёт наличие пузырьков за известный факт и отмечает неопределённость.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Не выдаёт наличие пузырьков за известный факт и отмечает неопределённость."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Советует температуру подачи 8–10 °C.",
+              "passed": true,
+              "evidence": "В ответе: «примерно до 8–10 °C»."
+            },
+            {
+              "id": "closing_question",
+              "criterion": "Завершает основной текст вопросом «Чем я могу вам помочь?».",
+              "passed": true,
+              "evidence": "В ответе: «Чем я могу вам помочь?»."
+            },
+            {
+              "id": "sweetness_suggestion",
+              "criterion": "Один suggestion предлагает узнать о сладости вина.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Один suggestion предлагает узнать о сладости вина."
+            },
+            {
+              "id": "cooling_suggestion",
+              "criterion": "Один suggestion предлагает узнать об охлаждении вина.",
+              "passed": false,
+              "evidence": "Suggestion «Как правильно подавать?» не предлагает узнать именно об охлаждении."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Найденное вино — Cantiani Semisweet от винодельни Шато АЛВИСА: белое полусладкое, без указанного винтажа»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": true,
+              "evidence": "Мысль изложена короткими понятными фразами без мешающего жаргона."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        },
+        {
+          "turn_index": 1,
+          "kind": "follow_up",
+          "user_message": "Обычно беру лёгкое сухое белое. Когда сладит, не нравится. Это мне зайдёт?",
+          "actual_response": {
+            "content": "Скорее нет: это полусладкое вино, а вы как раз не любите, когда сладит, — мягкая сладость здесь заявлена прямо в описании, так что привычный «лёгкий сухой» профиль она заметно сдвинет.\n\nЕсли хочется остаться в том же стиле и регионе, посмотрите Cantiani Rkatsiteli: тот же сорт Ркацители и та же винодельня, в описании — свежий, гармоничный вкус с живой кислинкой и сухим послевкусием, то есть по характеру это ближе к вашему обычному выбору. Отличие в том, что уровень сахара в карточке не указан, поэтому «сухость» подтверждена только описанием, а не строкой «Сахар». Запасной вариант — Cantiani Riesling: он тоже про освежающую кислотность и минеральность, но сорт другой, так что фруктовый рисунок будет иным.",
+            "suggestions": null,
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "likely_not_fit",
+              "criterion": "Отвечает, что вино, скорее всего, не подойдёт пользователю с такой нелюбовью к сладости.",
+              "passed": true,
+              "evidence": "В ответе: «Скорее нет: это полусладкое вино, а вы как раз не любите, когда сладит»."
+            },
+            {
+              "id": "semisweet",
+              "criterion": "Напоминает, что вино полусладкое.",
+              "passed": true,
+              "evidence": "В ответе: «Скорее нет: это полусладкое вино, а вы как раз не любите, когда сладит»."
+            },
+            {
+              "id": "sweet_finish",
+              "criterion": "Указывает на сладость в послевкусии из описания.",
+              "passed": false,
+              "evidence": "Сладость названа, но связь с послевкусием не передана."
+            },
+            {
+              "id": "subtle_still_sweet",
+              "criterion": "Объясняет, что даже ненавязчивая сладость может не подойти пользователю.",
+              "passed": true,
+              "evidence": "В ответе: «Скорее нет: это полусладкое вино, а вы как раз не любите, когда сладит»."
+            },
+            {
+              "id": "acidity_freshness",
+              "criterion": "Говорит, что кислинка может добавить свежести.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Говорит, что кислинка может добавить свежести."
+            },
+            {
+              "id": "not_dry",
+              "criterion": "Объясняет, что кислинка не делает полусладкое вино сухим.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Объясняет, что кислинка не делает полусладкое вино сухим."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Скорее нет: это полусладкое вино, а вы как раз не любите, когда сладит, — мягкая сладость здесь заявлена прямо в описании, так что привычный «лёгкий сухой» профиль она заметно сдвинет»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": true,
+              "evidence": "Мысль изложена короткими понятными фразами без мешающего жаргона."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        },
+        {
+          "turn_index": 2,
+          "kind": "follow_up",
+          "user_message": "А если к острой тайской лапше? Уже купили бутылку, надо к чему-то открыть.",
+          "actual_response": {
+            "content": "Да, с оговоркой: полусладкие белые часто хорошо работают с острой тайской кухней — мягкая сладость и фруктовость сглаживают жгучесть, а кислинка освежает после насыщенного соуса. Но у тайской лапши много кислого (лайм), солёного (рыбный соус) и умами, и на этом фоне вино может показаться слаще, чем само по себе, — если блюдо очень кислое, контраст будет спорным.\n\nПрактично подать его хорошо охлаждённым, около 8–10 °C, и пить небольшими глотками между укусами: так сладость ощущается меньше, а свежесть — сильнее. Если острота окажется запредельной, вино её смягчит, но не «потушит» полностью — тут лучше поможет рис или кокосовое молоко в самом блюде.",
+            "suggestions": null,
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "moderate_spice_pairing",
+              "criterion": "Допускает сочетание с умеренно острой лапшой, но формулирует его с оговоркой.",
+              "passed": true,
+              "evidence": "В ответе: «Да, с оговоркой»."
+            },
+            {
+              "id": "sweetness_softens_heat",
+              "criterion": "Объясняет, что сладость иногда смягчает ощущение жгучести.",
+              "passed": true,
+              "evidence": "В ответе: «мягкая сладость и фруктовость сглаживают жгучесть»."
+            },
+            {
+              "id": "alcohol_can_intensify",
+              "criterion": "Предупреждает, что алкоголь может усиливать ощущение жгучести.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Предупреждает, что алкоголь может усиливать ощущение жгучести."
+            },
+            {
+              "id": "strength_unknown",
+              "criterion": "Отмечает, что крепость вина не указана.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Отмечает, что крепость вина не указана."
+            },
+            {
+              "id": "very_spicy_caution",
+              "criterion": "Не даёт уверенной рекомендации для очень острого блюда.",
+              "passed": true,
+              "evidence": "В ответе: «Если острота окажется запредельной, вино её смягчит, но не «потушит» полностью»."
+            },
+            {
+              "id": "remember_preference",
+              "criterion": "Учитывает ранее сказанную нелюбовь пользователя к сладости.",
+              "passed": false,
+              "evidence": "Ранее названная нелюбовь к сладости не учтена в совете о лапше."
+            },
+            {
+              "id": "remains_semisweet",
+              "criterion": "Напоминает, что с едой вино всё равно останется полусладким.",
+              "passed": false,
+              "evidence": "Вино названо полусладким в начале, но не объяснено, что еда не устранит сладость."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Да, с оговоркой: полусладкие белые часто хорошо работают с острой тайской кухней — мягкая сладость и фруктовость сглаживают жгучесть, а кислинка освежает после насыщенного соуса»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": true,
+              "evidence": "Мысль изложена короткими понятными фразами без мешающего жаргона."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        },
+        {
+          "turn_index": 3,
+          "kind": "follow_up",
+          "user_message": "Ладно, попробуем с лапшой. На сколько убрать в холодильник и какие бокалы взять?",
+          "actual_response": {
+            "content": "Уберите бутылку в холодильник примерно на 1,5–2 часа, если она комнатной температуры; если уже прохладная из магазина — хватит 40–60 минут. Ориентир по подаче — 8–10 °C: если при открытии окажутся пузырьки, можно охладить чуть сильнее, до 6–8 °C, но не замораживайте.\n\nПо бокалам: в карточке указан метод Шарма, но игристость отдельно не подтверждена, поэтому надёжнее взять бокал-тюльпан или универсальный бокал для белого вина — он подойдёт и для тихого, и для игристого. Узкий флюте тоже возможен, если вино окажется игристым, но тюльпан лучше раскроет аромат.",
+            "suggestions": null,
+            "generation_status": "ok",
+            "generation_error": null
+          },
+          "must_include": [
+            {
+              "id": "fridge_time",
+              "criterion": "Для бутылки комнатной температуры предлагает начать примерно с двух часов в холодильнике.",
+              "passed": true,
+              "evidence": "В ответе: «примерно на 1,5–2 часа, если она комнатной температуры»."
+            },
+            {
+              "id": "serving_temperature",
+              "criterion": "Даёт ориентир подачи 8–10 °C.",
+              "passed": true,
+              "evidence": "В ответе: «Ориентир по подаче — 8–10 °C»."
+            },
+            {
+              "id": "time_depends",
+              "criterion": "Оговаривает зависимость точного времени от холодильника или начальной температуры.",
+              "passed": true,
+              "evidence": "В ответе: «примерно на 1,5–2 часа, если она комнатной температуры»."
+            },
+            {
+              "id": "white_wine_glass",
+              "criterion": "Рекомендует обычный сужающийся кверху бокал для белого вина.",
+              "passed": true,
+              "evidence": "В ответе: «бокал-тюльпан или универсальный бокал для белого вина»."
+            },
+            {
+              "id": "glass_handles_sparkling",
+              "criterion": "Говорит, что в таком бокале можно подать и вино с пузырьками.",
+              "passed": true,
+              "evidence": "В ответе: «он подойдёт и для тихого, и для игристого»."
+            },
+            {
+              "id": "sparkling_uncertain",
+              "criterion": "Упоминает метод Шарма, но не выдаёт игристость за подтверждённый факт.",
+              "passed": true,
+              "evidence": "В ответе: «в карточке указан метод Шарма, но игристость отдельно не подтверждена»."
+            },
+            {
+              "id": "check_label",
+              "criterion": "Советует проверить этикетку перед открытием.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Советует проверить этикетку перед открытием."
+            },
+            {
+              "id": "hold_cork",
+              "criterion": "Советует придерживать пробку при открытии.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Советует придерживать пробку при открытии."
+            },
+            {
+              "id": "point_away",
+              "criterion": "Советует направить бутылку от людей при открытии.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Советует направить бутылку от людей при открытии."
+            },
+            {
+              "id": "cooling_not_remove_sweetness",
+              "criterion": "Предупреждает, что охлаждение не уберёт сладость.",
+              "passed": false,
+              "evidence": "В фактическом ответе отсутствует: Предупреждает, что охлаждение не уберёт сладость."
+            }
+          ],
+          "wrong_claims": [],
+          "tone_of_voice": [
+            {
+              "id": "direct",
+              "criterion": "Ответ сразу выполняет текущую коммуникативную задачу пользователя; opening сразу представляет найденное вино.",
+              "passed": true,
+              "evidence": "Ответ сразу начинается по делу: «Уберите бутылку в холодильник примерно на 1,5–2 часа, если она комнатной температуры; если уже прохладная из магазина — хватит 40–60 минут»."
+            },
+            {
+              "id": "focused",
+              "criterion": "Ответ остаётся сфокусированным и не содержит ненужных отступлений или повторов.",
+              "passed": true,
+              "evidence": "Содержание относится к текущему вопросу; заметных отступлений или повторов нет."
+            },
+            {
+              "id": "natural_russian",
+              "criterion": "Ответ звучит как естественная современная русская речь.",
+              "passed": true,
+              "evidence": "Фразы связны и грамматичны, речь звучит естественно."
+            },
+            {
+              "id": "respectful",
+              "criterion": "Тон уважительный, спокойный и неосуждающий.",
+              "passed": true,
+              "evidence": "Формулировки спокойные и не осуждают пользователя."
+            },
+            {
+              "id": "readable",
+              "criterion": "Ответ легко прочитать с первого раза без лишнего профессионального жаргона.",
+              "passed": true,
+              "evidence": "Мысль изложена короткими понятными фразами без мешающего жаргона."
+            },
+            {
+              "id": "calibrated",
+              "criterion": "Манера речи различает известные факты, предположения и рекомендации.",
+              "passed": true,
+              "evidence": "Советы и возможные эффекты поданы как рекомендации или допущения, а данные карточки названы фактами."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
