@@ -48,10 +48,29 @@ def nonempty(value: object, location: str) -> None:
     require(value not in {"X", "Y"}, f"{location}: unfilled placeholder")
 
 
+def validate_must_include(value: object, location: str) -> int:
+    """Validate stable, atomic semantic checks for one expected response."""
+    require(isinstance(value, list) and bool(value), f"{location}: expected criteria")
+    ids = set()
+    for index, item in enumerate(value):
+        item_location = f"{location}[{index}]"
+        keys(item, {"id", "criterion"}, item_location)
+        criterion_id = item["id"]
+        nonempty(criterion_id, f"{item_location}.id")
+        require(
+            re.fullmatch(r"[a-z][a-z0-9_]*", criterion_id) is not None,
+            f"{item_location}: invalid criterion ID",
+        )
+        require(criterion_id not in ids, f"{location}: duplicate criterion ID {criterion_id}")
+        ids.add(criterion_id)
+        nonempty(item["criterion"], f"{item_location}.criterion")
+    return len(value)
+
+
 def validate(path: Path) -> None:
     data = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object)
     keys(data, {"schema_version", "dataset_id", "language", "catalog", "cases"}, "root")
-    require(data["schema_version"] == "1.0", "Unsupported schema version")
+    require(data["schema_version"] == "1.1", "Unsupported schema version")
     require(data["dataset_id"] == "ai_somelier_golden_v1", "Unexpected dataset ID")
     require(data["language"] == "ru", "Unexpected language")
     meta = data["catalog"]
@@ -70,6 +89,7 @@ def validate(path: Path) -> None:
     ids = set()
     lengths = Counter()
     first_lengths = []
+    must_include_count = 0
     for case in cases:
         keys(case, {"id", "title", "coverage", "input", "golden"}, "case")
         cid = case["id"]
@@ -99,7 +119,11 @@ def validate(path: Path) -> None:
         golden = case["golden"]
         keys(golden, {"first_turn", "turns"}, f"{cid}.golden")
         first = golden["first_turn"]
-        keys(first, {"content", "suggestions"}, f"{cid}.first_turn")
+        keys(first, {"content", "suggestions", "must_include"}, f"{cid}.first_turn")
+        must_include_count += validate_must_include(
+            first["must_include"],
+            f"{cid}.first_turn.must_include",
+        )
         content = first["content"]
         nonempty(content, f"{cid}.content")
         first_lengths.append(len(content))
@@ -121,14 +145,20 @@ def validate(path: Path) -> None:
         require(type(count) is int and count == len(turns), f"{cid}: follow-up count differs")
         lengths[count] += 1
         for index, turn in enumerate(turns, 1):
-            keys(turn, {"user", "assistant"}, f"{cid}.turn{index}")
-            for role, content in turn.items():
-                nonempty(content, f"{cid}.turn{index}.{role}")
+            keys(turn, {"user", "assistant", "must_include"}, f"{cid}.turn{index}")
+            nonempty(turn["user"], f"{cid}.turn{index}.user")
+            nonempty(turn["assistant"], f"{cid}.turn{index}.assistant")
+            must_include_count += validate_must_include(
+                turn["must_include"],
+                f"{cid}.turn{index}.must_include",
+            )
 
     require(lengths == {0: 1, 1: 5, 2: 3, 3: 1}, "Dialogue length distribution differs")
+    require(must_include_count == 241, "Expected 241 must_include criteria")
     print("OK: 10 cases, 14 follow-ups, 60 Catalog cards; SHA-256 and structure match.")
     print(f"First turns: {min(first_lengths)}–{max(first_lengths)} characters; sentence, word and suggestion limits pass.")
-    print("Factual accuracy, natural wording and scenario coverage require manual review.")
+    print("Must-include: 24 evaluated responses, 241 atomic binary criteria.")
+    print("Factual accuracy, natural wording and scenario coverage require structured evaluation.")
 
 
 if __name__ == "__main__":

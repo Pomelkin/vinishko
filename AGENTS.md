@@ -30,6 +30,9 @@ SLA < 3 с. Вес критериев: достоверность выдачи 5
   `.agents/skills/ndr-experiments/SKILL.md`.
 - Для разработки цифрового сомелье и файлов в `ai_somelier/` **обязательно прочитать и
   применять** `.agents/skills/ai-somelier-dev/SKILL.md`.
+- Для оценки прогонов цифрового сомелье, заполнения `evaluation.json`, поиска `wrong_claims`
+  и расчёта метрик **обязательно прочитать и применять**
+  `.agents/skills/ai-somelier-eval/SKILL.md`.
 
 ## NDR — `ndr/`
 

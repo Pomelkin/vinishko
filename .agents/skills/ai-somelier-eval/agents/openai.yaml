@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI sommelier eval"
+  short_description: "Grade sommelier runs against atomic criteria"
+  default_prompt: "Use $ai-somelier-eval to grade this sommelier run and write structured JSON metrics."
