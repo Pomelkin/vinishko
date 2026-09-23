@@ -71,7 +71,7 @@ class GeM(nn.Module):
 
     def __init__(self, p: float, eps: float) -> None:
         super().__init__()
-        self.p = nn.Parameter(torch.tensor(float(p)))
+        self.p = nn.Parameter(torch.full((1,), float(p)))
         self.eps = eps
 
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
