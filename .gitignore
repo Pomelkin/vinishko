@@ -220,7 +220,7 @@ __marimo__/
 /datasets/hack
 /datasets/winesensed-extra
 sam3.pt
-weights/
 # Результаты прогонов обучения: в git идёт только config.yaml эксперимента
 vis_seacher_training/experiments/*/*/
 /wheels
+/weights
