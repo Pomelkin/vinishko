@@ -122,6 +122,8 @@ class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
         gem_eps: float = 1e-6,
         device_map: torch.device | str | None = None,
         attn_implementation: str | None = None,
+        drop_path_rate: float = 0.0,
+        attention_dropout: float = 0.0,
     ) -> "DinoV3ForWine":
         """Модель с предобученным бэкбоном DINOv3 и свежей головой. Репозитории DINOv3 на HF закрытые: token=True берёт токен из hf auth login.
 
@@ -132,6 +134,8 @@ class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
             token=True,
             device_map=device_map,
             attn_implementation=attn_implementation,
+            drop_path_rate=drop_path_rate,
+            attention_dropout=attention_dropout,
         )
         config = DinoV3ForWineConfig(
             backbone_config=backbone.config,

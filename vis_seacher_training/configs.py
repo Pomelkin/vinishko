@@ -231,6 +231,10 @@ class ModelConfig(StrictModel):
     """Реализация внимания бэкбона; без значения transformers берёт sdpa. flash_attention_2 работает только в половинной точности, то есть с precision bf16-mixed либо 16-mixed."""
     freeze_backbone: bool = False
     gradient_checkpointing: bool = False
+    drop_path_rate: float = Field(default=0.0, ge=0, lt=1)
+    """Stochastic depth в блоках бэкбона; в чекпоинтах DINOv3 ноль."""
+    attention_dropout: float = Field(default=0.0, ge=0, lt=1)
+    """Dropout весов внимания бэкбона."""
 
 
 class LossConfig(StrictModel):

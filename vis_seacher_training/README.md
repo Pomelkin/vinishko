@@ -47,7 +47,10 @@ python -m vis_seacher_training.init_model -c <config.yaml> -o weights/init/<им
 `--shrinkage` — сглаживание собственных чисел), считает центры ArcFace как средние эмбеддинги классов и пишет отчёт с recall на val для
 zero-shot и для головы. Признаки кэшируются в `features.pt`: `--reuse-features` подбирает параметры головы без пересчёта бэкбона.
 В конфиг обучения: `model.init_from: <директория>` и `loss.centers_init: <директория>/arcface_centers.pt`; классы без записи в файле
-получают случайные центры. `hyperparams.backbone_freeze_ratio` держит бэкбон на нулевом lr первые столько шагов, потом у него свой
+получают случайные центры.
+Продолжить обучение с более широкой головой: `python -m vis_seacher_training.widen_head -m <run>/model -f weights/init/<имя>/features.pt -o weights/init/<имя>_cont --embed-dim 1024` —
+бэкбон и GeM как есть, γ и β обоих BN сброшены, обученные строки Linear остаются, недостающие берутся из PCA остатка признаков поверх них, центры пересчитываются;
+пример конфига продолжения — `experiments/dinov3_vitl16_1024_cont`. `model.drop_path_rate` и `model.attention_dropout` — регуляризация бэкбона. `hyperparams.backbone_freeze_ratio` держит бэкбон на нулевом lr первые столько шагов, потом у него свой
 разогрев и косинус; голова и центры учатся с первого шага.
 
 ## Аугментации

@@ -25,10 +25,12 @@ from torchvision.utils import make_grid
 from transformers import PreTrainedConfig
 from transformers import PreTrainedModel
 
+from vis_seacher_training.configs import ModelConfig
 from vis_seacher_training.configs import TrainingConfig
 from vis_seacher_training.datamodule import VAL_LOADERS
 from vis_seacher_training.datamodule import WineDataModule
 from vis_seacher_training.dino_modeling import DinoV3ForWine
+from vis_seacher_training.dino_modeling import DinoV3ForWineConfig
 from vis_seacher_training.losses import SubCenterArcFace
 from vis_seacher_training.metrics import evaluate_retrieval
 from vis_seacher_training.metrics import scores_figure
@@ -61,6 +63,32 @@ MONITOR_METRIC = "wine/oneshot_noisy/recall@1"
 TRAIN_IMAGES_IN_GRID = 32
 
 
+def build_model(cfg: ModelConfig, device: torch.device) -> DinoV3ForWine:
+    """Модель по конфигу: готовая из init_from, например из init_model.py, либо предобученный бэкбон со свежей головой.
+
+    drop_path_rate и attention_dropout — регуляризация бэкбона; у DINOv3 в чекпоинтах они нулевые, поэтому задаются здесь до сборки модели:
+    DropPath создаётся в конструкторе слоя только при ненулевой доле. Модель возвращается в eval, как её отдаёт from_pretrained;
+    режим обучения включает configure_optimizers.
+    """
+    regularization = {"drop_path_rate": cfg.drop_path_rate, "attention_dropout": cfg.attention_dropout}
+    if cfg.init_from is not None:
+        config = DinoV3ForWineConfig.from_pretrained(cfg.init_from)
+        for name, value in regularization.items():
+            setattr(config.backbone, name, value)
+        model = DinoV3ForWine.from_pretrained(cfg.init_from, config=config, device_map=device, attn_implementation=cfg.attn_implementation)
+        if model.config.embed_dim != cfg.embed_dim:
+            raise ValueError(f"model.embed_dim={cfg.embed_dim} в конфиге, а у модели из {cfg.init_from} — {model.config.embed_dim}")
+        return model
+    return DinoV3ForWine.from_backbone(
+        cfg.backbone,
+        embed_dim=cfg.embed_dim,
+        gem_p=cfg.gem_p,
+        device_map=device,
+        attn_implementation=cfg.attn_implementation,
+        **regularization,
+    )
+
+
 class WineTrainingModule(KostylLightningModule):
     """Обучение DinoV3ForWine лоссом sub-center ArcFace и проверка ретривом.
 
@@ -83,24 +111,7 @@ class WineTrainingModule(KostylLightningModule):
         if self.model is not None:
             return
         cfg, datamodule = self.config, self.datamodule
-        if cfg.model.init_from is not None:
-            # готовая модель, например из init_model.py: голова уже осмысленная, а не случайная
-            model = DinoV3ForWine.from_pretrained(
-                cfg.model.init_from,
-                device_map=self.trainer.strategy.root_device,
-                attn_implementation=cfg.model.attn_implementation,
-            )
-            if model.config.embed_dim != cfg.model.embed_dim:
-                raise ValueError(f"model.embed_dim={cfg.model.embed_dim} в конфиге, а у модели из {cfg.model.init_from} — {model.config.embed_dim}")
-        else:
-            model = DinoV3ForWine.from_backbone(
-                cfg.model.backbone,
-                embed_dim=cfg.model.embed_dim,
-                gem_p=cfg.model.gem_p,
-                device_map=self.trainer.strategy.root_device,
-                attn_implementation=cfg.model.attn_implementation,
-            )
-
+        model = build_model(cfg.model, self.trainer.strategy.root_device)
         if model.config.patch_size != cfg.model.patch_size:
             raise ValueError(
                 f"model.patch_size={cfg.model.patch_size} в конфиге, а у бэкбона {cfg.model.backbone} патч {model.config.patch_size}"
@@ -226,7 +237,10 @@ class WineTrainingModule(KostylLightningModule):
             if name in by_name:
                 centers[row] = by_name[name]
                 found += 1
-        logger.log_rank_zero("INFO", f"Центры ArcFace из {path}: {found} из {len(centers)} классов, остальные случайные")
+        logger.log_rank_zero(
+            "INFO",
+            f"Центры ArcFace из {path}: {found} из {len(centers)} классов, остальные случайные",
+        )
         return centers
 
     def load_weights(self, path: Path) -> None:
@@ -321,6 +335,8 @@ class WineTrainingModule(KostylLightningModule):
 
     @override
     def configure_optimizers(self) -> dict[str, Any] | torch.optim.Optimizer:  # ty: ignore[invalid-method-override]
+        self.model.train()  # from_pretrained отдаёт модель в eval, а Lightning режим обучения сам не включает: иначе BatchNorm головы учился бы по замороженным статистикам
+
         hp = self.hyperparams
         if dist.is_initialized():
             lrs = {
