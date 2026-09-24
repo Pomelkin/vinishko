@@ -18,6 +18,10 @@ tensorboard --logdir vis_seacher_training/experiments/dinov3_vitb16_512
 веса `save_pretrained` без Lightning и центров ArcFace; `model.onnx` одним файлом, батч и стороны картинки динамические (кратные патчу),
 на входе float32 RGB NCHW со значениями 0…255 — нормировка ImageNet вшита в граф, на выходе L2-нормированные эмбеддинги; `preprocess.json`
 с описанием входа. Экспорт сверяется с PyTorch через onnxruntime на двух формах. Отдельно: `python -m vis_seacher_training.export -c <ckpt> -o <dir>`.
+Рядом пишется `model.bf16.onnx` — тот же граф в bfloat16 для TensorRT (`--no-bf16` отключает): в TensorRT 11 точность задаётся типами
+графа, а onnxruntime bf16 не исполняет; сверяется через TensorRT, если он установлен (группа `flash-inference`).
+Замер обученной модели тем же протоколом, что TULIP и EVIE, для сравнения столбец в столбец: `python -m scripts.bench_dino.run --onnx <dir>/model.onnx ...`
+(`--backend tensorrt --onnx <dir>/model.bf16.onnx` — через TensorRT, engine кэшируется рядом с ONNX), отчёт в `reports/dino/`.
 Две видеокарты: `trainer_params.devices: [0, 1]` и `strategy.type: "ddp"`; скорости обучения при этом умножаются на число карт.
 Внимание бэкбона выбирает `model.attn_implementation`: `sdpa` по умолчанию, `flash_attention_2` — только с `precision: bf16-mixed`.
 У сохранённой модели то же задаётся при загрузке: `DinoV3ForWine.from_pretrained(path, attn_implementation="flash_attention_2", dtype=torch.bfloat16)`.

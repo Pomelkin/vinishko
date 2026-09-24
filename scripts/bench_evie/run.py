@@ -13,6 +13,7 @@ from scripts.bench_common.cli import Dropped
 from scripts.bench_common.cli import common_options
 from scripts.bench_common.cli import console
 from scripts.bench_common.cli import count_progress
+from scripts.bench_common.cli import dataset_paths
 from scripts.bench_common.cli import finish
 from scripts.bench_common.cli import prepare_mode
 from scripts.bench_common.cli import read_splits
@@ -85,8 +86,9 @@ def main(
     devices: list[torch.device],
     mode: str,
     protocol: str,
-    winesensed: Path,
-    negatives: Path,
+    datasets_dir: Path,
+    winesensed: Path | None,
+    negatives: Path | None,
     distractors: bool,
     norm_config: Path,
     workers: int,
@@ -114,6 +116,7 @@ def main(
     if devices[0].type == "cpu" and find_spec("fla") is not None:
         raise click.BadParameter("EVIE на cpu не запустится, пока установлен flash-linear-attention: transformers выбирает его Triton-ядро gated delta rule при импорте и зовёт на любом устройстве", param_hint="--device")
     render_cfg = load_config(norm_config, [])
+    winesensed, negatives = dataset_paths(datasets_dir, winesensed, negatives)
     raw = read_splits(winesensed, negatives, distractors, limit)
     with TemporaryDirectory(prefix="bench_evie_") as tmp:
         with console.status(f"загрузка {model_id} на {len(devices)} устр."):

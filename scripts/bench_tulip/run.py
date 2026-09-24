@@ -11,6 +11,7 @@ from scripts.bench_common.cli import ROOT
 from scripts.bench_common.cli import common_options
 from scripts.bench_common.cli import console
 from scripts.bench_common.cli import count_progress
+from scripts.bench_common.cli import dataset_paths
 from scripts.bench_common.cli import finish
 from scripts.bench_common.cli import prepare_mode
 from scripts.bench_common.cli import read_splits
@@ -59,8 +60,9 @@ def main(
     devices: list[torch.device],
     mode: str,
     protocol: str,
-    winesensed: Path,
-    negatives: Path,
+    datasets_dir: Path,
+    winesensed: Path | None,
+    negatives: Path | None,
     distractors: bool,
     norm_config: Path,
     workers: int,
@@ -84,6 +86,7 @@ def main(
     Несколько видеокарт в --device — параллелизм по данным: на каждой свой процесс с копией модели, картинки сплита делятся между ними поровну.
     """
     render_cfg = load_config(norm_config, [])
+    winesensed, negatives = dataset_paths(datasets_dir, winesensed, negatives)
     raw = read_splits(winesensed, negatives, distractors, limit)
     with TemporaryDirectory(prefix="bench_tulip_") as tmp:
         with console.status(f"загрузка {MODEL} на {len(devices)} устр."):

@@ -135,8 +135,9 @@ def common_options(command: Callable[..., Any]) -> Callable[..., Any]:
         click.option("--device", "devices", required=True, callback=parse_devices, help="cpu, cuda:<индекс> либо несколько видеокарт через запятую, cuda:0,cuda:1: на каждой своя копия модели, картинки делятся между ними поровну. bfloat16, если устройство считает в нём аппаратно, иначе float32"),
         click.option("--mode", type=click.Choice(list(MODES)), default="both", show_default=True, help="Вход энкодера: raw — целое фото, norm — кроп нормализации по normalization.jsonl, both — оба замера в одном отчёте"),
         click.option("--protocol", type=click.Choice(list(PROTOCOLS)), default="both", show_default=True, help="Что лежит в галерее: loo — вся val, запрос ищет среди всех остальных картинок, включая прочие фото своего класса; oneshot — одно фото на класс, как в каталоге, остальные фото класса идут запросами; both — оба, эмбеддинги общие"),
-        click.option("--winesensed", type=click.Path(exists=True, file_okay=False, path_type=Path), default=datasets / "winesensed", show_default=True),
-        click.option("--negatives", type=click.Path(exists=True, file_okay=False, path_type=Path), default=datasets / "products10k", show_default=True, help="Датасет с negatives.json: запросы «не вино»"),
+        click.option("--datasets-dir", type=click.Path(exists=True, file_okay=False, path_type=Path), default=datasets, show_default=True, help="Директория датасетов раскладки scripts/prepare_datasets.py, как data.datasets_dir в конфиге обучения: winesensed и products10k берутся из неё"),
+        click.option("--winesensed", type=click.Path(exists=True, file_okay=False, path_type=Path), default=None, help="Переопределить путь до WineSensed; по умолчанию <datasets-dir>/winesensed"),
+        click.option("--negatives", type=click.Path(exists=True, file_okay=False, path_type=Path), default=None, help="Переопределить датасет с negatives.json, запросами «не вино»; по умолчанию <datasets-dir>/products10k"),
         click.option("--distractors/--no-distractors", default=True, show_default=True, help="Добавить запросы val_distractors.json: вина, которых нет в галерее"),
         click.option("--norm-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True, help="Конфиг нормализации: из него берутся параметры кропа и фона"),
         click.option("--workers", type=click.IntRange(min=0), default=min(8, os.cpu_count() or 1), show_default=True, help="Процессов даталоадера на каждое устройство: чтение, рендер кропа, предобработка"),
@@ -149,6 +150,16 @@ def common_options(command: Callable[..., Any]) -> Callable[..., Any]:
 
 
 # ---------- данные режима ----------
+
+
+def dataset_paths(datasets_dir: Path, winesensed: Path | None, negatives: Path | None) -> tuple[Path, Path]:
+    """Директории WineSensed и негативов: явные пути имеют приоритет, иначе стандартная раскладка внутри --datasets-dir. Проверяется до прогона."""
+    winesensed = winesensed or datasets_dir / "winesensed"
+    negatives = negatives or datasets_dir / "products10k"
+    for root, file in ((winesensed, "val.json"), (negatives, "negatives.json")):
+        if not (root / "images").is_dir() or not (root / file).is_file():
+            raise click.BadParameter(f"в {root} нет {file} либо images/: ожидается раскладка scripts/prepare_datasets.py", param_hint="--datasets-dir")
+    return winesensed, negatives
 
 
 def read_splits(winesensed: Path, negatives: Path, distractors: bool, limit: int | None) -> dict[str, Split]:
