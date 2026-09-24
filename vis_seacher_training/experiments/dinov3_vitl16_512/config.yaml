@@ -9,12 +9,11 @@ trainer_params:
     param_dtype: bfloat16
     reduce_dtype: float32
     buffer_dtype: float32
-  max_epochs: 1
+  max_epochs: 8
   precision: bf16-mixed
   val_check_interval: 0.25
   log_every_n_steps: 25
   accumulate_grad_batches: 1
-  limit_train_batches: 400
 
 hyperparams:
   optimizer:
@@ -30,7 +29,7 @@ hyperparams:
     base_value: 0.05
   grad_clip_val: 1.0
   backbone_lr_multiplier: 0.02 # бэкбон учится на 2e-5
-  backbone_freeze_ratio: 0.03
+  backbone_freeze_ratio: 0.05
 
 checkpointing:
   save_top_k: 3
@@ -38,6 +37,13 @@ checkpointing:
   mode: "max"
   filename: "{epoch:02d}-{step}-{val_recall1:.4f}"
   save_weights_only: true
+
+early_stopping:
+  monitor: "val_recall1"   # та же метрика, что у чекпоинтера
+  mode: "max"
+  patience: 8              # валидаций без улучшения; при val_check_interval 0.5 — две эпохи
+  min_delta: 0.002         # рост меньше 0.2 п.п. улучшением не считается
+
 
 model:
   init_from: /workspace/vinishko/weights/init/dinov3_vitl16_512
@@ -57,7 +63,7 @@ loss:
   centers_init: /workspace/vinishko/weights/init/dinov3_vitl16_512/arcface_centers.pt
 
 data:
-  datasets_dir: /workspace/vinishko/datasets
+  datasets_dir: /workspace/vinishko/datasets/visual-encoder
   input_size: [ 512, 512 ] # высота и ширина, обе кратны model.patch_size
   batch_size: 32
   eval_batch_size: 32
