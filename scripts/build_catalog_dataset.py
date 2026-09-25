@@ -9,6 +9,8 @@ The pipeline is intentionally conservative about images:
 4. if one binary is assigned to semantically different products, keep only an
    owner confirmed in ``image_collision_reviews.json``; without a review all
    references in that conflict are excluded.
+5. exclude individually reviewed wrong-product images by exact SHA-256 from
+   ``data/strapi/image_mismatch_reviews.csv``.
 
 This is a general collision gate, not a list of filename substitutions.  It
 also works on a fresh raw Strapi dump and on the already renamed media folder.
@@ -42,6 +44,7 @@ DEFAULT_REPORT = REPO / "data" / "strapi" / "catalog_dataset.report.json"
 DEFAULT_IMG_DIR = REPO / "data" / "strapi" / "img"
 DEFAULT_JOURNAL = REPO / "scripts" / "rename_journal.json"
 DEFAULT_REVIEWS = REPO / "scripts" / "image_collision_reviews.json"
+DEFAULT_MISMATCH_REVIEWS = REPO / "data" / "strapi" / "image_mismatch_reviews.csv"
 
 REQUIRED_COLUMNS = (
     "Название вина",
@@ -464,6 +467,27 @@ def apply_collision_gate(
     return conflicts
 
 
+def apply_mismatch_reviews(
+    links: dict[str, ImageLink], reviews_path: Path,
+) -> list[dict[str, str]]:
+    """Exclude visibly wrong one-to-one images with an exact source hash guard."""
+    if not reviews_path.is_file():
+        return []
+    applied = []
+    with reviews_path.open(encoding="utf-8-sig", newline="") as stream:
+        for review in csv.DictReader(stream):
+            slug = review["slug"]
+            if slug not in links:
+                raise ValueError(f"image mismatch review has unknown slug: {slug}")
+            if review["verdict"] != "excluded_wrong_product_image":
+                raise ValueError(f"unsupported image mismatch verdict: {review['verdict']}")
+            if links[slug].digest != review["sha256"]:
+                raise ValueError(f"image mismatch source changed; re-review required: {slug}")
+            links[slug] = ImageLink(status=review["verdict"])
+            applied.append(review)
+    return applied
+
+
 def enrich_rows(rows: list[dict[str, str]], links: dict[str, ImageLink]) -> list[dict[str, str]]:
     """Attach corrected image fields and derived product attributes."""
     output = []
@@ -525,6 +549,7 @@ def build_dataset(
     img_dir: Path,
     journal_path: Path,
     reviews_path: Path,
+    mismatch_reviews_path: Path = DEFAULT_MISMATCH_REVIEWS,
     *,
     check_only: bool = False,
 ) -> dict[str, object]:
@@ -534,6 +559,7 @@ def build_dataset(
     clean_rows, cleaning = normalize_and_deduplicate(source_fields, raw_rows)
     links = link_images(clean_rows, img_dir, journal_path)
     conflicts = apply_collision_gate(clean_rows, links, reviews_path)
+    image_mismatches = apply_mismatch_reviews(links, mismatch_reviews_path)
     output_rows = enrich_rows(clean_rows, links)
     output_fields = source_fields + [field for field in ADDED_COLUMNS if field not in source_fields]
     validation = validate_dataset(output_rows, output_fields, img_dir)
@@ -550,7 +576,8 @@ def build_dataset(
             "rows": "normalize all whitespace, then remove complete duplicate rows",
             "images": (
                 "exact photo-name match; unique slug-named binary only when exact is absent; "
-                "SHA-256 collision gate; retain only label-reviewed owner for incompatible products"
+                "SHA-256 collision gate; retain only label-reviewed owner for incompatible products; "
+                "exclude separately reviewed wrong-product images by exact source hash"
             ),
             "features": "derived only from Название вина and Slug; unknown values stay empty/not determined",
         },
@@ -560,6 +587,7 @@ def build_dataset(
         "cleaning": cleaning,
         "image_statuses": dict(sorted(image_statuses.items())),
         "image_conflicts": conflicts,
+        "image_mismatch_reviews": image_mismatches,
         "feature_nonempty_counts": feature_counts,
         "validation": validation,
         "check_only": check_only,
@@ -580,6 +608,7 @@ def main() -> int:
     parser.add_argument("--img-dir", type=Path, default=DEFAULT_IMG_DIR, help="медиа-дамп Strapi")
     parser.add_argument("--journal", type=Path, default=DEFAULT_JOURNAL, help="журнал переименования медиа")
     parser.add_argument("--collision-reviews", type=Path, default=DEFAULT_REVIEWS, help="проверенные владельцы общих файлов")
+    parser.add_argument("--image-mismatch-reviews", type=Path, default=DEFAULT_MISMATCH_REVIEWS, help="проверенные ошибки привязки одиночных файлов")
     parser.add_argument("--check-only", action="store_true", help="проверить сборку, не записывая файлы")
     args = parser.parse_args()
 
@@ -591,6 +620,7 @@ def main() -> int:
             args.img_dir,
             args.journal,
             args.collision_reviews,
+            args.image_mismatch_reviews,
             check_only=args.check_only,
         )
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as error:

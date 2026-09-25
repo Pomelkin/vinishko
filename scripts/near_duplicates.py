@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import csv
 import hashlib
 import itertools
 import json
@@ -56,15 +57,22 @@ COLOR_TOKENS = ["krasnoe", "beloe", "rozovoe", "oranzhevoe"]
 # --- Каталог ----------------------------------------------------------------
 
 def load_catalog_with_images() -> tuple[dict[str, dict], dict[str, list[str]]]:
-    """Каталог (slug -> строка) и привязанные Эталоны (slug -> файлы в Медиа-дампе)."""
-    catalog = ad.load_catalog()
-    orig = ad.original_names()
-    link = ad.link_catalog_to_images(catalog, orig)
-    slug_files: dict[str, set[str]] = collections.defaultdict(set)
-    for source in (link["by_photo_name"], link["by_slug_name"]):
-        for slug, files in source.items():
-            slug_files[slug].update(files)
-    return catalog, {slug: sorted(files) for slug, files in slug_files.items()}
+    """Use only collision-reviewed references from the normalized Catalog."""
+    catalog_path = REPO / "data" / "strapi" / "catalog_dataset.csv"
+    with catalog_path.open(newline="", encoding="utf-8") as stream:
+        catalog = {row["Slug"]: row for row in csv.DictReader(stream)}
+    slug_files: dict[str, list[str]] = {}
+    for slug, row in catalog.items():
+        status = row["Статус изображения"]
+        filename = row["Название фото"]
+        if not status.startswith("ok_"):
+            continue
+        if not filename or not row["SHA256 изображения"]:
+            raise ValueError(f"Missing accepted image metadata for {slug}")
+        if not (IMG_DIR / filename).is_file():
+            raise FileNotFoundError(IMG_DIR / filename)
+        slug_files[slug] = [filename]
+    return catalog, slug_files
 
 
 def norm_name(name: str) -> str:

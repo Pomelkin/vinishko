@@ -129,6 +129,11 @@ def remove_copy_suffix(stem: str) -> str:
     return re.sub(r" \(\d+\)$", "", stem)
 
 
+def filename_key(name: str) -> str:
+    """Compare destination names as Windows does: case-insensitively."""
+    return unicodedata.normalize("NFC", name).casefold()
+
+
 def plan_renames(
     img_dir: Path,
     catalog: dict[str, list[str]],
@@ -166,7 +171,7 @@ def plan_renames(
         else:
             ambiguous.append({"file": filename, "key": key, "targets": targets})
 
-    existing = set(files)
+    existing = {filename_key(filename) for filename in files}
     taken: set[str] = set()
     plan: list[dict] = []
     for photo_name in sorted(by_target):
@@ -180,7 +185,7 @@ def plan_renames(
             stem, _ = os.path.splitext(filename)
             base = remove_copy_suffix(stem)
             if base.casefold() == target_stem.casefold():
-                taken.add(filename)
+                taken.add(filename_key(filename))
                 copy_match = re.search(r" \((\d+)\)$", stem)
                 plan.append({
                     "src": filename,
@@ -191,6 +196,7 @@ def plan_renames(
             else:
                 remaining.append(filename)
 
+        group_file_keys = {filename_key(filename) for filename in group_files}
         for filename in remaining:
             # Расширение берём фактическое: в дампе встречаются .jpg/.png там,
             # где CSV обещает .webp. Совпадает в подавляющем большинстве случаев.
@@ -199,10 +205,13 @@ def plan_renames(
             # Один ключ может быть у нескольких загрузок (разный hex) — второй
             # и далее получают детерминированный суффикс, чтобы ничего не потерять.
             bump = 2
-            while candidate in taken or (candidate in existing and candidate not in group_files):
+            while filename_key(candidate) in taken or (
+                filename_key(candidate) in existing
+                and filename_key(candidate) not in group_file_keys
+            ):
                 candidate = f"{target_stem} ({bump}){src_ext}"
                 bump += 1
-            taken.add(candidate)
+            taken.add(filename_key(candidate))
             plan.append(
                 {
                     "src": filename,

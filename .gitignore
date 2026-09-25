@@ -218,16 +218,15 @@ __marimo__/
 .streamlit/secrets.toml
 
 img/
-data/near_duplicates/A-one-image-many-slugs
-data/near_duplicates/B-same-series
-data/near_duplicates/C-visually-close
+data/
 dev/
-data/strapi/catalog_dataset.report.json
-data/strapi/strapi_output0709.csv
-data/test
 
 .DS_Store
 
 ndr/results
 
 candidates/results
+
+legacy/
+
+vis_searcher/

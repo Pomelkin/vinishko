@@ -9,10 +9,11 @@ import re
 import sys
 from pathlib import Path
 
-EXPECTED_ROWS = 378
+EXPECTED_ROWS = 2097
 EXPECTED_CATALOG_SLUGS = 2103
-EXCLUDED_NUMBERS = {1, 8, 72, 82, 239, 251, 315, 347, 387}
-FOLDER_NUMBER = re.compile(r"^(\d{3})_")
+REVIEW_REQUIRED_NUMBERS = {148, 211, 233, 258, 287, 291, 296, 317}
+EXCLUDED_NUMBERS = {1, 8, 71, 72, 82, 204, 209, 214, 239, 251, 315, 347, 387} | REVIEW_REQUIRED_NUMBERS
+FOLDER_NUMBER = re.compile(r"^(\d{3,})_")
 INFO_PAIR = re.compile(r"^# (.+)\\\|(.+)$")
 PRODUCT_PNG = re.compile(r"^\d+_.+\.png$")
 
@@ -45,6 +46,8 @@ def validate(repo: Path) -> list[str]:
     catalog_rows = read_csv(catalog_path)
     catalog_slugs = {row.get("Slug", "").strip() for row in catalog_rows}
     catalog_slugs.discard("")
+    image_status = {row["Slug"].strip(): row["Статус изображения"] for row in catalog_rows}
+    image_sha = {row["Slug"].strip(): row["SHA256 изображения"] for row in catalog_rows}
     if len(catalog_slugs) != EXPECTED_CATALOG_SLUGS:
         errors.append(
             f"catalog has {len(catalog_slugs)} unique slugs; expected {EXPECTED_CATALOG_SLUGS}"
@@ -73,6 +76,12 @@ def validate(repo: Path) -> list[str]:
         for slug in (slug_1, slug_2):
             if slug not in catalog_slugs:
                 errors.append(f"candidate {number}: slug absent from catalog_dataset.csv: {slug}")
+            elif not image_status[slug].startswith("ok_"):
+                errors.append(f"candidate {number}: image excluded from CV index: {slug}")
+        for side, slug in ((1, slug_1), (2, slug_2)):
+            hash_field = f"reference_sha256_{side}"
+            if hash_field in row and slug in catalog_slugs and row[hash_field] != image_sha[slug]:
+                errors.append(f"candidate {number}: reference SHA-256 changed for {slug}")
         pair = frozenset((slug_1, slug_2))
         if len(pair) != 2:
             errors.append(f"candidate {number}: pair does not contain two distinct slugs")
@@ -126,6 +135,28 @@ def validate(repo: Path) -> list[str]:
         for required in ("_compare.png", "_zoom.png"):
             if not (folder / required).is_file():
                 errors.append(f"candidate {number}: missing {required}")
+
+    review_path = repo / "data/near_duplicates/review_required.csv"
+    review_gallery = repo / "data/near_duplicates/review_required_gallery"
+    if not review_path.is_file() or not review_gallery.is_dir():
+        errors.append("missing review_required.csv or review_required_gallery")
+    else:
+        review_rows = read_csv(review_path)
+        review_numbers = {int(row["candidate_number"]) for row in review_rows}
+        gallery_numbers = {
+            int(match.group(1))
+            for folder in review_gallery.iterdir() if folder.is_dir()
+            if (match := FOLDER_NUMBER.match(folder.name))
+        }
+        if review_numbers != REVIEW_REQUIRED_NUMBERS or gallery_numbers != REVIEW_REQUIRED_NUMBERS:
+            errors.append("review-required CSV/gallery numbers differ from expected eight pairs")
+        for row in review_rows:
+            number = int(row["candidate_number"])
+            statuses = [image_status.get(row[slug], "") for slug in ("slug_1", "slug_2")]
+            if all(status.startswith("ok_") for status in statuses):
+                errors.append(f"review-required {number}: both references are accepted")
+            if row.get("is_confirmed_near_duplicate", "").lower() == "true":
+                errors.append(f"review-required {number}: still flagged confirmed")
 
     if (repo / "data/near_duplicates/index.md").exists():
         errors.append("Markdown aggregate index.md must not exist")

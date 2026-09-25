@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import csv
 import hashlib
 import itertools
 import json
@@ -39,7 +40,6 @@ from PIL import Image
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 
-import analyze_data as ad  # noqa: E402
 import near_duplicates as legacy  # noqa: E402
 
 
@@ -107,6 +107,13 @@ SAME_OBJECT_PAIRS = {
          "belmas-winery-sauvignon-blanc-katya-sovinon-blan-beloe-suhoe-115"),
         ("aligote-avtorskoe", "aligote-avtorskoe-vino"),
         ("kokur-2025", "kokur-suhoe-2025"),
+        # Both cards in each pair share the same binary and the same front label.
+        # The Aristov label explicitly says 2020; the second slug omits the year.
+        ("kuban-vino-aristov-kaberne-sovinon-roze-2020-rozovoe-suhoe-12",
+         "kuban-vino-aristov-kaberne-sovinon-roze-rozovoe-suhoe-12"),
+        # Both Villa Urkusta cards show Cabernet Sauvignon Classic 2023.
+        ("villa-urkusta-kaberne-sovinon-klassik-krasnoe-suhoe-12",
+         "villa-urkusta-kaberne-sovinon-klassik-krasnoe-suhoe-139"),
     ]
 }
 
@@ -201,14 +208,10 @@ MANUAL_PAIR_REVIEW = {
     ]
 }
 
-MANUALLY_CONFIRMED_DIFFERENT_PAIRS = {
-    pair for pair, relation in MANUAL_PAIR_REVIEW.items() if relation == "different_wines"
-}
-
-
-# Manual review of every catalogue series for which at least two independent
-# references exist.  Keys are exactly ``series_groups`` keys.  "true_near" means
-# different wine objects which retain a confusingly similar package system.
+# Manual review of series that had paired references in the first volume.
+# Newly image-backed series in the full dump default to ``needs_review``.
+# Keys are exactly ``series_groups`` keys. ``true_near`` means different wine
+# objects with a confusingly similar package system.
 SERIES_REVIEW = {
     ("Коммуналка", "алиготе баррель"): "data_collision",
     ("WINEMAFIA", "amelia"): "true_near",
@@ -250,20 +253,9 @@ SERIES_REVIEW = {
 
 
 def preferred_references() -> tuple[dict[str, dict], dict[str, str]]:
-    """Return one authoritative reference per slug.
-
-    ``Название фото`` wins.  Filename-to-slug matching is only a fallback.  The old
-    union of both channels created avoidable collisions and sometimes compared a
-    position with somebody else's bottle.
-    """
-    catalog = ad.load_catalog()
-    links = ad.link_catalog_to_images(catalog, ad.original_names())
-    refs: dict[str, str] = {}
-    for slug in catalog:
-        files = links["by_photo_name"].get(slug) or links["by_slug_name"].get(slug)
-        if files:
-            refs[slug] = sorted(files)[0]
-    return catalog, refs
+    """Return the Catalog's single collision-reviewed reference per slug."""
+    catalog, slug_files = legacy.load_catalog_with_images()
+    return catalog, {slug: files[0] for slug, files in slug_files.items()}
 
 
 def normalized_image(path: Path) -> Image.Image:
@@ -299,11 +291,17 @@ def edge_descriptors(slugs: list[str], references: dict[str, str]) -> np.ndarray
     for filename in filenames:
         stat = (IMG_DIR / filename).stat()
         signatures.append(f"{filename}|{stat.st_size}|{stat.st_mtime_ns}")
+    reusable = {}
     if EDGE_CACHE.exists():
         with np.load(EDGE_CACHE) as cached:
             if "signatures" in cached.files and cached["signatures"].tolist() == signatures:
                 return cached["descriptors"]
-    descriptors = np.stack([edge_descriptor(filename) for filename in filenames])
+            if "signatures" in cached.files and "descriptors" in cached.files:
+                reusable = dict(zip(cached["signatures"].tolist(), cached["descriptors"], strict=True))
+    descriptors = np.stack([
+        reusable[signature] if signature in reusable else edge_descriptor(filename)
+        for signature, filename in zip(signatures, filenames, strict=True)
+    ])
     EDGE_CACHE.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         EDGE_CACHE,
@@ -390,7 +388,9 @@ def reviewed_series(catalog: dict[str, dict], references: dict[str, str]) -> dic
         rows.append({
             "winery": key[0],
             "series": key[1],
-            "relation": SERIES_REVIEW[key],
+            # A fuller media dump can reveal series that had no paired references
+            # when the manual table was written.  Keep those pairs unreviewed.
+            "relation": SERIES_REVIEW.get(key, "needs_review"),
             "slugs": slugs,
             "slugs_with_reference": with_reference,
         })
@@ -454,7 +454,31 @@ def legacy_visual_audit(catalog: dict[str, dict]) -> dict:
     }
 
 
-def build_audit(edge_threshold: float = EDGE_THRESHOLD) -> dict:
+def confirmed_registry(catalog: dict[str, dict], references: dict[str, str]) -> dict:
+    """Keep reviewed pairs separate from pairs proposed by the image search."""
+    path = REPO / "data" / "near_duplicates" / "all_candidates.csv"
+    with path.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    pairs = []
+    for row in rows:
+        slug_a, slug_b = row["slug_1"], row["slug_2"]
+        if row["review_verdict"] != "confirmed_near_duplicate" or row["is_confirmed_near_duplicate"] != "true":
+            raise ValueError(f"Unreviewed pair in confirmed registry: {slug_a}, {slug_b}")
+        if slug_a not in catalog or slug_b not in catalog or slug_a not in references or slug_b not in references:
+            raise ValueError(f"Confirmed pair missing Catalog/reference: {slug_a}, {slug_b}")
+        pairs.append(tuple(sorted((slug_a, slug_b))))
+    if len(set(pairs)) != len(pairs):
+        raise ValueError("Duplicate pair in confirmed registry")
+    components = connected_components(pairs)
+    return {
+        "pairs": len(pairs),
+        "families": len(components),
+        "catalog_positions": len({slug for pair in pairs for slug in pair}),
+        "components": components,
+    }
+
+
+def build_audit(edge_threshold: float = EDGE_THRESHOLD, include_legacy_visual: bool = False) -> dict:
     """Build object-level candidates and summary."""
     catalog, references = preferred_references()
     slugs = sorted(references)
@@ -465,11 +489,11 @@ def build_audit(edge_threshold: float = EDGE_THRESHOLD) -> dict:
     for index_a, index_b in itertools.combinations(range(len(slugs)), 2):
         slug_a, slug_b = slugs[index_a], slugs[index_b]
         same_winery = catalog[slug_a]["Винодельня"].strip() == catalog[slug_b]["Винодельня"].strip()
-        edge_score = float(similarity[index_a, index_b])
-        text_score = name_affinity(slug_a, slug_b, catalog)
         pair = frozenset((slug_a, slug_b))
         if not same_winery and pair not in SAME_OBJECT_PAIRS:
             continue
+        edge_score = float(similarity[index_a, index_b])
+        text_score = name_affinity(slug_a, slug_b, catalog)
         if edge_score < edge_threshold and text_score < 0.82 and pair not in (
             SAME_OBJECT_PAIRS | SAME_WINE_REDESIGN_PAIRS
         ):
@@ -496,27 +520,25 @@ def build_audit(edge_threshold: float = EDGE_THRESHOLD) -> dict:
     for digest, grouped_slugs in file_slugs.items():
         if len(grouped_slugs) < 2:
             continue
+        relations = [
+            reviewed_relation(a, b, catalog)
+            for a, b in itertools.combinations(sorted(grouped_slugs), 2)
+        ]
         shared_file_groups.append({
             "sha256": digest,
             "files": sorted({references[slug] for slug in grouped_slugs}),
             "slugs": sorted(grouped_slugs),
             "object_relation": (
-                "same_object"
-                if all(
-                    frozenset((a, b)) in SAME_OBJECT_PAIRS
-                    for a, b in itertools.combinations(sorted(grouped_slugs), 2)
-                )
-                else "data_collision"
+                "same_object" if relations and all(r == "same_object" for r in relations)
+                else "data_collision" if "data_collision" in relations
+                else "needs_review"
             ),
-            "relations": [
-                reviewed_relation(a, b, catalog)
-                for a, b in itertools.combinations(sorted(grouped_slugs), 2)
-            ],
+            "relations": relations,
         })
 
     counts = collections.Counter(candidate["relation"] for candidate in candidates)
     series_audit = reviewed_series(catalog, references)
-    visual_audit = legacy_visual_audit(catalog)
+    visual_audit = legacy_visual_audit(catalog) if include_legacy_visual else {"status": "not_run"}
     shared_counts = collections.Counter(group["object_relation"] for group in shared_file_groups)
     same_object_components = connected_components([
         tuple(sorted(pair)) for pair in SAME_OBJECT_PAIRS
@@ -535,32 +557,10 @@ def build_audit(edge_threshold: float = EDGE_THRESHOLD) -> dict:
         "positions": len({slug for component in redesign_components for slug in component}),
     }
     image_backed_unique_objects = len(references) - sum(
-        len(component) - 1 for component in same_object_components
-    )
-    combined_pairs = []
-    for component in visual_audit.get("components", []):
-        combined_pairs.extend(zip(component, component[1:], strict=False))
-    for row in series_audit["rows"]:
-        if row["relation"] == "true_near":
-            slugs_in_group = row["slugs_with_reference"]
-            combined_pairs.extend(zip(slugs_in_group, slugs_in_group[1:], strict=False))
-    combined_pairs.extend(tuple(sorted(pair)) for pair in MANUALLY_CONFIRMED_DIFFERENT_PAIRS)
-    canonical_slug = {
-        slug: component[0]
+        max(0, len(set(component) & references.keys()) - 1)
         for component in same_object_components
-        for slug in component
-    }
-    object_pairs = sorted({
-        (canonical_slug.get(slug_a, slug_a), canonical_slug.get(slug_b, slug_b))
-        for slug_a, slug_b in combined_pairs
-        if canonical_slug.get(slug_a, slug_a) != canonical_slug.get(slug_b, slug_b)
-    })
-    combined_components = connected_components(object_pairs)
-    combined_summary = {
-        "families": len(combined_components),
-        "unique_objects": len({slug for component in combined_components for slug in component}),
-        "catalog_positions": len({slug for pair in combined_pairs for slug in pair}),
-    }
+    )
+    registry = confirmed_registry(catalog, references)
     return {
         "summary": {
             "catalog_positions": len(catalog),
@@ -578,7 +578,7 @@ def build_audit(edge_threshold: float = EDGE_THRESHOLD) -> dict:
             "legacy_visual_reclassified": {
                 key: value for key, value in visual_audit.items() if key != "components"
             },
-            "confirmed_true_near_union": combined_summary,
+            "confirmed_true_near_union": {key: value for key, value in registry.items() if key != "components"},
         },
         "candidates": sorted(
             candidates,
@@ -595,10 +595,7 @@ def build_audit(edge_threshold: float = EDGE_THRESHOLD) -> dict:
         },
         "reviewed_series": series_audit,
         "legacy_visual_reclassified": visual_audit,
-        "confirmed_true_near_union": {
-            **combined_summary,
-            "components": combined_components,
-        },
+        "confirmed_true_near_union": registry,
     }
 
 
@@ -626,8 +623,10 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="machine-readable audit")
     parser.add_argument("--output", type=Path, help="write the report to this UTF-8 file")
     parser.add_argument("--edge-threshold", type=float, default=EDGE_THRESHOLD)
+    parser.add_argument("--legacy-visual", action="store_true",
+                        help="also run the slower pixel-level candidate scan")
     args = parser.parse_args()
-    audit = build_audit(args.edge_threshold)
+    audit = build_audit(args.edge_threshold, include_legacy_visual=args.legacy_visual)
     if args.output:
         payload = json.dumps(audit, ensure_ascii=False, indent=2)
         args.output.parent.mkdir(parents=True, exist_ok=True)
