@@ -5,8 +5,14 @@ description = "FastAPI microservice"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115.0",
+    "pydantic>=2.13,<3",
     "uvicorn[standard]>=0.30.0",
 ]
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+]
