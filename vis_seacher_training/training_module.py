@@ -84,6 +84,7 @@ def build_model(cfg: ModelConfig, device: torch.device) -> DinoV3ForWine:
         model = DinoV3ForWine.from_pretrained(cfg.init_from, config=config, device_map=device, attn_implementation=cfg.attn_implementation)
         if model.config.embed_dim != cfg.embed_dim:
             raise ValueError(f"model.embed_dim={cfg.embed_dim} в конфиге, а у модели из {cfg.init_from} — {model.config.embed_dim}")
+        model.backbone.embeddings.mask_token.requires_grad_(False)  # from_pretrained создаёт параметры заново и снимает заморозку из конструктора
         return model
     return DinoV3ForWine.from_backbone(
         cfg.backbone,
