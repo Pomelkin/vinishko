@@ -11,15 +11,15 @@ from typing import Any
 from fastapi import HTTPException
 from pydantic import UUID7, ValidationError
 
-from ai_somelier.solution.v2 import respond
-from sommelier_service.models import (
+from app.solution.v2 import respond
+from app.models import (
     OpenSessionRequest,
     SessionRecord,
     StoredMessage,
     TurnResponse,
     UserMessageRequest,
 )
-from sommelier_service.storage import JsonSessionStore
+from app.storage import JsonSessionStore
 
 
 logger = logging.getLogger(__name__)

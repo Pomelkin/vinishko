@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pydantic import UUID7
 
-from sommelier_service.models import SessionRecord
+from app.models import SessionRecord
 
 
 class JsonSessionStore:

@@ -1,2 +1,0 @@
-"""Post-recognition digital sommelier."""
-

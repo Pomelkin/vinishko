@@ -6,8 +6,8 @@ import json
 import unittest
 from pathlib import Path
 
-from ai_somelier.solution.v2 import prepare_request
-from sommelier_service.app import app
+from app.main import app
+from app.solution.v2 import prepare_request
 
 
 class SolutionBundleTests(unittest.TestCase):

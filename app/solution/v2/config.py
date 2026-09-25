@@ -28,9 +28,9 @@ ReasoningEffort = Literal[
 ] | Annotated[int, Field(ge=1, le=100)]
 
 PACKAGE_DIR = Path(__file__).resolve().parent
-AI_SOMELIER_DIR = PACKAGE_DIR.parent.parent
+APP_DIR = PACKAGE_DIR.parent.parent
 DEFAULT_KNOWLEDGE_PATH = (
-    AI_SOMELIER_DIR / "kb" / "EXPERT_KNOWLEDGE.json"
+    APP_DIR / "kb" / "EXPERT_KNOWLEDGE.json"
 )
 
 

@@ -14,9 +14,9 @@ from uuid import UUID
 
 from httpx import ASGITransport, AsyncClient
 
-from sommelier_service.app import create_app
-from sommelier_service.service import SommelierService
-from sommelier_service.storage import JsonSessionStore
+from app.main import create_app
+from app.service import SommelierService
+from app.storage import JsonSessionStore
 
 
 SESSION_ID = "01993959-0000-7000-8000-000000000001"

@@ -9,15 +9,15 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Path as ApiPath, Request, Response
 from pydantic import UUID7
 
-from sommelier_service.models import (
+from app.models import (
     ErrorResponse,
     OpenSessionRequest,
     SessionResponse,
     TurnResponse,
     UserMessageRequest,
 )
-from sommelier_service.service import SommelierService
-from sommelier_service.storage import JsonSessionStore
+from app.service import SommelierService
+from app.storage import JsonSessionStore
 
 
 ERRORS = {404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}, 502: {"model": ErrorResponse}, 503: {"model": ErrorResponse}}
