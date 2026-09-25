@@ -1,5 +1,5 @@
 desc: "Продолжение dinov3_vitl16_512: голова расширена до 1024 (обученные 512 строк + PCA остатка, BN сброшены), 4 эпохи, другой сид данных и аугментаций, drop-path 0.1"
-seed: 1337  # другой порядок данных и другие аугментации, чем в исходном прогоне
+seed: 1337 # другой порядок данных и другие аугментации, чем в исходном прогоне
 
 trainer_params:
   accelerator: "cuda"
@@ -28,8 +28,8 @@ hyperparams:
   weight_decay:
     base_value: 0.05
   grad_clip_val: 1.0
-  backbone_lr_multiplier: 0.01 # бэкбон учится на 2e-5
-  backbone_freeze_ratio: 0.05 # половина головы и все центры новые: пусть встанут, пока уже дообученный бэкбон стоит
+  backbone_lr_multiplier: 0.02 # бэкбон учится на 2e-5
+  backbone_freeze_ratio: 0.12 # половина головы и все центры новые: пусть встанут, пока уже дообученный бэкбон стоит
 
 checkpointing:
   save_top_k: 3
@@ -39,21 +39,20 @@ checkpointing:
   save_weights_only: true
 
 early_stopping:
-  monitor: "val_recall1"   # та же метрика, что у чекпоинтера
+  monitor: "val_recall1" # та же метрика, что у чекпоинтера
   mode: "max"
-  patience: 6              # валидаций без улучшения; при val_check_interval 0.25 — полторы эпохи
-  min_delta: 0.002         # рост меньше 0.2 п.п. улучшением не считается
-
+  patience: 6 # валидаций без улучшения; при val_check_interval 0.25 — полторы эпохи
+  min_delta: 0.002 # рост меньше 0.2 п.п. улучшением не считается
 
 model:
-  init_from: /workspace/vinishko/weights/init/dinov3_vitl16_1024_cont  # widen_head.py поверх обученной dinov3_vitl16_512
+  init_from: /workspace/vinishko/weights/init/dinov3_vitl16_1024_cont # widen_head.py поверх обученной dinov3_vitl16_512
   patch_size: 16
   embed_dim: 1024
   gem_p: 3.0
   attn_implementation: "sdpa" # либо flash_attention_2: только с половинной точностью, precision bf16-mixed
   freeze_backbone: false
   gradient_checkpointing: false
-  drop_path_rate: 0.1       # регуляризация бэкбона на втором круге по тем же данным
+  drop_path_rate: 0.1 # регуляризация бэкбона на втором круге по тем же данным
   attention_dropout: 0.0
 
 loss:
