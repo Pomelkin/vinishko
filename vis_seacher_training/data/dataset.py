@@ -20,18 +20,16 @@ class Sample(TypedDict):
     index: int
 
 
-def to_tensor(
+def pad_to_input(
     image: np.ndarray,
     input_size: tuple[int, int],
-    mean: tuple[float, ...],
-    std: tuple[float, ...],
     offset: tuple[float, float],
     fill: tuple[int, int, int],
-) -> torch.Tensor:
-    """Поля до размера входа и нормировка.
+) -> np.ndarray:
+    """Поля до размера входа в uint8 цветом заливки фона, как это сделает пайплайн перед энкодером.
 
-    Поля добавляются в uint8 цветом заливки фона, как это сделает пайплайн перед энкодером. После нормировки они равны не нулю, а ≈0.006,
-    но ровно столько же даёт и залитый фон внутри кропа: вход обучения повторяет боевой, а не идеализирует его.
+    После нормировки поля равны не нулю, а ≈0.006, но ровно столько же даёт и залитый фон внутри кропа: вход обучения повторяет боевой,
+    а не идеализирует его.
     """
     height, width = image.shape[:2]
     canvas = np.empty((*input_size, 3), np.uint8)
@@ -41,6 +39,19 @@ def to_tensor(
         round((input_size[1] - width) * offset[1]),
     )
     canvas[top : top + height, left : left + width] = image
+    return canvas
+
+
+def to_tensor(
+    image: np.ndarray,
+    input_size: tuple[int, int],
+    mean: tuple[float, ...],
+    std: tuple[float, ...],
+    offset: tuple[float, float],
+    fill: tuple[int, int, int],
+) -> torch.Tensor:
+    """Поля до размера входа и нормировка."""
+    canvas = pad_to_input(image, input_size, offset, fill)
     pixels = (
         torch.from_numpy(canvas).float() / 255 - torch.tensor(mean)
     ) / torch.tensor(std)
@@ -96,6 +107,11 @@ class WineViewDataset(Dataset):
         if self.deterministic_seed is not None:
             self.augmenter.reseed(self.deterministic_seed + index)
         return self.augmenter(rgb, cand)
+
+    def image(self, index: int) -> np.ndarray:
+        """Вход модели картинкой uint8 до нормировки — то же, что pixel_values, но для показа."""
+        image, offset = self.view(index)
+        return pad_to_input(image, self.input_size, offset, self.fill)
 
     def __getitem__(self, index: int) -> Sample:
         image, offset = self.view(index)

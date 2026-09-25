@@ -32,7 +32,11 @@ from vis_seacher_training.datamodule import WineDataModule
 from vis_seacher_training.dino_modeling import DinoV3ForWine
 from vis_seacher_training.dino_modeling import DinoV3ForWineConfig
 from vis_seacher_training.losses import SubCenterArcFace
+from vis_seacher_training.metrics import TOP
+from vis_seacher_training.metrics import Misses
+from vis_seacher_training.metrics import Panel
 from vis_seacher_training.metrics import evaluate_retrieval
+from vis_seacher_training.metrics import panels_figure
 from vis_seacher_training.metrics import scores_figure
 from vis_seacher_training.optimization import create_param_groups
 from lightning.pytorch.strategies import ModelParallelStrategy, FSDPStrategy
@@ -61,6 +65,8 @@ Batch = dict[str, torch.Tensor]
 MONITOR_METRIC = "wine/oneshot_noisy/recall@1"
 """Главная метрика: вино, одно фото класса в галерее, в галерею подмешано не-вино. Под именем val_recall1 за ней следит чекпоинтер."""
 TRAIN_IMAGES_IN_GRID = 32
+HIT_COLOR, MISS_COLOR, NOISE_COLOR = "#1baf7a", "#eb6834", "#eda100"
+"""Рамки в сетке промахов: фото класса запроса, чужое вино, не-вино."""
 
 
 def build_model(cfg: ModelConfig, device: torch.device) -> DinoV3ForWine:
@@ -94,7 +100,7 @@ class WineTrainingModule(KostylLightningModule):
 
     На шаге обучения логируется только лосс. На валидации копятся эмбеддинги пяти даталоадеров, в конце эпохи по ним считаются
     recall@k вина, отказ по запросам без ответа и синтетический замер каталога; распределения косинуса top-1 уходят в TensorBoard
-    гистограммами по группам запросов и общей картинкой.
+    гистограммами по группам запросов и общей картинкой, а несколько промахов главного протокола — сеткой картинок.
     """
 
     def __init__(self, config: TrainingConfig) -> None:
@@ -581,5 +587,41 @@ class WineTrainingModule(KostylLightningModule):
             )
             writer.add_figure("cos_top1/groups", figure, self.global_step)
             plt.close(figure)
+            self._log_misses(report.misses, gathered["val"][1], gathered["negatives"][1])
         if dist.is_initialized():
             dist.barrier()
+
+    def _log_misses(self, misses: Misses | None, val_rows: torch.Tensor, negative_rows: torch.Tensor) -> None:
+        """Несколько случайных промахов wine/oneshot_noisy картинкой: запрос, фото его класса из галереи и top-5 найденного с косинусами.
+
+        Строки в misses — по собранным эмбеддингам, val_rows и negative_rows переводят их в номера картинок датасетов. Картинки читаются
+        заново с диска ровно так, как их видела модель. Выборка своя в каждую эпоху, чтобы не смотреть один и тот же десяток фото.
+        """
+        limit = self.config.data.eval.log_misses
+        writer = self.writer
+        if misses is None or not limit or writer is None or not len(misses.queries):
+            return
+        if self.datamodule.val_datasets is None:
+            raise RuntimeError("setup не вызывался")
+        val, negatives = (self.datamodule.val_datasets[VAL_LOADERS.index(name)] for name in ("val", "negatives"))
+        labels = val.items.labels
+        val_rows, negative_rows = val_rows.cpu(), negative_rows.cpu()
+        generator = torch.Generator().manual_seed(self.current_epoch)
+        picked = torch.randperm(len(misses.queries), generator=generator)[:limit].tolist()
+        rows: list[list[Panel]] = []
+        for i in picked:
+            query, expected = int(val_rows[misses.queries[i]]), int(val_rows[misses.expected[i]])
+            ranks = torch.nonzero(misses.hits[i]).flatten()
+            rank = f"ранг {int(ranks[0]) + 1}" if len(ranks) else f"ранг >{TOP}"
+            panels = [Panel(val.image(query), f"запрос · {labels[query]}"), Panel(val.image(expected), f"в галерее · {rank}")]
+            for k in range(misses.found.shape[1]):
+                score = f"{float(misses.scores[i, k]):.3f}"
+                if bool(misses.found_is_noise[i, k]):
+                    panels.append(Panel(negatives.image(int(negative_rows[misses.found[i, k]])), f"{score} · не вино", NOISE_COLOR))
+                else:
+                    row = int(val_rows[misses.found[i, k]])
+                    panels.append(Panel(val.image(row), f"{score} · {labels[row]}", HIT_COLOR if bool(misses.hits[i, k]) else MISS_COLOR))
+            rows.append(panels)
+        figure = panels_figure(rows, f"Промахи wine/oneshot_noisy: {len(misses.queries)} из {misses.total} запросов · эпоха {self.current_epoch}")
+        writer.add_figure("misses/oneshot_noisy", figure, self.global_step)
+        plt.close(figure)

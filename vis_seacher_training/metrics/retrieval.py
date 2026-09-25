@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from dataclasses import field
 
+import cv2
 import matplotlib as mpl
 
 mpl.use("Agg")  # обучение идёт на сервере без дисплея
@@ -8,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
 from torchmetrics.functional.classification import binary_auroc
 
 KS = (1, 3, 5)
@@ -17,15 +19,46 @@ CHUNK_BYTES = 1 << 30
 """Бюджет памяти под матрицу косинусов одного куска запросов: кусок тем меньше, чем больше галерея, и полная матрица n×n не собирается никогда."""
 SERIES_COLORS = ("#2a78d6", "#eb6834", "#1baf7a", "#eda100")
 """Первые слоты категориальной палитры отчётов scripts/bench_*: порядок фиксирован, цвет привязан к группе запросов."""
+PANEL_SIDE = 160
+"""Сторона картинки в сетке примеров: полный вход в TensorBoard не нужен, а десятки картинок по 512 px раздувают лог."""
+
+
+@dataclass
+class Misses:
+    """Промахи wine/oneshot_noisy: запросы, чей top-1 — не фото их класса. Строки val и noise — в координатах входов evaluate_retrieval."""
+
+    total: int
+    """Сколько всего было запросов протокола."""
+    queries: torch.Tensor
+    """Строка val каждого промахнувшегося запроса."""
+    expected: torch.Tensor
+    """Строка val фото его класса, лежавшего в галерее."""
+    found: torch.Tensor
+    """[n, TOP] строки найденного: val для вина, noise для не-вина, см. found_is_noise."""
+    found_is_noise: torch.Tensor
+    scores: torch.Tensor
+    """[n, TOP] косинусы найденного."""
+    hits: torch.Tensor
+    """[n, TOP] где среди найденного фото класса запроса: первый столбец всегда False."""
+
+
+@dataclass
+class Panel:
+    """Одна картинка сетки примеров с подписью и цветом рамки."""
+
+    image: np.ndarray
+    caption: str
+    color: str | None = None
 
 
 @dataclass
 class RetrievalReport:
-    """Итог одной валидации: скаляры для логгера и распределения косинуса top-1 по группам запросов."""
+    """Итог одной валидации: скаляры для логгера, распределения косинуса top-1 по группам запросов и промахи главного протокола."""
 
     scalars: dict[str, float] = field(default_factory=dict)
     top1: dict[str, torch.Tensor] = field(default_factory=dict)
     """Косинус top-1 каждого запроса группы: у хорошей модели верные запросы val справа, всё остальное слева."""
+    misses: Misses | None = None
 
 
 @torch.no_grad()
@@ -120,6 +153,7 @@ def evaluate_retrieval(
         hits = gallery_labels[ids] == labels[rows][:, None]
         report.scalars.update({f"wine/oneshot_noisy/{name}": value for name, value in recall(hits).items()})
         report.top1["val_correct"], report.top1["val_wrong"] = scores[hits[:, 0], 0], scores[~hits[:, 0], 0]
+        report.misses = collect_misses(rows, gallery_rows, labels, len(noise), ids, scores, hits)
         for name, queries in (("distractors", distractors), ("products10k", negative_queries)):
             if len(queries):
                 report.top1[name] = search(queries, gallery)[0][:, 0]
@@ -131,6 +165,56 @@ def evaluate_retrieval(
         report.scalars.update({f"catalog/{name}": value for name, value in recall(hits).items()})
     report.scalars.update({f"cos_top1_median/{name}": float(values.median()) for name, values in report.top1.items() if len(values)})
     return report
+
+
+def collect_misses(
+    rows: torch.Tensor,
+    gallery_rows: torch.Tensor,
+    labels: torch.Tensor,
+    noise_size: int,
+    ids: torch.Tensor,
+    scores: torch.Tensor,
+    hits: torch.Tensor,
+) -> Misses:
+    """Промахи протокола oneshot_noisy из его выдачи; галерея там — val[gallery_rows], за ней noise, и у каждого класса в ней одно фото."""
+    miss = ~hits[:, 0]
+    owner = torch.empty(int(labels.max()) + 1, dtype=torch.long, device=labels.device)
+    owner[labels[gallery_rows]] = gallery_rows
+    source = torch.cat([gallery_rows, torch.arange(noise_size, device=labels.device)])
+    return Misses(
+        total=len(rows),
+        queries=rows[miss],
+        expected=owner[labels[rows][miss]],
+        found=source[ids[miss]],
+        found_is_noise=ids[miss] >= len(gallery_rows),
+        scores=scores[miss],
+        hits=hits[miss],
+    )
+
+
+def panels_figure(rows: list[list[Panel]], title: str) -> Figure:
+    """Сетка картинок с подписями: строка на пример, столбцы одинаковы у всех строк."""
+    n_rows, n_cols = len(rows), max(len(row) for row in rows)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(1.9 * n_cols, 2.15 * n_rows + 0.5), squeeze=False)
+    for ax in axes.flat:
+        ax.axis("off")
+    for row, panels in zip(axes, rows, strict=True):
+        for ax, panel in zip(row, panels, strict=False):
+            ax.imshow(resize_panel(panel.image))
+            ax.set_title(panel.caption, fontsize=7.5, pad=3)
+            if panel.color is not None:
+                ax.add_patch(Rectangle((0, 0), 1, 1, transform=ax.transAxes, fill=False, edgecolor=panel.color, linewidth=3))
+    fig.suptitle(title, x=0.01, ha="left", fontsize=10)
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    return fig
+
+
+def resize_panel(image: np.ndarray) -> np.ndarray:
+    """Картинка не больше PANEL_SIDE по большей стороне."""
+    scale = PANEL_SIDE / max(image.shape[:2])
+    if scale >= 1:
+        return image
+    return cv2.resize(image, (max(1, round(image.shape[1] * scale)), max(1, round(image.shape[0] * scale))), interpolation=cv2.INTER_AREA)
 
 
 def scores_figure(top1: dict[str, torch.Tensor], title: str) -> Figure:
