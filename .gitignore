@@ -151,6 +151,8 @@ activemq-data/
 # Environments
 .env
 /data/
+/secrets/*
+!/secrets/*.example
 .envrc
 .venv
 env/
@@ -225,3 +227,5 @@ sam3.pt
 vis_seacher_training/experiments/*/*/
 /wheels
 /weights
+
+secrets/

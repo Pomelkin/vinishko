@@ -223,6 +223,31 @@ def _headers(settings: SommelierSettings, api_key: str) -> dict[str, str]:
     return headers
 
 
+class ProviderKeyError(ValueError):
+    """The OpenRouter key is missing or its secret file cannot be read."""
+
+
+def _api_key(settings: SommelierSettings) -> str:
+    """Read a mounted secret file when configured, otherwise use the local env var."""
+    file_env = f"{settings.api_key_env}_FILE"
+    if file_env in os.environ:
+        secret_path = os.environ[file_env]
+        if not secret_path:
+            raise ProviderKeyError(f"{file_env} is empty")
+        try:
+            key = Path(secret_path).read_text(encoding="utf-8-sig").strip()
+        except (OSError, UnicodeError) as error:
+            raise ProviderKeyError(f"cannot read {file_env}: {type(error).__name__}") from error
+        if not key:
+            raise ProviderKeyError(f"secret file from {file_env} is empty")
+        return key
+
+    key = os.environ.get(settings.api_key_env, "").strip()
+    if not key:
+        raise ProviderKeyError(f"environment variable {settings.api_key_env} is not set")
+    return key
+
+
 def _assistant_message(raw_response: Mapping[str, Any]) -> dict[str, Any]:
     """Return the first raw assistant message, retaining reasoning metadata."""
     choices = raw_response.get("choices")
@@ -282,11 +307,12 @@ def respond(request: Mapping[str, Any]) -> dict[str, Any]:  # noqa: C901
         "raw_response": None,
         "attempts": [],
     }
-    api_key = os.environ.get(prepared.settings.api_key_env)
-    if not api_key:
+    try:
+        api_key = _api_key(prepared.settings)
+    except ProviderKeyError as error:
         return _failure(
-            "request_error",
-            f"environment variable {prepared.settings.api_key_env} is not set",
+            "configuration_error",
+            str(error),
             trace,
         )
 

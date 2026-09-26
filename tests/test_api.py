@@ -158,6 +158,17 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 503, response.text)
         self.assertFalse((self.directory / f"{SESSION_ID}.json").exists())
 
+    async def test_unreadable_secret_file_returns_503(self) -> None:
+        service = SommelierService(JsonSessionStore(self.directory))
+        async with AsyncClient(transport=ASGITransport(app=create_app(service)), base_url="http://test") as client:
+            with patch.dict(os.environ, {"OPENROUTER_API_KEY_FILE": str(self.directory / "missing-key")}):
+                response = await client.post(
+                    f"/v1/sessions/{SESSION_ID}",
+                    json={"wine": WINE, "candidates": []},
+                )
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertFalse((self.directory / f"{SESSION_ID}.json").exists())
+
     async def test_concurrent_follow_ups_are_serialized(self) -> None:
         self.assertEqual((await self.open()).status_code, 201)
         responses = await asyncio.gather(*[

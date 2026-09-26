@@ -53,7 +53,7 @@ class SommelierService:
         if result.get("_status") != "ok":
             status = result.get("_status")
             logger.error("Sommelier generation failed: %s: %s", status, result.get("_error"))
-            if status == "request_error" and "OPENROUTER_API_KEY is not set" in str(result.get("_error")):
+            if status == "configuration_error":
                 raise HTTPException(status_code=503, detail="Sommelier provider is not configured")
             raise HTTPException(status_code=502, detail="Sommelier is temporarily unavailable")
         return result

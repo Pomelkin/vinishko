@@ -3,14 +3,52 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from app.main import app
-from app.solution.v2 import prepare_request
+from app.solution.v2 import prepare_request, respond
+
+
+class FakeHTTPResponse:
+    status = 200
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return None
+
+    def read(self):
+        first_content = json.dumps({
+            "content": "Кокур — белое вино.\nЧем я могу помочь?",
+            "suggestions": ["Что во вкусе?", "Как подавать?"],
+        }, ensure_ascii=False)
+        return json.dumps({"choices": [{"message": {"content": first_content}}]}, ensure_ascii=False).encode()
 
 
 class SolutionBundleTests(unittest.TestCase):
+    def test_secret_file_takes_precedence_and_key_stays_out_of_trace(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            secret = Path(directory) / "openrouter_key"
+            secret.write_text("  file-secret\n", encoding="utf-8-sig")
+            with (
+                patch.dict(os.environ, {
+                    "OPENROUTER_API_KEY": "env-secret",
+                    "OPENROUTER_API_KEY_FILE": str(secret),
+                }),
+                patch("app.solution.v2.sommelier.urllib.request.urlopen", return_value=FakeHTTPResponse()) as send,
+            ):
+                result = respond({"wine": {"Название вина": "Кокур"}, "candidates": [], "history": []})
+
+        self.assertEqual(result["_status"], "ok")
+        self.assertEqual(send.call_args.args[0].get_header("Authorization"), "Bearer file-secret")
+        self.assertNotIn("file-secret", json.dumps(result["_trace"]))
+        self.assertNotIn("env-secret", json.dumps(result["_trace"]))
+
     def test_openapi_snapshot_is_current(self) -> None:
         snapshot = Path(__file__).resolve().parent.parent / "docs" / "openapi.json"
         self.assertEqual(json.loads(snapshot.read_text(encoding="utf-8")), app.openapi())
