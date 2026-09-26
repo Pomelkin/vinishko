@@ -115,7 +115,7 @@ class Candidate:
     score: float
     """Косинус: собственный, если вектор позиции пришёл в выдаче, иначе косинус её группы — лучший из пришедших векторов группы."""
     image: np.ndarray
-    """RGB-кроп позиции из коллекции, с которого считался её вектор: нужен верификации второго уровня."""
+    """RGB-изображение позиции: кроп коллекции либо оригинальный Эталон из source_image."""
     crop: BottleCrop
     """Бутылка запроса, для которой предложена позиция."""
     group: str
@@ -135,6 +135,8 @@ class BottleCandidates:
 
     crop: BottleCrop
     candidates: list[Candidate]
+    selection: dict | None = None
+    """Итог выбора SKU: векторный singleton или NDR v5 с наблюдениями модели."""
 
     def __post_init__(self) -> None:
         if not self.candidates:
@@ -147,6 +149,8 @@ class UnmatchedBottle:
 
     crop: BottleCrop
     rejected: RejectedBottle
+    selection: dict | None = None
+    """Наблюдения NDR, если отказ возник при выборе внутри группы."""
 
     def __post_init__(self) -> None:
         if self.rejected.uuid != self.crop.uuid:

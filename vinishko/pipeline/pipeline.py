@@ -8,6 +8,7 @@ from typing import Protocol
 from PIL import Image
 
 from vinishko.pipeline.steps.normalization.normalize import Normalizer
+from vinishko.pipeline.steps.near_duplicates import NearDuplicateReranker
 from vinishko.pipeline.structs import BottleCandidates, BottleCrop, RejectedBottle, UnmatchedBottle
 
 
@@ -58,9 +59,12 @@ class Pipeline:
     готовности: без поиска результат — одна разметка.
     """
 
-    def __init__(self, normalizer: Normalizer | None = None, searcher: Searcher | None = None, reranker: Reranker | None = None) -> None:
+    def __init__(self, normalizer: Normalizer | None = None, searcher: Searcher | None = None, reranker: Reranker | None = None, *, enable_rerank: bool = True) -> None:
         self.normalizer = normalizer or Normalizer()
-        self.searcher, self.reranker = searcher, reranker
+        self.searcher = searcher
+        self.reranker = reranker if enable_rerank else None
+        if enable_rerank and self.reranker is None and searcher is not None:
+            self.reranker = NearDuplicateReranker.from_search_config(getattr(searcher, "cfg", None))
 
     def __call__(self, img: Image.Image | Path | str) -> PipelineResult:
         """Картинка → выходы шагов: разметка нормализации, ответы поиска по годным бутылкам, время каждого шага."""

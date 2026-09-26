@@ -71,7 +71,14 @@ class VisSearcher:
         self.collection = cfg.qdrant.collection
         self.info = self._check_collection(inspect(self.client, self.collection))
         self.encoder = Encoder(self.files, self.device, cfg.batch_size, cfg.cache_dir)
-        self.store: ImageStore = make_store(cfg.images, cfg.cache_dir)
+        if cfg.images is None:
+            if cfg.reference_images is None:
+                raise ValueError("для поиска нужны images или reference_images")
+            self.store: ImageStore = make_store(cfg.reference_images, cfg.cache_dir)
+            self.image_field = "source_image"
+        else:
+            self.store = make_store(cfg.images, cfg.cache_dir)
+            self.image_field = FIELD_IMAGE
         self._check_store()
         logger.info(
             f"поиск готов: {self.encoder.description}; коллекция {self.info.name}, {self.info.count} векторов ×{self.info.size}; "
@@ -96,12 +103,19 @@ class VisSearcher:
         return info
 
     def _check_store(self) -> None:
-        name = sample_payload(self.client, self.collection)[FIELD_IMAGE]
+        name = self._image_name(sample_payload(self.client, self.collection))
         if not self.store.exists(name):
             raise RuntimeError(
                 f"в хранилище картинок ({self.store.description}) нет {name} из коллекции {self.collection}"
             )
         self.store.get(name)
+
+    def _image_name(self, payload: dict) -> str:
+        """Имя картинки из payload: кроп коллекции или исходный Эталон."""
+        name = payload.get(self.image_field)
+        if not isinstance(name, str) or not name:
+            raise RuntimeError(f"у точки коллекции {self.collection} нет {self.image_field} для загрузки картинки")
+        return name
 
     def __call__(self, crops: list[BottleCrop]) -> list[BottleCandidates | UnmatchedBottle]:
         """Ответ по каждому кропу, в порядке кропов: результатов ровно столько, сколько кропов."""
@@ -205,7 +219,7 @@ class VisSearcher:
         return Candidate(
             slug=payload[FIELD_SLUG],
             score=score,
-            image=self.store.get(payload[FIELD_IMAGE]),
+            image=self.store.get(self._image_name(payload)),
             crop=crop,
             group=payload[FIELD_GROUP],
             retrieved=retrieved,
@@ -240,6 +254,7 @@ class VisSearcher:
                     "query": crop.uuid,
                     "bottle_score": crop.score,
                     "rejected": {"reason": result.rejected.reason, "detail": result.rejected.detail} if isinstance(result, UnmatchedBottle) else None,
+                    "selection": result.selection,
                     "candidates": [
                         {
                             "slug": c.slug,

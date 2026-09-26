@@ -40,6 +40,8 @@ class ImageStore(Protocol):
 
     def get(self, name: str) -> np.ndarray: ...
 
+    def get_bytes(self, name: str) -> bytes: ...
+
     def exists(self, name: str) -> bool: ...
 
     def ensure_available(self) -> None: ...
@@ -59,7 +61,11 @@ class LocalStore:
 
     def get(self, name: str) -> np.ndarray:
         """Прочитать кроп."""
-        return decode_image((self.root / name).read_bytes())
+        return decode_image(self.get_bytes(name))
+
+    def get_bytes(self, name: str) -> bytes:
+        """Прочитать исходные байты изображения."""
+        return (self.root / name).read_bytes()
 
     def exists(self, name: str) -> bool:
         """Есть ли файл."""
@@ -111,6 +117,10 @@ class S3Store:
 
     def get(self, name: str) -> np.ndarray:
         """Кроп из кэша, иначе из бакета с записью в кэш."""
+        return decode_image(self.get_bytes(name))
+
+    def get_bytes(self, name: str) -> bytes:
+        """Исходные байты из кэша, иначе из бакета с записью в кэш."""
         cached = self.cache_dir / name
         if not cached.is_file():
             data = self.client.get_object(Bucket=self.bucket, Key=self.key(name))[
@@ -118,7 +128,7 @@ class S3Store:
             ].read()
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             cached.write_bytes(data)
-        return decode_image(cached.read_bytes())
+        return cached.read_bytes()
 
     def exists(self, name: str) -> bool:
         """Есть ли объект в бакете."""

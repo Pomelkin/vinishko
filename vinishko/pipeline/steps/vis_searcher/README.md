@@ -1,6 +1,6 @@
 # Визуальный поиск
 
-Шаг пайплайна после нормализации: кроп бутылки → вектор DinoV3ForWine → ближайшие векторы каталога в qdrant → ответ на каждый кроп
+Шаг пайплайна после нормализации: кроп бутылки → вектор DinoV3ForWine → ближайший вектор каталога в qdrant → вся его группа → ответ на каждый кроп
 (`vinishko/pipeline/structs.py`): `BottleCandidates` с кандидатами `Candidate`, у каждого картинка позиции из коллекции для второго уровня, либо `UnmatchedBottle`
 с отказом `RejectedBottle` и причиной `SearchReason`, когда ничего похожего нет. Ответов ровно столько, сколько кропов, и в том же порядке. Всё запускается из корня репозитория.
 
@@ -13,8 +13,7 @@ results = searcher(
 )  # crops: list[BottleCrop] от нормализации → list[BottleCandidates | UnmatchedBottle], у каждого .candidates либо .rejected
 ```
 
-`Pipeline(searcher=VisSearcher())` из `vinishko/pipeline/pipeline.py` связывает шаги сам; нормализатор он поднимает как `Normalizer()`,
-а бутылку с отказом поиска подставляет в разметку `RejectedBottle` с тем же `uuid`.
+`Pipeline(searcher=VisSearcher())` из `vinishko/pipeline/pipeline.py` связывает шаги сам: нормализация, поиск top-1 группы и NDR v5 внутри неё. Бутылка с отказом поиска или NDR попадает в разметку как `RejectedBottle` с тем же `uuid`.
 
 ## Модель и устройство
 
@@ -38,6 +37,7 @@ python -m vinishko.pipeline.steps.vis_searcher.build_catalog \
 
 Модель и ревизия, qdrant с именем коллекции, хранилище кропов, `batch_size` и `cache_dir` берутся из того же `config.yaml`
 (`--config` — другой файл), с которым потом ищет `VisSearcher`: собрать одной моделью, а искать другой нельзя по построению.
+Для сборки `images` должен указывать на хранилище кропов. Текущий конфиг рассчитан на запрос к уже заполненному Qdrant: `images: null`, а картинки кандидатов берутся из локального `reference_images` по `source_image` в payload.
 Устройство энкодера — `VIS_SEARCHER_DEV`, нормализации — `NORMALIZER_DEV`.
 
 Каждое фото каталога проходит нормализацию, на нём должна найтись ровно одна годная бутылка (`--on-failure skip` пропускает остальные

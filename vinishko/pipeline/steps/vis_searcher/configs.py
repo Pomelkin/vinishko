@@ -77,7 +77,12 @@ class VisSearcherConfig(StrictModel):
     """Сколько ближайших векторов брать из коллекции."""
     qdrant: QdrantConfig
     search: Annotated[TopNSearch | GroupSearch, Field(discriminator="mode")]
-    images: Annotated[LocalImagesConfig | S3ImagesConfig, Field(discriminator="kind")]
+    images: Annotated[LocalImagesConfig | S3ImagesConfig, Field(discriminator="kind")] | None = None
+    """Кропы коллекции; None — читать оригиналы по source_image из reference_images (только запрос)."""
+    reference_images: Annotated[LocalImagesConfig | S3ImagesConfig, Field(discriminator="kind")] | None = None
+    """Оригинальные эталоны для NDR; если не заданы, используются кропы из images."""
+    catalog_csv: Path | None = None
+    """Локальные карточки Каталога для NDR v5; без CSV поля берутся из payload Qdrant."""
     cache_dir: Path = Path("~/.cache/vino")
     """Кэш engine TensorRT и картинок из S3."""
     debug_path: Path | None = None
@@ -98,6 +103,10 @@ def load_config(path: Path | None = None) -> VisSearcherConfig:
         cfg.qdrant.path = resolve_path(cfg.qdrant.path, base)
     if isinstance(cfg.images, LocalImagesConfig):
         cfg.images.dir = resolve_path(cfg.images.dir, base)
+    if isinstance(cfg.reference_images, LocalImagesConfig):
+        cfg.reference_images.dir = resolve_path(cfg.reference_images.dir, base)
+    if cfg.catalog_csv is not None:
+        cfg.catalog_csv = resolve_path(cfg.catalog_csv, base)
     return cfg
 
 

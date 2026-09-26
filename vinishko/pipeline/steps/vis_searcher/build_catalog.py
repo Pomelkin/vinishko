@@ -355,6 +355,8 @@ def main(
     Дешёвые проверки идут до загрузки моделей: CSV и наличие всех фото, qdrant и отсутствие коллекции, доступность хранилища.
     """
     cfg = load_config(config_path)
+    if cfg.images is None:
+        raise click.UsageError("build_catalog требует images: хранилище кропов в конфиге")
     rows, skipped, has_group = read_rows(csv_path, slug_column, photo_column, group_column, limit)
     check_photos(rows, images)
     device = resolve_device(cfg.device)
