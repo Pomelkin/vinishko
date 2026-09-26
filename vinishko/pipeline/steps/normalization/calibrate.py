@@ -144,13 +144,16 @@ def best_threshold(
 @click.option("--labels", type=click.Path(dir_okay=False, path_type=Path), default=HERE / "labels.json", show_default=True)
 @click.option("-c", "--config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=HERE / "normalize.toml", show_default=True)
 @click.option("--beta", type=float, default=1.5, show_default=True, help="Вес полноты при выборе порога: 1 = F1, 2 = полнота вдвое важнее")
+@click.option("--holdout-images", type=click.Path(file_okay=False, path_type=Path), default=None, help="Папка картинок отложенной выборки: на ней ничего не подбирается, только проверка")
+@click.option("--holdout-labels", type=click.Path(dir_okay=False, path_type=Path), default=HERE / "labels_test.json", show_default=True)
+@click.option("--max-cands", type=int, default=0, show_default=True, help="Не брать в обучение картинки, где кандидатов SAM3 больше стольких; 0 = брать все")
 @click.option(
     "--exclude",
     default=r"generated[_ ]image|nano_banana|edited_image|vibehype",
     show_default=True,
     help="Regex по имени файла: картинки не идут в обучение и метрики (нейросгенерированные сцены путают отбор)",
 )
-def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) -> None:
+def main(images: Path, labels: Path, config: Path, beta: float, exclude: str, holdout_images: Path | None, holdout_labels: Path, max_cands: int) -> None:
     """Калибровка отбора целевых бутылок по разметке из labels.json.
 
     Сегментатор берётся из Normalizer с конфигом нормализации, поэтому калибровка и нормализация видят одних и тех же
@@ -159,30 +162,43 @@ def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) ->
     """
     marked = {n: v for n, v in json.loads(labels.read_text()).items() if v["decision"] != "ambiguous"}
     excl = re.compile(exclude, re.IGNORECASE) if exclude else None
-    todo = [(n, v) for n, v in marked.items() if (images / n).is_file() and not (excl and excl.search(n))]
-    click.echo(f"размеченных картинок: {len(marked)}, найдено в {images}: {len(todo)}"
-               + (f", исключено по --exclude: {sum(1 for n in marked if excl and excl.search(n))}" if excl else ""))
+    synthetic = {n for n, v in marked.items() if v.get("synthetic")}  # ИИ-сцены, инфографика, баннеры: не то, что фотографирует пользователь
+    todo = [(n, v) for n, v in marked.items() if (images / n).is_file() and n not in synthetic and not (excl and excl.search(n))]
+    click.echo(f"размеченных картинок: {len(marked)}, найдено в {images}: {len(todo)}, исключено как синтетические: {len(synthetic)}"
+               + (f", по --exclude: {sum(1 for n in marked if excl and excl.search(n) and n not in synthetic)}" if excl else ""))
     norm = Normalizer(load_config(config, []), config.resolve().parent)
     segmenter = norm.seg
-    results, verdicts, skipped_hard = [], [], 0
-    for i, (n, v) in enumerate(todo, 1):
-        img = open_image(images / n)
-        seg = segmenter(img)
-        row = image_rows(n, v, seg, gray_small(img))
-        if row[4] >= 2:  # тяжёлые случаи — сцены с несколькими кандидатами SAM3 — не должны быть в выборке вообще
-            skipped_hard += 1
-        else:
-            results.append(row)
-            verdicts += label_verdicts(norm, v, seg)
-        if i % 50 == 0 or i == len(todo):
-            click.echo(f"  сегментация и признаки: {i}/{len(todo)}")
-    click.echo(f"исключено как тяжёлые (2+ кандидата): {skipped_hard}")
+    cache = HERE / "cache" / f"calib_{segmenter.tag}"  # сегментация с этикетками: признаки перебираются без повторного прогона SAM3
+    cache.mkdir(parents=True, exist_ok=True)
+
+    def collect(pairs: list, folder: Path, skip_hard: bool = False) -> tuple[list, list, int]:
+        """Признаки и метки всех картинок из pairs [(имя, метка)]: (результаты image_rows, вердикты этикетки, сколько тяжёлых пропущено)."""
+        res, verd, skipped = [], [], 0
+        for i, (n, v) in enumerate(pairs, 1):
+            img = open_image(folder / n)
+            f = cache / (n + ".json")
+            if f.exists() and f.stat().st_mtime >= (folder / n).stat().st_mtime:
+                seg = json.loads(f.read_text())
+            else:
+                seg = segmenter(img)
+                f.write_text(json.dumps(seg))
+            row = image_rows(n, v, seg, gray_small(img))
+            if skip_hard and max_cands and row[4] > max_cands:
+                skipped += 1
+            else:
+                res.append(row)
+                verd += label_verdicts(norm, v, seg)
+            if i % 50 == 0 or i == len(pairs):
+                click.echo(f"  сегментация и признаки: {i}/{len(pairs)}")
+        return res, verd, skipped
+
+    results, verdicts, skipped_hard = collect(todo, images, skip_hard=True)
+    if max_cands:
+        click.echo(f"исключено сцен с более чем {max_cands} кандидатами: {skipped_hard}")
     names = [r[0] for r in results]
     rows = [row for r in results for row in r[1]]
     n_good = {r[0]: r[2] for r in results}
     n_missed = {r[0]: r[3] for r in results}
-    with (HERE / "features.jsonl").open("w") as f:
-        f.writelines(json.dumps(row) + "\n" for row in rows)
     X = np.array([[r[k] for k in FEATURES] for r in rows])
     y = np.array([r["y"] for r in rows])
     # серии кадров с одним исходным именем не должны попадать и в обучение, и в проверку
@@ -198,6 +214,8 @@ def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) ->
         oof["lr"][te] = lr_fold.predict_proba(scaler.transform(X[te]))[:, 1]
         gb_fold = HistGradientBoostingClassifier(max_iter=200, learning_rate=0.05).fit(X[tr], y[tr])
         oof["gb"][te] = gb_fold.predict_proba(X[te])[:, 1]
+    with (HERE / "features.jsonl").open("w") as f:  # p — предсказание логрега на кандидате, обученного без его картинки
+        f.writelines(json.dumps({**row, "p": round(float(p), 4)}) + "\n" for row, p in zip(rows, oof["lr"], strict=True))
 
     conf = X[:, FEATURES.index("conf")]
     edge = X[:, FEATURES.index("edge_touch")]
@@ -249,6 +267,20 @@ def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) ->
     }
     (HERE / "calibration.json").write_text(json.dumps(calib, ensure_ascii=False, indent=1))
     click.echo("\nсохранено: calibration.json, features.jsonl")
+    if holdout_images and holdout_labels.exists():  # отложенная выборка: модель и порог уже выбраны без неё
+        hl = [(n, v) for n, v in json.loads(holdout_labels.read_text()).items() if (holdout_images / n).is_file()]
+        hres, _, _ = collect(hl, holdout_images)
+        hrows = [row for r in hres for row in r[1]]
+        hp = lr.predict_proba(scaler.transform(np.array([[r[k] for k in FEATURES] for r in hrows])))[:, 1]
+        hm = evaluate([r[0] for r in hres], hrows, hp, thr, {r[0]: r[2] for r in hres}, {r[0]: r[3] for r in hres})
+        by: dict[str, list[tuple[float, int]]] = {}
+        for r, q in zip(hrows, hp, strict=True):
+            by.setdefault(str(r["name"]), []).append((float(q), int(r["y"])))
+        top1 = float(np.mean([max(v)[1] for v in by.values()]))
+        anyhit = float(np.mean([any(y and q >= thr for q, y in v) for v in by.values()]))
+        click.echo(f"\nотложенная выборка, {len(hres)} картинок, порог {thr:.2f}: P={hm['precision']:.3f} R={hm['recall']:.3f} F1={hm['f1']:.3f}"
+                   f" точно на картинке {hm['exact_images']:.3f}, лучший кандидат целевой {top1:.3f}, хотя бы одна цель прошла {anyhit:.3f}"
+                   f" tp={hm['tp']} fp={hm['fp']} fn={hm['fn']}")
     label_report(verdicts)
 
 
