@@ -4,5 +4,3 @@ services:
     container_name: qdrant
     ports:
       - '127.0.0.1:6333:6333'
-    profiles:
-      - training

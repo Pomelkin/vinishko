@@ -223,3 +223,5 @@ sam3.pt
 # Результаты прогонов обучения: в git идёт только config.yaml эксперимента
 vis_seacher_training/experiments/*/*/
 /weights
+# встроенный qdrant для локальной отладки vis_searcher
+/.qdrant
