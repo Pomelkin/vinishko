@@ -29,7 +29,7 @@ from rich.progress import (
 
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
 from vinishko.pipeline.steps.normalization.normalize import Normalizer, load_config
-from vinishko.pipeline.structs import Candidate, Rejection
+from vinishko.pipeline.structs import BottleCrop, RejectedBottle
 
 console = Console()
 
@@ -98,14 +98,14 @@ def check_meta(meta_path: Path, meta: dict, n_done: int) -> None:
         )
 
 
-def record(name: str, items: list[Candidate | Rejection]) -> dict:
-    """Строка normalization.jsonl: годные бутылки и отказы одной картинки, поля — как у Candidate и Rejection."""
-    candidates = [asdict(item) for item in items if isinstance(item, Candidate)]
+def record(name: str, items: list[BottleCrop | RejectedBottle]) -> dict:
+    """Строка normalization.jsonl: годные бутылки и отказы одной картинки; у годных разметка без кропа, см. BottleCrop.markup."""
+    candidates = [item.markup() for item in items if isinstance(item, BottleCrop)]
     return {
         "file": name,
         "status": "ok" if candidates else "no_bottles",
         "candidates": candidates,
-        "rejections": [asdict(item) for item in items if isinstance(item, Rejection)],
+        "rejections": [asdict(item) for item in items if isinstance(item, RejectedBottle)],
     }
 
 
@@ -255,10 +255,10 @@ def cli() -> None:
 def run(
     datasets: tuple[Path, ...], config: Path, overrides: tuple[str, ...], splits: str | None, limit: int | None, out_name: str, gpus: str | None, workers_per_gpu: int
 ) -> None:
-    """Прогоняет Normalizer.annotate (SAM3 → отбор → проверка этикетки, без рендера) по картинкам развёрнутого датасета и пишет разметку в <dataset>/normalization.jsonl.
+    """Прогоняет Normalizer.annotate (SAM3 → отбор → проверка этикетки → кроп, который в разметку не пишется) по картинкам развёрнутого датасета и пишет разметку в <dataset>/normalization.jsonl.
 
-    Одна строка на картинку: status, candidates — годные бутылки с полями Candidate: index, score, bottle, label, angle, uuid;
-    rejections — отказы с полями Rejection: reason, detail, score, bottle, label, uuid. Маски bottle и label — полигоны в пикселях оригинала после EXIF.
+    Одна строка на картинку: status, candidates — годные бутылки с полями BottleCrop.markup: index, score, bottle, label, angle, uuid;
+    rejections — отказы с полями RejectedBottle: reason, detail, score, bottle, label, uuid. Маски bottle и label — полигоны в пикселях оригинала после EXIF.
     Кропы не пишутся: их рендерит даталоадер по маскам и углу, с джиттером.
     Рядом пишется normalization.meta.json с конфигом прогона. Дозапись: уже обработанные картинки пропускаются, но только с теми же настройками,
     что в meta; порядок сплитов задаёт --splits.

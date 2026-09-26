@@ -5,7 +5,7 @@
 ```
 картинка ─► SAM3 «wine bottle» ─► кандидаты
          ─► логистическая регрессия ─► целевые бутылки
-         ─► проверка этикетки (SAM3 «wine label», без крышек и горлышек) ─► годная бутылка Candidate или отказ Rejection
+         ─► проверка этикетки (SAM3 «wine label», без крышек и горлышек) ─► годная бутылка BottleCrop с кропом или отказ RejectedBottle Rejection
          ─► на каждую годную: кроп бутылки, маска и вырезка этикетки, JSON
          ─► годных нет ─► кропов нет, только отказы с причинами
 ```
@@ -20,18 +20,19 @@
 | `features.py`      | признаки кандидата для отбора                                                                            |
 | `calibrate.py`     | калибровка отбора по разметке                                                                            |
 | `calibration.json` | текущие веса и порог отбора                                                                                 |
+| `weights.py`       | кэш пользователя и параллельное скачивание весов SAM3                                                     |
 
 ## Установка
 
-Нужны [uv](https://docs.astral.sh/uv/) и GPU с CUDA. Зависимости ставятся из корня репозитория командой `uv sync`. Веса SAM3 (`sam3.pt`, 3,4 ГБ) кладутся в эту папку. Официальный репозиторий https://huggingface.co/facebook/sam3 закрыт подтверждением доступа, тот же файл открыто лежит на ModelScope:
+Нужны [uv](https://docs.astral.sh/uv/) и GPU с CUDA. Зависимости ставятся из корня репозитория командой `uv sync`.
+
+Веса SAM3 (`sam3.pt`, 3,4 ГБ) скачиваются сами при первой загрузке модели в кэш пользователя: `~/.cache/vino` на Linux, `%LOCALAPPDATA%\vino\Cache` на Windows, `~/Library/Caches/vino` на macOS. Качаются параллельно диапазонами в 8 потоков, сверяются по sha256 и появляются в кэше только целыми. Официальный репозиторий https://huggingface.co/facebook/sam3 закрыт подтверждением доступа, поэтому источник — открытая копия того же файла на ModelScope. Свои веса задаются путём в `segmentation.model` в конфиге или `--set segmentation.model=путь`; без этого параметра веса берутся из кэша. Проверить, что в скачанном файле только тензоры:
 
 ```bash
-curl -L -o sam3.pt "https://modelscope.cn/models/facebook/sam3/resolve/master/sam3.pt"
-sha256sum sam3.pt  # 9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e
-uv run --with torch python -c "import torch; torch.load('sam3.pt', weights_only=True, map_location='cpu'); print('ok')"
+uv run python -c "import torch; torch.load('$HOME/.cache/vino/sam3.pt', weights_only=True, map_location='cpu'); print('ok')"
 ```
 
-Последняя команда проверяет, что в файле только тензоры. Веса распространяются под SAM License от Meta, в ней есть пункт о торговых ограничениях.
+Веса распространяются под SAM License от Meta, в ней есть пункт о торговых ограничениях.
 
 ## Запуск
 
@@ -46,7 +47,7 @@ uv run python -m scripts.normalize_dataset run datasets/<имя>     # разм�
 uv run python -m scripts.normalize_dataset bench datasets/<имя>   # подбор --workers-per-gpu для run на этой машине
 ```
 
-Из кода: `Normalizer.annotate(path)` отдаёт разметку без рендера — список, где каждая найденная бутылка это `Candidate` (годная: маски бутылки и этикетки, угол поворота) или `Rejection` (отказ: причина `NormalizationReason`, пояснение с числами, маска бутылки для интерфейса). `Normalizer(img)` отдаёт пару: список `Sample` с кропами годных бутылок либо `None`, если годных нет, и ту же разметку. `Candidate`, `Rejection` и `Sample` общие для всего пайплайна и описаны в `vinishko/pipeline/structs.py`: следующие шаги дописывают результаты в `Sample`, а бракуя бутылку, зовут `structs.reject` — `Sample` уходит из потока, `Candidate` в разметке становится `Rejection` с тем же `uuid`. Причины отказа у каждого шага свои, наследник `structs.Reason` с `title` и `description` для интерфейса.
+Из кода: `Normalizer(img)` и `Normalizer.annotate(path)` отдают список, где каждая найденная бутылка это `BottleCrop` (годная: маски бутылки и этикетки, угол поворота и готовый RGB-кроп для энкодера с матрицами перехода в `crop_info`) или `RejectedBottle` (отказ: причина `NormalizationReason`, пояснение с числами, маска бутылки для интерфейса). Если в списке нет ни одного `BottleCrop`, дальше по пайплайну идти нечему. Обе структуры общие для всего пайплайна и описаны в `vinishko/pipeline/structs.py`; шаги друг о друге не знают, их связывает оркестратор `vinishko/pipeline/pipeline.py`: поиск получает список `BottleCrop`, реранкер — `SearchResult` с кропом внутри, а бутылка, забракованная поздним шагом, становится в разметке `RejectedBottle` с тем же `uuid` через `BottleCrop.reject`. Причины отказа у каждого шага свои, наследник `structs.Reason` с `title` и `description` для интерфейса. В `normalization.jsonl` годная бутылка пишется без кропа, `BottleCrop.markup()`.
 
 Модель загружается один раз за запуск, около 30 секунд. Дальше около 0,25 с на картинку на RTX 3080: 0,14 с энкодер изображения, 0,07 с все четыре промпта одним батчем, остальное — метрики и полигоны на CPU. Если бутылка в кадре мелкая, этикетка ищется вторым проходом SAM3 по вырезке бутылки, это ещё около 0,2 с на такую бутылку.
 
@@ -82,7 +83,7 @@ uv run python -m scripts.normalize_dataset bench datasets/<имя>   # подб�
 
 `bottle_angle` равен 0, если виден короткий обрубок бутылки: её длина меньше `fallback.min_aspect` ширин, обычно это крупный план, обрезанный кадром. Ось у такой маски неустойчива, кроп идёт без поворота; запас и заливка фона те же.
 
-Если годных бутылок нет, кропов нет вовсе: причины лежат в `Rejection` разметки.
+Если годных бутылок нет, кропов нет вовсе: причины лежат в `RejectedBottle` разметки.
 
 ## Отбор и проверка этикетки
 

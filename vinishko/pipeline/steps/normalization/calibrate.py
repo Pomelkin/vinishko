@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler
 from vinishko.pipeline.steps.normalization.features import FEAT_SIDE, FEATURES, candidate_features, gray_small
 from vinishko.pipeline.steps.normalization.normalize import Normalizer, bottle_axis, load_config
 from vinishko.pipeline.steps.normalization.seg import open_image
-from vinishko.pipeline.structs import Rejection
+from vinishko.pipeline.structs import RejectedBottle
 
 HERE = Path(__file__).resolve().parent
 IOU_MATCH = 0.7  # кандидат считается попаданием в цель от этого IoU
@@ -111,7 +111,7 @@ def label_verdicts(norm: Normalizer, label: dict, seg: dict) -> list[tuple[bool,
         if cand is None or iou(cand["box"], t["box"]) < IOU_MATCH:
             continue
         res = norm.check_label(cand, bottle_axis(cand["polys"], norm.cfg["orientation"]), 0.0)
-        out.append((bool(t.get("label_hidden")), res.reason.value if isinstance(res, Rejection) else "ok"))
+        out.append((bool(t.get("label_hidden")), res.reason.value if isinstance(res, RejectedBottle) else "ok"))
     return out
 
 

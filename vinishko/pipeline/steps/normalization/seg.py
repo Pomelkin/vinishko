@@ -13,6 +13,8 @@ from ultralytics.engine.results import Results
 from ultralytics.models.sam import SAM3SemanticPredictor
 from ultralytics.utils.ops import xywh2xyxy
 
+from vinishko.pipeline.steps.normalization.weights import SAM3_FILE, sam3_weights
+
 BOTTLE = 39  # класс bottle в COCO
 MIN_CONTOUR_AREA = 10  # контуры меньше этого в пикселях кадра модели — шум маски
 SHARPNESS_HEIGHT = 160  # к этой высоте приводится вырезка этикетки перед оценкой резкости
@@ -192,7 +194,7 @@ class Segmenter:
 
     def __init__(
         self,
-        model: Path | str,
+        model: Path | str | None = None,
         prompt: str = "wine bottle",
         conf: float | None = None,
         imgsz: int | None = None,
@@ -201,11 +203,15 @@ class Segmenter:
         label_conf: float = 0.4,
         exclude_prompts: tuple[str, ...] | list[str] = (),
     ) -> None:
-        """Путь к весам model: SAM3 узнаётся по имени файла и требует весов на диске, для YOLO промпт не используется."""
-        self.model = str(model)
-        self.is_sam3 = "sam3" in Path(model).name
-        if self.is_sam3 and not Path(model).is_file():
-            raise FileNotFoundError(f"нет весов {model}, как скачать: см. README.md")
+        """Путь к весам model: SAM3 узнаётся по имени файла, для YOLO промпт не используется.
+
+        Без model берётся SAM3 из кэша пользователя, веса скачиваются при первой загрузке модели.
+        """
+        self.model = None if model is None else str(model)
+        self.name = SAM3_FILE if model is None else Path(model).name
+        self.is_sam3 = "sam3" in self.name
+        if model is not None and self.is_sam3 and not Path(model).is_file():
+            raise FileNotFoundError(f"нет весов {model}; без пути SAM3 скачается в кэш сам")
         self.prompt = prompt if self.is_sam3 else "class bottle"
         self.imgsz = imgsz or (1008 if self.is_sam3 else 640)
         # SAM3 даёт бокалам 0.1–0.37, бутылкам 0.8+
@@ -222,14 +228,15 @@ class Segmenter:
     def tag(self) -> str:
         """Идентификатор настроек сегментации; калибровка записывает, под какие настройки обучена."""
         suffix = f"_{self.prompt.replace(' ', '-')}" if self.is_sam3 else ""
-        return f"{Path(self.model).stem}_{self.imgsz}_c{self.conf}{suffix}"
+        return f"{Path(self.name).stem}_{self.imgsz}_c{self.conf}{suffix}"
 
     def _load(self) -> SAM3SemanticPredictor | YOLO:
+        weights = self.model or str(sam3_weights())
         if not self.is_sam3:
-            return YOLO(self.model)
+            return YOLO(weights)
         predictor = SAM3SemanticPredictor(
             overrides={
-                "model": self.model,
+                "model": weights,
                 "conf": self.conf,
                 "imgsz": self.imgsz,
                 "quantize": 16,
@@ -327,7 +334,7 @@ class Segmenter:
         return {
             "w": w,
             "h": h,
-            "model": Path(self.model).name,
+            "model": self.name,
             "prompt": self.prompt,
             "imgsz": self.imgsz,
             "scale": round(k, 4),

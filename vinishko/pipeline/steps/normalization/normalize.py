@@ -16,7 +16,7 @@ from vinishko.pipeline.steps.normalization.features import (
     gray_small,
 )
 from vinishko.pipeline.steps.normalization.seg import Segmenter, label_stats, open_image
-from vinishko.pipeline.structs import Candidate, Reason, Rejection, Sample
+from vinishko.pipeline.structs import BottleCrop, Reason, RejectedBottle
 import torch
 
 torch.set_float32_matmul_precision("high")
@@ -28,6 +28,8 @@ BORDERS = {
     "reflect": cv2.BORDER_REFLECT_101,
     "constant": cv2.BORDER_CONSTANT,
 }
+# параметры, которых может не быть в конфиге, но их можно задать через --set
+OPTIONAL = {"segmentation.model"}
 
 
 # ---------- конфиг ----------
@@ -39,13 +41,14 @@ def load_config(path: Path, overrides: list[str]) -> dict:
     for item in overrides:
         key, _, raw = item.partition("=")
         section, _, name = key.strip().partition(".")
-        if section not in cfg or name not in cfg[section]:
+        known = section in cfg and name in cfg[section]
+        if not known and key.strip() not in OPTIONAL:
             raise SystemExit(f"--set {item}: нет параметра {key} в {path.name}")
         try:
             value = tomllib.loads(f"v = {raw}")["v"]
         except tomllib.TOMLDecodeError:
             value = raw  # строку можно писать без кавычек
-        cfg[section][name] = value
+        cfg.setdefault(section, {})[name] = value
     return cfg
 
 
@@ -428,7 +431,7 @@ class Normalizer:
             sel["threshold"] if sel["threshold"] >= 0 else self.calib["threshold"]
         )
         self.seg = Segmenter(
-            resolve(sc["model"], base),
+            resolve(sc["model"], base) if "model" in sc else None,
             sc["prompt"],
             sc["conf"],
             sc["imgsz"],
@@ -462,11 +465,12 @@ class Normalizer:
         polys = [
             p
             for p in solid
-            if label_geometry(ax, p)["width_frac"] >= lc["min_width_frac"]
+            if p  # маска выродилась в точки или отрезки нулевой площади
+            and label_geometry(ax, p)["width_frac"] >= lc["min_width_frac"]
         ]
         return max(polys, key=polys_area, default=None)
 
-    def check_label(self, cand: dict, ax: dict, score: float) -> list | Rejection:
+    def check_label(self, cand: dict, ax: dict, score: float) -> list | RejectedBottle:
         """Полигоны основной этикетки, если она годится, иначе отказ с причиной и числами.
 
         Порядок: есть ли этикетка, основная ли она, видна ли целиком, достаточно ли крупная и резкая.
@@ -476,7 +480,7 @@ class Normalizer:
         lb, stats = self.cfg["label"], cand["label"]
         main = self.largest_label(cand["label_polys"], ax)
         if stats["cover"] < lb["min_cover"]:
-            return Rejection(
+            return RejectedBottle(
                 NormalizationReason.NO_LABEL,
                 f"этикетки закрывают {stats['cover']:.0%} площади бутылки, нужно от {lb['min_cover']:.0%}",
                 score,
@@ -484,7 +488,7 @@ class Normalizer:
                 main,
             )
         if main is None:
-            return Rejection(
+            return RejectedBottle(
                 NormalizationReason.NOT_A_LABEL,
                 f"все наклейки уже {self.cfg['label_crop']['min_width_frac']:.0%} ширины бутылки",
                 score,
@@ -518,7 +522,7 @@ class Normalizer:
         ]
         failed = next(((r, d) for r, bad, d in checks if bad), None)
         return (
-            Rejection(failed[0], failed[1], score, cand["polys"], main)
+            RejectedBottle(failed[0], failed[1], score, cand["polys"], main)
             if failed
             else main
         )
@@ -544,9 +548,9 @@ class Normalizer:
         )
 
     def judge(
-        self, img: Image.Image, cand: dict, score: float, scale: float, index: int
-    ) -> Candidate | Rejection:
-        """Целевая бутылка → годная с номером index или отказ: размер бутылки, затем этикетка."""
+        self, img: Image.Image, rgb: np.ndarray, cand: dict, score: float, scale: float, index: int
+    ) -> BottleCrop | RejectedBottle:
+        """Целевая бутылка → годная с номером index и кропом или отказ: размер бутылки, затем этикетка, затем рендер."""
         ax = bottle_axis(cand["polys"], self.cfg["orientation"])
         # у бутылки короче min_aspect своих ширин ось PCA может лечь поперёк: такой кроп идёт без поворота
         axis_reliable = (
@@ -556,7 +560,7 @@ class Normalizer:
         _, (_, _, _, bh) = rotated_extent(cand["polys"], ax["center"], angle)
         min_px = self.cfg["selection"]["min_bottle_px"]
         if bh < min_px:
-            return Rejection(
+            return RejectedBottle(
                 NormalizationReason.BOTTLE_TOO_SMALL,
                 f"высота бутылки {bh:.0f} px, нужно от {min_px} px",
                 score,
@@ -564,22 +568,25 @@ class Normalizer:
                 None,
             )
         label = self.check_label(cand, ax, score)
-        if isinstance(label, Rejection):
+        if isinstance(label, RejectedBottle):
             return label
         label = self.refine_label(img, cand, ax, scale, label)
-        return Candidate(index, score, cand["polys"], label, round(angle, 2))
+        angle = round(angle, 2)
+        crop, info = render_bottle(rgb, cand["polys"], label, self.cfg, angle=angle)
+        return BottleCrop(index, score, cand["polys"], label, angle, crop, info)
 
-    def annotate_image(self, img: Image.Image) -> list[Candidate | Rejection]:
-        """Разметка без рендера: все бутылки, найденные SAM3, по убыванию скора отбора; каждая — Candidate или Rejection.
+    def annotate_image(self, img: Image.Image) -> list[BottleCrop | RejectedBottle]:
+        """Все бутылки, найденные SAM3, по убыванию скора отбора; каждая — BottleCrop с готовым кропом или RejectedBottle.
 
-        Годных бутылок нет, если в списке нет ни одного Candidate. Координаты в пикселях img, то есть оригинала после EXIF-поворота.
+        Годных бутылок нет, если в списке нет ни одного BottleCrop. Координаты в пикселях img, то есть оригинала после EXIF-поворота.
         """
+        rgb = np.asarray(img)
         seg = self.seg(img)
         scores = score_candidates(
             gray_small(img, self.calib["feat_side"]), seg, self.calib
         )
         max_bottles = self.cfg["selection"]["max_bottles"]
-        items: list[Candidate | Rejection] = []
+        items: list[BottleCrop | RejectedBottle] = []
         n_valid = 0
         for i in sorted(range(len(scores)), key=lambda i: -scores[i]):
             c = seg["cands"][i]
@@ -587,7 +594,7 @@ class Normalizer:
                 continue  # маска выродилась в точки: показывать и вырезать нечего
             score = round(scores[i], 4)
             if scores[i] < self.threshold:
-                item = Rejection(
+                item = RejectedBottle(
                     NormalizationReason.NOT_TARGET,
                     f"скор отбора {score}, порог {self.threshold:.2f}",
                     score,
@@ -595,7 +602,7 @@ class Normalizer:
                     None,
                 )
             elif max_bottles and n_valid >= max_bottles:
-                item = Rejection(
+                item = RejectedBottle(
                     NormalizationReason.OVER_LIMIT,
                     f"годных бутылок уже {max_bottles}",
                     score,
@@ -603,40 +610,20 @@ class Normalizer:
                     None,
                 )
             else:
-                item = self.judge(img, c, score, seg["scale"], n_valid + 1)
-            n_valid += isinstance(item, Candidate)
+                item = self.judge(img, rgb, c, score, seg["scale"], n_valid + 1)
+            n_valid += isinstance(item, BottleCrop)
             items.append(item)
         return items
 
-    def annotate(self, path: Path | str) -> list[Candidate | Rejection]:
+    def annotate(self, path: Path | str) -> list[BottleCrop | RejectedBottle]:
         """Разметка одной картинки по пути; см. annotate_image."""
         return self.annotate_image(open_image(path))
 
-    def render(
-        self, rgb: np.ndarray, items: list[Candidate | Rejection]
-    ) -> list[Sample]:
-        """Кропы годных бутылок по разметке, в порядке убывания скора: один Sample на один Candidate."""
-        samples = []
-        for item in items:
-            if not isinstance(item, Candidate):
-                continue
-            crop, info = render_bottle(
-                rgb, item.bottle, item.label, self.cfg, angle=item.angle
-            )
-            samples.append(Sample(item, crop, info))
-        return samples
-
-    def __call__(
-        self, img: Image.Image | Path | str
-    ) -> tuple[list[Sample] | None, list[Candidate | Rejection]]:
-        """Картинка → годные бутылки с кропами и разметка всех найденных бутылок.
-
-        Первый элемент — None, если в разметке одни отказы: дальше по пайплайну идти нечему, интерфейс показывает причины.
-        """
+    def __call__(self, img: Image.Image | Path | str) -> list[BottleCrop | RejectedBottle]:
+        """Картинка → все найденные бутылки: годные с кропами и отказы с причинами. Если BottleCrop в списке нет, дальше по пайплайну идти нечему."""
         if not isinstance(img, Image.Image):
             img = open_image(img)
-        items = self.annotate_image(img)
-        return self.render(np.asarray(img), items) or None, items
+        return self.annotate_image(img)
 
 
 def remove_stale(out_dir: Path, stem: str) -> None:
@@ -650,17 +637,18 @@ def remove_stale(out_dir: Path, stem: str) -> None:
 
 
 def write_outputs(
-    path: Path, out_dir: Path, rgb: np.ndarray, samples: list[Sample], cfg: dict
+    path: Path, out_dir: Path, rgb: np.ndarray, items: list[BottleCrop | RejectedBottle], cfg: dict
 ) -> list[str]:
     """CLI: на каждую годную бутылку <имя>_bN.<формат>, <имя>_bN.json, маска этикетки _label.npz и вырезка _label.png."""
     fmt, quality = cfg["output"]["format"], cfg["output"]["quality"]
     remove_stale(out_dir, path.stem)
     names = []
-    for sample in samples:
-        cand = sample.candidate
+    for cand in items:
+        if not isinstance(cand, BottleCrop):
+            continue
         stem = f"{path.stem}_b{cand.index}"
         label_box = polys_box(cand.label)
-        save_image(out_dir / f"{stem}.{fmt}", sample.crop, fmt, quality)
+        save_image(out_dir / f"{stem}.{fmt}", cand.crop, fmt, quality)
         np.savez_compressed(
             out_dir / f"{stem}_label.npz", mask=polys_mask(cand.label, label_box)
         )
@@ -672,12 +660,12 @@ def write_outputs(
         )
         meta = {
             "source": str(path),
-            "uuid": sample.uuid,
+            "uuid": cand.uuid,
             "bottle_box": polys_box(cand.bottle),
             "bottle_score": cand.score,
-            "bottle_angle": sample.crop_info["angle_deg"],
+            "bottle_angle": cand.crop_info["angle_deg"],
             "bottle_crop": f"{stem}.{fmt}",
-            "bottle_crop_matrix": sample.crop_info["matrix_src_to_dst"],
+            "bottle_crop_matrix": cand.crop_info["matrix_src_to_dst"],
             "label_box": label_box,
             "label_mask": f"{stem}_label.npz",
             "label_crop": f"{stem}_label.png",
@@ -958,14 +946,12 @@ def main(
             t0 = time.perf_counter()
             img = open_image(f)
             items = norm.annotate_image(img)
-            rgb = np.asarray(img)
-            samples = norm.render(rgb, items)
-            write_outputs(f, out_dir, rgb, samples, cfg)
+            names = write_outputs(f, out_dir, np.asarray(img), items, cfg)
             rejected = ", ".join(
-                item.reason for item in items if isinstance(item, Rejection)
+                item.reason for item in items if isinstance(item, RejectedBottle)
             )
             click.echo(
-                f"{f.name}: бутылок {len(items)}, кропов {len(samples)}"
+                f"{f.name}: бутылок {len(items)}, кропов {len(names)}"
                 f"{f', отказы: {rejected}' if rejected else ''}, {round((time.perf_counter() - t0) * 1000)} мс"
             )
         except Exception as e:  # одна битая картинка не должна ронять весь пакет
