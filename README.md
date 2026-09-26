@@ -28,6 +28,14 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8810
 curl.exe -F "image=@C:\path\to\bottle.jpg" http://127.0.0.1:8810/v1/predict
 ```
 
+Для ручной проверки откройте [scripts/ocr_api.ipynb](scripts/ocr_api.ipynb). Ноутбук проверяет `/health`, выбирает из `../vinishko/data/test/test.csv` только фото с пустым `slug`, показывает выбранный снимок и выводит таблицу ответов и времени выполнения. По умолчанию запускаются 12 разных фото; `RUN_ALL = True` включает все 41 фото без `slug`. Запуск Jupyter из корня проекта:
+
+```powershell
+uv run --with jupyterlab --with ipykernel jupyter lab scripts/ocr_api.ipynb
+```
+
+Отправка фото из ноутбука вызывает OpenRouter и расходует токены.
+
 Вместо `OPENROUTER_API_KEY` можно задать `OPENROUTER_API_KEY_FILE` с путём к файлу ключа; файл имеет приоритет. Не добавляйте ключ в Git. Модель, провайдер, параметры генерации и таймаут заданы в `app/solution/config.json` как в исходном решении.
 
 ## Docker Compose
