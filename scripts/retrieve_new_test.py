@@ -1,7 +1,7 @@
 """Rank catalog wines for the unlabeled field photos using the exported ONNX model.
 
 Run from the repository root with ``.venv/Scripts/python scripts/retrieve_new_test.py``.
-The checkpoint files in ``data/.new_test_retrieval_cache`` allow interrupted CPU runs
+The checkpoint files in ``data/technical/.new_test_retrieval_cache`` allow interrupted CPU runs
 to resume. Delete that directory to rebuild the embeddings from scratch.
 """
 
@@ -20,12 +20,12 @@ from PIL import Image, ImageOps
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CATALOG = ROOT / "data/strapi/catalog_dataset.csv"
-IMAGES = ROOT / "data/strapi/img"
-QUERIES = ROOT / "data/new_test"
+CATALOG = ROOT / "data/technical/strapi/catalog_dataset.csv"
+IMAGES = ROOT / "data/technical/strapi/img"
+QUERIES = ROOT / "data/legacy/new_test"
 MODEL_DIR = ROOT / "vis_searcher/weights/dinov3_vitl16_512"
-CACHE = ROOT / "data/.new_test_retrieval_cache"
-OUTPUT = ROOT / "data/new_test_top5.csv"
+CACHE = ROOT / "data/technical/.new_test_retrieval_cache"
+OUTPUT = ROOT / "data/technical/new_test_top5.csv"
 
 
 def load_rgb(path: Path, pad: tuple[int, int, int], *, alpha_crop: bool) -> np.ndarray:

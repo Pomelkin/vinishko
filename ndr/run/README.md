@@ -30,12 +30,12 @@ python ndr/run/run.py `
 
 Источники истины:
 
-- запросы — все файлы из `data/test/`: каталожные slug с подтверждёнными near-duplicates
+- запросы — архивный размеченный набор из `data/legacy/test/`: каталожные slug с подтверждёнными near-duplicates
   и сопоставленные `not_found_*`;
 - каталожные пары — только `data/near_duplicates/all_candidates.csv`;
 - пары для отсутствующих в Каталоге вин — только
   `data/near_duplicates/not_found_candidates.csv`;
-- карточки — только `data/strapi/catalog_dataset.csv`;
+- карточки — технический нормализованный источник `data/technical/strapi/catalog_dataset.csv`;
 - группа — полная связная компонента подтверждённых пар.
 
 Сгенерированный набор лежит в `ndr/dataset/`. Одноэлементные каталожные группы и

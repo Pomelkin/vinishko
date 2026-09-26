@@ -20,9 +20,9 @@ REGISTRY_PATH = REPO / "data" / "near_duplicates" / "all_candidates.csv"
 NOT_FOUND_REGISTRY_PATH = (
     REPO / "data" / "near_duplicates" / "not_found_candidates.csv"
 )
-CATALOG_PATH = REPO / "data" / "strapi" / "catalog_dataset.csv"
-TEST_PATH = REPO / "data" / "test"
-MEDIA_PATH = REPO / "data" / "strapi" / "img"
+CATALOG_PATH = REPO / "data" / "technical" / "strapi" / "catalog_dataset.csv"
+TEST_PATH = REPO / "data" / "legacy" / "test"
+MEDIA_PATH = REPO / "data" / "technical" / "strapi" / "img"
 GALLERY_PATH = REPO / "data" / "near_duplicates" / "C-visually-close"
 NOT_FOUND_PREFIX = "not_found_"
 NOT_FOUND = "not_found"
@@ -89,7 +89,7 @@ def read_csv(
     """Read a UTF-8 CSV with a real CSV parser."""
     with path.open(encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
-        if expected_fields is not None and tuple(reader.fieldnames or ()) != expected_fields:
+        if expected_fields is not None and tuple((reader.fieldnames or ())[:len(expected_fields)]) != expected_fields:
             raise DatasetError(
                 f"unexpected CSV columns in {relative_path(path)}: {reader.fieldnames}",
             )
@@ -286,7 +286,7 @@ def rendered_dataset() -> tuple[dict[str, str], dict[str, Any]]:
             },
         )
     if not source_queries:
-        raise DatasetError("data/test contains no query files")
+        raise DatasetError("data/legacy/test contains no query files")
 
     included: list[dict[str, Any]] = []
     excluded: list[dict[str, Any]] = []

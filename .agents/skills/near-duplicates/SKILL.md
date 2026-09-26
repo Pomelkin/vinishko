@@ -17,7 +17,7 @@ Do not count any of these as near-duplicates:
 
 ## Authoritative project state
 
-- Allowed slugs come only from `data/strapi/catalog_dataset.csv`, column `Slug`, with exact
+- Allowed slugs come only from `data/catalog/catalog.csv`, column `Slug`, with exact
   string equality. The file currently contains 2103 unique slugs.
 - `data/near_duplicates/all_candidates.csv` is the aggregate registry despite its legacy
   filename. It contains 2097 reviewed rows with
@@ -40,7 +40,7 @@ Do not count any of these as near-duplicates:
   reviewed. `reviewed_candidates.csv` contains all 3651 post-review verdicts with evidence.
   There are 43 `needs_review` identity ambiguities and 11 `needs_correct_reference` cases;
   neither class is included in the confirmed registry.
-- `data/strapi/image_mismatch_reviews.csv` records two accepted-by-name but wrong-product
+- `data/technical/strapi/image_mismatch_reviews.csv` records two accepted-by-name but wrong-product
   images now excluded by source SHA-256. The Catalog has 2055 accepted reference positions.
 
 The broader research in `docs/NEAR_DUPLICATES.md` explains semantic families and aliases.

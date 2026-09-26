@@ -18,7 +18,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_AUDIT = REPO / "data/near_duplicates/full_dump_semantic_audit.json"
 DEFAULT_CONFIRMED = REPO / "data/near_duplicates/all_candidates.csv"
-DEFAULT_CATALOG = REPO / "data/strapi/catalog_dataset.csv"
+DEFAULT_CATALOG = REPO / "data/technical/strapi/catalog_dataset.csv"
 DEFAULT_OUTPUT = REPO / "data/near_duplicates/review_queue.csv"
 
 FIELDS = (

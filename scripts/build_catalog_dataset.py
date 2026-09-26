@@ -10,12 +10,12 @@ The pipeline is intentionally conservative about images:
    owner confirmed in ``image_collision_reviews.json``; without a review all
    references in that conflict are excluded.
 5. exclude individually reviewed wrong-product images by exact SHA-256 from
-   ``data/strapi/image_mismatch_reviews.csv``.
+   ``data/technical/strapi/image_mismatch_reviews.csv``.
 
 This is a general collision gate, not a list of filename substitutions.  It
 also works on a fresh raw Strapi dump and on the already renamed media folder.
 
-By default the script writes ``data/strapi/catalog_dataset.csv`` and a JSON
+By default the script writes ``data/technical/strapi/catalog_dataset.csv`` and a JSON
 audit next to it.  The original ``strapi_output0709.csv`` is opened read-only.
 
     python scripts/build_catalog_dataset.py
@@ -38,13 +38,13 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parent.parent
-DEFAULT_INPUT = REPO / "data" / "strapi" / "strapi_output0709.csv"
-DEFAULT_OUTPUT = REPO / "data" / "strapi" / "catalog_dataset.csv"
-DEFAULT_REPORT = REPO / "data" / "strapi" / "catalog_dataset.report.json"
-DEFAULT_IMG_DIR = REPO / "data" / "strapi" / "img"
-DEFAULT_JOURNAL = REPO / "scripts" / "rename_journal.json"
-DEFAULT_REVIEWS = REPO / "scripts" / "image_collision_reviews.json"
-DEFAULT_MISMATCH_REVIEWS = REPO / "data" / "strapi" / "image_mismatch_reviews.csv"
+DEFAULT_INPUT = REPO / "data" / "technical" / "strapi" / "strapi_output0709.csv"
+DEFAULT_OUTPUT = REPO / "data" / "technical" / "strapi" / "catalog_dataset.csv"
+DEFAULT_REPORT = REPO / "data" / "technical" / "strapi" / "catalog_dataset.report.json"
+DEFAULT_IMG_DIR = REPO / "data" / "technical" / "strapi" / "img"
+DEFAULT_JOURNAL = REPO / "data" / "technical" / "rename_journal.json"
+DEFAULT_REVIEWS = REPO / "data" / "technical" / "image_collision_reviews.json"
+DEFAULT_MISMATCH_REVIEWS = REPO / "data" / "technical" / "strapi" / "image_mismatch_reviews.csv"
 
 REQUIRED_COLUMNS = (
     "Название вина",

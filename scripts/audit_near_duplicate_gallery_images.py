@@ -24,7 +24,7 @@ def read_csv(path: Path) -> list[dict[str, str]]:
 
 
 def main() -> int:
-    catalog = {r["Slug"]: r for r in read_csv(ROOT / "data/strapi/catalog_dataset.csv")}
+    catalog = {r["Slug"]: r for r in read_csv(ROOT / "data/technical/strapi/catalog_dataset.csv")}
     registry = read_csv(DATA / "all_candidates.csv")
     folders = {int(p.name.split("_", 1)[0]): p for p in (DATA / "C-visually-close").iterdir() if p.is_dir()}
     bank = nd.ImageBank([])

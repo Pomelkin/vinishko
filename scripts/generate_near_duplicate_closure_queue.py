@@ -35,7 +35,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="report remaining component pairs without rewriting queues")
     args = parser.parse_args()
-    catalog = {r["Slug"]: r for r in read_csv(ROOT / "data/strapi/catalog_dataset.csv")}
+    catalog = {r["Slug"]: r for r in read_csv(ROOT / "data/technical/strapi/catalog_dataset.csv")}
     old = read_csv(ROOT / "data/near_duplicates/all_candidates.csv")
     decisions = [r for path in BATCHES.glob("*_decisions.csv") for r in read_csv(path)]
     legacy_exclusions = {

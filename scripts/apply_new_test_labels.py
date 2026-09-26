@@ -1,4 +1,4 @@
-"""Copy reviewed new_test photos into the same slug-folder layout as data/test."""
+"""Copy reviewed new_test photos into the archived slug-folder test layout."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
-SOURCE = DATA / "new_test"
-MANIFEST = DATA / "new_test_labels.csv"
-DESTINATION = DATA / "new_test_labeled"
+SOURCE = DATA / "legacy" / "new_test"
+MANIFEST = DATA / "technical" / "new_test_labels.csv"
+DESTINATION = DATA / "legacy" / "new_test_labeled"
 
 
 def sha256(path: Path) -> str:
@@ -25,7 +25,7 @@ def sha256(path: Path) -> str:
 
 
 def main() -> None:
-    with (DATA / "strapi/catalog_dataset.csv").open(encoding="utf-8-sig", newline="") as stream:
+    with (DATA / "technical/strapi/catalog_dataset.csv").open(encoding="utf-8-sig", newline="") as stream:
         allowed_slugs = {row["Slug"] for row in csv.DictReader(stream)}
     with MANIFEST.open(encoding="utf-8-sig", newline="") as stream:
         labels = list(csv.DictReader(stream))

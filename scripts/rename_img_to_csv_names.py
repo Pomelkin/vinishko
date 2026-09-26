@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Переименовывает файлы в data/strapi/img/ в исходные имена из колонки
+"""Переименовывает файлы в data/technical/strapi/img/ в исходные имена из колонки
 «Название фото» дампа Strapi — in-place.
 
 Правило ровно одно, обратное к тому, как Strapi формирует `hash` при загрузке:
@@ -23,7 +23,7 @@
     python3 scripts/rename_img_to_csv_names.py                 # что будет сделано
     python3 scripts/rename_img_to_csv_names.py --check         # проверить идемпотентность
     python3 scripts/rename_img_to_csv_names.py --apply         # переименовать
-    python3 scripts/rename_img_to_csv_names.py --revert scripts/rename_journal.json
+    python3 scripts/rename_img_to_csv_names.py --revert data/technical/rename_journal.json
 """
 
 from __future__ import annotations
@@ -39,9 +39,9 @@ from collections import defaultdict
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_CSV = REPO_ROOT / "data" / "strapi" / "strapi_output0709.csv"
-DEFAULT_IMG_DIR = REPO_ROOT / "data" / "strapi" / "img"
-DEFAULT_JOURNAL = REPO_ROOT / "scripts" / "rename_journal.json"
+DEFAULT_CSV = REPO_ROOT / "data" / "technical" / "strapi" / "strapi_output0709.csv"
+DEFAULT_IMG_DIR = REPO_ROOT / "data" / "technical" / "strapi" / "img"
+DEFAULT_JOURNAL = REPO_ROOT / "data" / "technical" / "rename_journal.json"
 
 PHOTO_COLUMN = "Название фото"
 

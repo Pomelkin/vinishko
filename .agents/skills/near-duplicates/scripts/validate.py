@@ -21,7 +21,7 @@ PRODUCT_PNG = re.compile(r"^\d+_.+\.png$")
 def find_repo(start: Path) -> Path:
     for path in (start, *start.parents):
         if (path / "AGENTS.md").is_file() and (
-            path / "data/strapi/catalog_dataset.csv"
+            path / "data/technical/strapi/catalog_dataset.csv"
         ).is_file():
             return path
     raise RuntimeError("repository root not found")
@@ -34,7 +34,7 @@ def read_csv(path: Path) -> list[dict[str, str]]:
 
 def validate(repo: Path) -> list[str]:
     errors: list[str] = []
-    catalog_path = repo / "data/strapi/catalog_dataset.csv"
+    catalog_path = repo / "data/technical/strapi/catalog_dataset.csv"
     registry_path = repo / "data/near_duplicates/all_candidates.csv"
     gallery_path = repo / "data/near_duplicates/C-visually-close"
 

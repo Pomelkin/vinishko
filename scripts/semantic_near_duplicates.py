@@ -43,7 +43,7 @@ sys.path.insert(0, str(REPO / "scripts"))
 import near_duplicates as legacy  # noqa: E402
 
 
-IMG_DIR = REPO / "data" / "strapi" / "img"
+IMG_DIR = REPO / "data" / "technical" / "strapi" / "img"
 EDGE_SIZE = (64, 128)
 EDGE_THRESHOLD = 0.84
 EDGE_CACHE = REPO / "dev" / "semantic_edge_descriptors.npz"

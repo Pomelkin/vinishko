@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
-OUT = DATA / ".new_test_retrieval_cache/review"
+OUT = DATA / "technical/.new_test_retrieval_cache/review"
 FONT_PATH = "C:/Windows/Fonts/arial.ttf"
 
 
@@ -26,7 +26,7 @@ def thumbnail(path: Path, width: int, height: int) -> Image.Image:
 
 
 def main() -> None:
-    with (DATA / "new_test_top5.csv").open(encoding="utf-8-sig", newline="") as stream:
+    with (DATA / "technical" / "new_test_top5.csv").open(encoding="utf-8-sig", newline="") as stream:
         rows = list(csv.DictReader(stream))
     by_query: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in rows:
@@ -35,8 +35,8 @@ def main() -> None:
     if any(len(by_query[name]) != 5 for name in queries):
         raise ValueError("Each photo must have exactly five candidates")
 
-    provisional = json.loads((DATA / ".new_test_retrieval_cache/provisional_labels.json").read_text(encoding="utf-8"))
-    all_queries = sorted((DATA / "new_test").glob("*.webp"))
+    provisional = json.loads((DATA / "technical/.new_test_retrieval_cache/provisional_labels.json").read_text(encoding="utf-8"))
+    all_queries = sorted((DATA / "legacy" / "new_test").glob("*.webp"))
     provisional_by_name = {path.name: provisional[str(index)] for index, path in enumerate(all_queries)}
     if set(queries) != set(provisional_by_name):
         raise ValueError("Top-five and provisional query sets differ")
@@ -54,12 +54,12 @@ def main() -> None:
                 x0, y0 = col * cell_w, local_row * row_h
                 draw.rectangle((x0, y0, x0 + cell_w - 1, y0 + row_h - 1), outline="#dddddd", width=1)
                 if col == 0:
-                    image_path = DATA / "new_test" / query_name
+                    image_path = DATA / "legacy" / "new_test" / query_name
                     title = f"{page_start + local_row:03d} {query_name[:18]}"
                     detail_lines = ["query", provisional_by_name[query_name][:31], provisional_by_name[query_name][31:62]]
                 else:
                     row = items[col - 1]
-                    image_path = DATA / "strapi/img" / row["catalog_image"]
+                    image_path = DATA / "technical/strapi/img" / row["catalog_image"]
                     title = f"#{col} cos {float(row['cosine_similarity']):.3f}"
                     detail_lines = [row["slug"][:31], row["slug"][31:62], row["wine_name"][:31], f"{row['vintage']} {row['sugar']}".strip()]
                 draw.text((x0 + 5, y0 + 3), title, font=header_font, fill="black")

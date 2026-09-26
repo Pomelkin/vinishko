@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 ROOT = Path(__file__).resolve().parent.parent
-IMAGE_DIR = ROOT / "data" / "strapi" / "img"
+IMAGE_DIR = ROOT / "data" / "technical" / "strapi" / "img"
 TILE_WIDTH = 480
 IMAGE_HEIGHT = 510
 HEADER_HEIGHT = 92

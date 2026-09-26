@@ -26,9 +26,9 @@ import unicodedata
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-CSV_PATH = REPO / "data" / "strapi" / "strapi_output0709.csv"
-IMG_DIR = REPO / "data" / "strapi" / "img"
-JOURNAL = REPO / "scripts" / "rename_journal.json"
+CSV_PATH = REPO / "data" / "technical" / "strapi" / "strapi_output0709.csv"
+IMG_DIR = REPO / "data" / "technical" / "strapi" / "img"
+JOURNAL = REPO / "data" / "technical" / "rename_journal.json"
 EVAL_DIR = REPO / "data" / "eval"
 
 HEX_SUFFIX = re.compile(r"_[0-9a-f]{10}$")

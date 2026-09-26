@@ -15,7 +15,7 @@ card. Treat `ai_somelier/docs/REQUIREMENTS.md` as the product requirements.
   the system prompt once when the chat is created.
 - Do not retrieve or inject new expert blocks based on later user messages, dishes, occasions,
   preferences, top-n candidates, or other wines.
-- Read wine data from `data/strapi/catalog_dataset.csv` with a real CSV parser.
+- Read wine data from `data/catalog/catalog.csv` with a real CSV parser.
 - Preserve unknowns: `Игристое = не определено` does not prove a still wine, and an empty
   positive flag does not prove a negative value.
 

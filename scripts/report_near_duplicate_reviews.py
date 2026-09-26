@@ -26,7 +26,7 @@ def pair(row: dict[str, str]) -> tuple[str, str]:
 def report() -> dict[str, object]:
     registry = read_csv(DATA / "all_candidates.csv")
     reviews = read_csv(DATA / "reviewed_candidates.csv")
-    catalog = read_csv(ROOT / "data/strapi/catalog_dataset.csv")
+    catalog = read_csv(ROOT / "data/technical/strapi/catalog_dataset.csv")
     edges = [pair(row) for row in registry]
     if len(set(edges)) != len(edges):
         raise ValueError("duplicate confirmed pair")

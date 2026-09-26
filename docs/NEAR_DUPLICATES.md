@@ -49,7 +49,7 @@
 Автоматическая метка `different_wines` ни одну из них не подтверждает. Отдельно
 исключены два неверно привязанных одиночных Эталона — красный Fiori di Mare и
 LETO Cabernet Franc Reserve 2020. Решения и точные SHA-256 находятся в
-`data/strapi/image_mismatch_reviews.csv`; исходные файлы Медиа-дампа сохранены.
+`data/technical/strapi/image_mismatch_reviews.csv`; исходные файлы Медиа-дампа сохранены.
 
 ## Границы полноты
 

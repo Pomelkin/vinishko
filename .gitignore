@@ -149,6 +149,7 @@ activemq-data/
 
 # Environments
 .env
+.upload_s3_credentials.json
 .envrc
 .venv
 env/
@@ -218,7 +219,24 @@ __marimo__/
 .streamlit/secrets.toml
 
 img/
+# Keep delivery manifests and small provenance files in Git; images and raw dumps live outside it.
 data/
+!data/
+data/*
+!data/README.md
+!data/catalog/
+data/catalog/*
+!data/catalog/catalog.csv
+!data/test/
+data/test/*
+!data/test/test.csv
+!data/technical/
+data/technical/*
+!data/technical/strapi/
+data/technical/strapi/*
+!data/technical/strapi/catalog_dataset.csv
+!data/technical/rename_journal.json
+!data/technical/image_collision_reviews.json
 dev/
 
 .DS_Store
@@ -230,3 +248,5 @@ candidates/results
 legacy/
 
 vis_searcher/
+
+upload*.ps1

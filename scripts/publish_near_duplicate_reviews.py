@@ -25,7 +25,7 @@ import near_duplicates as nd
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "near_duplicates"
-IMG = ROOT / "data" / "strapi" / "img"
+IMG = ROOT / "data" / "technical" / "strapi" / "img"
 REGISTRY = DATA / "all_candidates.csv"
 GALLERY = DATA / "C-visually-close"
 DECISIONS = DATA / "reviewed_candidates.csv"
@@ -54,7 +54,7 @@ def pair_key(row: dict[str, str]) -> frozenset[str]:
 
 
 def load_catalog() -> dict[str, dict[str, str]]:
-    rows = read_csv(ROOT / "data" / "strapi" / "catalog_dataset.csv")
+    rows = read_csv(ROOT / "data" / "technical" / "strapi" / "catalog_dataset.csv")
     return {row["Slug"]: row for row in rows}
 
 

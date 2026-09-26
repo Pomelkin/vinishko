@@ -58,7 +58,7 @@ COLOR_TOKENS = ["krasnoe", "beloe", "rozovoe", "oranzhevoe"]
 
 def load_catalog_with_images() -> tuple[dict[str, dict], dict[str, list[str]]]:
     """Use only collision-reviewed references from the normalized Catalog."""
-    catalog_path = REPO / "data" / "strapi" / "catalog_dataset.csv"
+    catalog_path = REPO / "data" / "technical" / "strapi" / "catalog_dataset.csv"
     with catalog_path.open(newline="", encoding="utf-8") as stream:
         catalog = {row["Slug"]: row for row in csv.DictReader(stream)}
     slug_files: dict[str, list[str]] = {}
