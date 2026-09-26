@@ -38,7 +38,7 @@ class PublicMessage(StrictModel):
     role: Literal["user", "assistant"]
     content: str
     suggestions: list[str] | None = Field(
-        description="Ровно две подсказки только у первого ответа; затем null.",
+        description="Подсказки первого ответа, если модель их вернула; в следующих ответах null.",
     )
 
 

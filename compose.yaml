@@ -2,7 +2,7 @@ services:
   sommelier:
     build: .
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8805:8805"
     environment:
       OPENROUTER_API_KEY_FILE: /run/secrets/openrouter_api_key
       SOMMELIER_DATA_DIR: /data/sessions

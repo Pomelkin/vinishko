@@ -87,8 +87,6 @@ class SommelierService:
                 "history": [],
             })
             assistant = self._assistant(result)
-            if assistant.suggestions is None or len(assistant.suggestions) != 2:
-                raise HTTPException(status_code=502, detail="Sommelier returned an invalid response")
             record = SessionRecord(
                 session_id=session_id,
                 wine=request.wine,
@@ -109,8 +107,6 @@ class SommelierService:
                 "history": record.provider_history(request.content),
             })
             assistant = self._assistant(result)
-            if assistant.suggestions is not None:
-                raise HTTPException(status_code=502, detail="Sommelier returned an invalid response")
             record.messages.extend((
                 StoredMessage(role="user", content=request.content, suggestions=None),
                 assistant,

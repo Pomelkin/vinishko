@@ -40,8 +40,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Проверка работающего API сомелье по HTTP")
     parser.add_argument(
         "--base-url",
-        default=os.environ.get("SOMMELIER_BASE_URL", "http://127.0.0.1:8000"),
-        help="Адрес сервиса (по умолчанию http://127.0.0.1:8000)",
+        default=os.environ.get("SOMMELIER_BASE_URL", "http://127.0.0.1:8805"),
+        help="Адрес сервиса (по умолчанию http://127.0.0.1:8805)",
     )
     parser.add_argument("--question", default="С чем лучше сочетать это вино?")
     parser.add_argument("--keep", action="store_true", help="Оставить созданную сессию после проверки")
@@ -96,7 +96,6 @@ def main() -> None:
             opened = True
             assert opening["session_id"] == session_id
             assert opening["message"]["role"] == "assistant"
-            assert len(opening["message"]["suggestions"]) == 2
             print(json.dumps(opening, ensure_ascii=False, indent=2))
 
             reply = send(client, "POST", f"{path}/messages", json={"content": args.question})

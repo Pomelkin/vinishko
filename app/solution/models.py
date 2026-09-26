@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Mapping
 
 from pydantic import BaseModel
 from pydantic import ConfigDict
-from pydantic import Field
 from pydantic import ValidationError
 from pydantic import model_validator
-
-
-FIRST_TURN_CLOSING = "Чем я могу вам помочь?"
 
 
 class OutputContractError(ValueError):
@@ -19,7 +16,7 @@ class OutputContractError(ValueError):
 
 
 class FirstTurnOutput(BaseModel):
-    """Mobile-sized opening answer and exactly two generative suggestions."""
+    """Structured opening answer from the provider."""
 
     model_config = ConfigDict(
         extra="forbid",
@@ -28,22 +25,13 @@ class FirstTurnOutput(BaseModel):
     )
 
     content: str
-    suggestions: list[str] = Field(min_length=2, max_length=2)
+    suggestions: list[str] | None
 
     @model_validator(mode="after")
-    def enforce_copy_contract(self) -> FirstTurnOutput:
-        """Check requirements that JSON Schema cannot express cleanly."""
+    def ensure_content(self) -> FirstTurnOutput:
+        """Reject an empty assistant message."""
         if not self.content.strip():
             raise ValueError("content must not be empty")
-        self.suggestions = [
-            suggestion.rstrip(" \t\r\n?？") for suggestion in self.suggestions
-        ]
-        if any(not suggestion for suggestion in self.suggestions):
-            raise ValueError("suggestions must not be empty")
-        if not self.content.endswith("\n" + FIRST_TURN_CLOSING):
-            raise ValueError(
-                f"content must end with {FIRST_TURN_CLOSING!r} on a separate line",
-            )
         return self
 
 
@@ -60,7 +48,15 @@ def response_format() -> dict[str, Any]:
 
 
 def validate_first_turn(payload: Any) -> dict[str, Any]:
-    """Validate a decoded first generation with the provider-visible model."""
+    """Validate the message and keep usable suggestions without judging their copy."""
+    if isinstance(payload, Mapping):
+        suggestions = payload.get("suggestions")
+        payload = {
+            "content": payload.get("content"),
+            "suggestions": suggestions
+            if isinstance(suggestions, list) and all(isinstance(item, str) for item in suggestions)
+            else None,
+        }
     try:
         validated = FirstTurnOutput.model_validate(payload)
     except ValidationError as error:

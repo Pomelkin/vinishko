@@ -11,5 +11,5 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
 
-EXPOSE 8000
-CMD ["/srv/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+EXPOSE 8805
+CMD ["/srv/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8805", "--workers", "1"]

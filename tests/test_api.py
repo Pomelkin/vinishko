@@ -22,13 +22,14 @@ from app.storage import JsonSessionStore
 SESSION_ID = "01993959-0000-7000-8000-000000000001"
 WINE = {"Название вина": "Кокур", "Slug": "kokur", "Крепость, %": "12"}
 CANDIDATE = {"Название вина": "Другой кокур", "Slug": "other-kokur"}
-FIRST_CONTENT = "Кокур — белое вино.\nЧем я могу помочь?"
+FIRST_CONTENT = "Кокур — белое вино.\nЧем я могу вам помочь?"
 
 
 class FakeEngine:
     def __init__(self) -> None:
         self.calls: list[dict] = []
         self.fail = False
+        self.first_suggestions = ["Как подавать", "Какой вкус"]
 
     def __call__(self, request: dict) -> dict:
         self.calls.append(request)
@@ -38,12 +39,12 @@ class FakeEngine:
             return {
                 "_status": "ok",
                 "content": FIRST_CONTENT,
-                "suggestions": ["Как подавать", "Какой вкус"],
+                "suggestions": self.first_suggestions,
                 "message": {
                     "role": "assistant",
                     "content": json.dumps({
                         "content": FIRST_CONTENT,
-                        "suggestions": ["Как подавать", "Какой вкус"],
+                        "suggestions": self.first_suggestions,
                     }, ensure_ascii=False),
                     "reasoning": "internal provider context",
                     "reasoning_details": [{"type": "reasoning.text", "text": "raw details"}],
@@ -131,6 +132,12 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.client.delete(f"/v1/sessions/{SESSION_ID}")).status_code, 204)
         self.assertEqual((await self.client.get(f"/v1/sessions/{SESSION_ID}")).status_code, 404)
         self.assertEqual((await self.client.delete(f"/v1/sessions/{SESSION_ID}")).status_code, 404)
+
+    async def test_open_accepts_one_suggestion(self) -> None:
+        self.engine.first_suggestions = ["Как подавать?"]
+        opening = await self.open()
+        self.assertEqual(opening.status_code, 201, opening.text)
+        self.assertEqual(opening.json()["message"]["suggestions"], ["Как подавать?"])
 
     async def test_provider_failure_does_not_modify_session(self) -> None:
         self.engine.fail = True

@@ -16,6 +16,14 @@ from app.solution import prepare_request, respond
 class FakeHTTPResponse:
     status = 200
 
+    def __init__(
+        self,
+        content: str = "Кокур — белое вино.\nЧем я могу вам помочь?",
+        suggestions: list[str] | None = None,
+    ) -> None:
+        self.content = content
+        self.suggestions = suggestions if suggestions is not None else ["Что во вкусе?", "Как подавать?"]
+
     def __enter__(self):
         return self
 
@@ -24,8 +32,8 @@ class FakeHTTPResponse:
 
     def read(self):
         first_content = json.dumps({
-            "content": "Кокур — белое вино.\nЧем я могу вам помочь?",
-            "suggestions": ["Что во вкусе?", "Как подавать?"],
+            "content": self.content,
+            "suggestions": self.suggestions,
         }, ensure_ascii=False)
         return json.dumps({"choices": [{"message": {"content": first_content}}]}, ensure_ascii=False).encode()
 
@@ -48,6 +56,21 @@ class SolutionBundleTests(unittest.TestCase):
         self.assertEqual(send.call_args.args[0].get_header("Authorization"), "Bearer file-secret")
         self.assertNotIn("file-secret", json.dumps(result["_trace"]))
         self.assertNotIn("env-secret", json.dumps(result["_trace"]))
+
+    def test_alternative_closing_is_accepted_without_retry(self) -> None:
+        with (
+            patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}),
+            patch(
+                "app.solution.sommelier.urllib.request.urlopen",
+                return_value=FakeHTTPResponse("Кокур — белое вино.\nХотите узнать о подаче?", ["Как подавать?"]),
+            ) as send,
+        ):
+            result = respond({"wine": {"Название вина": "Кокур"}, "candidates": [], "history": []})
+
+        self.assertEqual(result["_status"], "ok")
+        self.assertEqual(send.call_count, 1)
+        self.assertEqual(result["content"], "Кокур — белое вино.\nХотите узнать о подаче?")
+        self.assertEqual(result["suggestions"], ["Как подавать?"])
 
     def test_openapi_snapshot_is_current(self) -> None:
         snapshot = Path(__file__).resolve().parent.parent / "docs" / "openapi.json"
