@@ -98,6 +98,8 @@ def load_config(path: Path | None = None) -> VisSearcherConfig:
         cfg.qdrant.path = resolve_path(cfg.qdrant.path, base)
     if isinstance(cfg.images, LocalImagesConfig):
         cfg.images.dir = resolve_path(cfg.images.dir, base)
+    if resolve_path(Path(cfg.model), base).is_dir():  # локальная директория экспорта вместо репозитория HF: путь от файла конфига
+        cfg.model = str(resolve_path(Path(cfg.model), base))
     return cfg
 
 

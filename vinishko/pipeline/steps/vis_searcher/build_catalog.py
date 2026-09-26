@@ -100,8 +100,8 @@ def read_rows(
     photo_column: str,
     group_column: str,
     limit: int | None,
-) -> tuple[list[Row], int, bool]:
-    """Строки с фото, сколько строк без фото пропущено и была ли колонка групп; без неё каждая позиция — своя группа."""
+) -> tuple[list[Row], list[str], bool]:
+    """Строки с фото, slug строк без фото (они в коллекцию не идут) и была ли колонка групп; без неё каждая позиция — своя группа."""
     with path.open(encoding="utf-8-sig", newline="") as f:  # utf-8-sig: у выгрузок бывает BOM, иначе он прилипает к имени первой колонки
         reader = csv.DictReader(f)
         columns = reader.fieldnames or []
@@ -111,13 +111,13 @@ def read_rows(
                     f"в {path.name} нет колонки {column!r}; есть {columns[:6]}…"
                 )
         has_group = group_column in columns
-        rows, skipped = [], 0
+        rows, without = [], []
         for rec in reader:
             slug, photo = rec[slug_column].strip(), (rec[photo_column] or "").strip()
             if not slug:
                 raise ValueError(f"{path.name}: строка с пустым {slug_column}")
             if not photo:
-                skipped += 1
+                without.append(slug)
                 continue
             group = (rec.get(group_column) or "").strip() if has_group else ""
             fields = {
@@ -131,7 +131,7 @@ def read_rows(
     )
     if duplicates:
         raise ValueError(f"{path.name}: slug повторяются, например {duplicates[:5]}")
-    return rows[:limit], skipped, has_group
+    return rows[:limit], without, has_group
 
 
 def check_photos(rows: list[Row], images: Path) -> None:
@@ -156,18 +156,13 @@ def ensure_absent(client: QdrantClient, name: str) -> None:
     client.delete_collection(name)
 
 
-def single_crop(norm: Normalizer, path: Path) -> BottleCrop:
-    """Единственная годная бутылка на фото каталога; иначе ошибка с причинами отказов."""
-    items = norm(open_image(path))
+def single_crop(norm: Normalizer, images: Path, row: Row) -> BottleCrop:
+    """Единственная годная бутылка на фото каталога; иначе ошибка с именем фото, slug и причинами отказов."""
+    items = norm(open_image(images / row.photo))
     crops = [item for item in items if isinstance(item, BottleCrop)]
     if len(crops) != 1:
-        reasons = ", ".join(
-            item.reason for item in items if not isinstance(item, BottleCrop)
-        )
-        raise ValueError(
-            f"годных бутылок {len(crops)}, нужна ровно одна"
-            + (f"; отказы: {reasons}" if reasons else "")
-        )
+        reasons = ", ".join(item.reason for item in items if not isinstance(item, BottleCrop))
+        raise ValueError(f"{row.photo} ({row.slug}): годных бутылок {len(crops)}, нужна ровно одна" + (f"; отказы: {reasons}" if reasons else ""))
     return crops[0]
 
 
@@ -236,38 +231,33 @@ class Build:
         ]
 
 
-def build(
-    rows: list[Row],
-    images: Path,
-    norm: Normalizer,
-    encoder: Encoder,
-    store: ImageStore,
-    fmt: str,
-    quality: int,
-    skip_failures: bool,
-) -> Build:
-    """Фото → кроп → хранилище и вектор, пачками по батчу энкодера."""
+def build(rows: list[Row], images: Path, norm: Normalizer, encoder: Encoder, store: ImageStore, fmt: str, quality: int, skip_failures: bool) -> Build:
+    """Фото → кроп → хранилище и вектор, пачками по батчу энкодера.
+
+    Без skip_failures первая же ошибка останавливает сборку с именем фото и slug в тексте; с ним фото пропускается, а причина
+    попадает в предупреждение и в отчёт.
+    """
     state = Build({}, {}, [])
     with progress() as bar:
         task = bar.add_task("каталог", total=len(rows))
         for batch in batched(rows, encoder.max_batch):
             crops: list[tuple[Row, BottleCrop]] = []
             for row in batch:
-                if skip_failures:
-                    try:
-                        crops.append((row, single_crop(norm, images / row.photo)))
-                    except Exception as error:  # одна битая картинка не должна ронять сборку на час, отчёт о ней будет в конце
-                        state.failures.append(Failure(row.slug, row.photo, repr(error)))
-                else:
-                    crops.append((row, single_crop(norm, images / row.photo)))
+                if not skip_failures:
+                    crops.append((row, single_crop(norm, images, row)))
+                    continue
+                try:
+                    crops.append((row, single_crop(norm, images, row)))
+                except ValueError as error:  # своя проверка: в тексте уже фото и slug
+                    state.failures.append(Failure(row.slug, row.photo, str(error)))
+                except Exception as error:  # битая картинка не должна ронять сборку на час, отчёт о ней будет в конце
+                    state.failures.append(Failure(row.slug, row.photo, f"{row.photo} ({row.slug}): {error!r}"))
             vectors = encoder([crop.crop for _, crop in crops])
             for (row, crop), vector in zip(crops, vectors, strict=True):
                 name = f"{row.slug}.{fmt}"
                 store.put(name, crop.crop, fmt, quality)
                 state.vectors[row.slug] = vector
-                state.payloads[row.slug] = make_payload(
-                    row, crop, name, encoder.files, encoder.device
-                )
+                state.payloads[row.slug] = make_payload(row, crop, name, encoder.files, encoder.device)
             bar.update(task, advance=len(batch))
     return state
 
@@ -298,7 +288,7 @@ def report(
         table.add_row(name, str(value))
     console.print(table)
     for failure in state.failures[:20]:
-        logger.warning(f"не попало: {failure.slug}: {failure.photo}: {failure.reason}")
+        logger.warning(f"не попало: {failure.reason}")
     if len(state.failures) > 20:
         logger.warning(f"… и ещё {len(state.failures) - 20} неудач, полный список в --report")
     if path is not None:
@@ -355,7 +345,11 @@ def main(
     Дешёвые проверки идут до загрузки моделей: CSV и наличие всех фото, qdrant и отсутствие коллекции, доступность хранилища.
     """
     cfg = load_config(config_path)
-    rows, skipped, has_group = read_rows(csv_path, slug_column, photo_column, group_column, limit)
+    rows, without_photo, has_group = read_rows(csv_path, slug_column, photo_column, group_column, limit)
+    logger.info(
+        f"{csv_path.name}: {len(rows)} строк с фото пойдут в коллекцию, {len(without_photo)} без фото пропускаются"
+        + (f", например {without_photo[:3]}" if without_photo else "")
+    )
     check_photos(rows, images)
     device = resolve_device(cfg.device)
     files = fetch_model(cfg.model, device.precision, cfg.revision)
@@ -366,7 +360,7 @@ def main(
     store.ensure_available()
     norm = Normalizer(load_norm_config(norm_config, list(overrides)), norm_config.resolve().parent)
     logger.info(
-        f"конфиг {config_path}: модель {cfg.model}, коллекция {collection}; каталог: {len(rows)} строк с фото, {skipped} без фото; "
+        f"конфиг {config_path}: модель {cfg.model}, коллекция {collection}; каталог: {len(rows)} строк с фото; "
         f"группы: {'колонка ' + group_column if has_group else 'нет, позиция = группа'}; кропы: {store.description}; нормализация на {norm.device}"
     )
     encoder = Encoder(files, device, cfg.batch_size, cfg.cache_dir)
@@ -374,7 +368,7 @@ def main(
     create_collection(client, collection, encoder.embed_dim)
     state = build(rows, images, norm, encoder, store, fmt, quality, skip_failures=on_failure == "skip")
     upsert(client, collection, state.points())
-    report(state, rows, skipped, has_group, collection, report_path)
+    report(state, rows, len(without_photo), has_group, collection, report_path)
 
 
 if __name__ == "__main__":

@@ -28,6 +28,19 @@ float32 в 0…255, нормировка ImageNet внутри графа.
 engine собирается при первом запуске несколько минут и кэшируется в `cache_dir/engines/<репозиторий>/<ревизия>/`. На CPU —
 OpenVINO во float32 (пакет `openvino`, группа `cpu-inference`), около секунды на картинку.
 
+## Другая модель
+
+Модель поиска меняется строкой `model` в `config.yaml`: репозиторий Hugging Face либо локальная директория с тем же набором файлов
+(`config.json` с `embed_dim`, `preprocess.json`, `model.onnx`, `model.bf16.onnx`). Контракт один: вход float32 RGB NCHW 0…255, нормировка
+внутри графа, выход L2-нормированные эмбеддинги; как готовить вход, говорит `preprocess.json`: `input_size`, `resize` (`pad` — вписать
+с полями цвета `pad_color`, `squash` — растянуть без полей), `mean` и `std` только для справки. Коллекция помнит модель и ревизию,
+поэтому после смены модели её надо пересобрать.
+
+Экспорт визуальной башни TULIP из форка open_clip в этот формат: `python -m scripts.export_tulip -o weights/tulip_so400m_14_384` (чекпоинт
+`weights/tulip-so400m-14-384.ckpt`, вход 384×384, `resize: squash`, как в замерах `scripts/bench_tulip`). Локальные экспорты лежат в `weights/`:
+`dinov3_vitl16_512`, `dinov3_vitl16_1024`, `tulip_so400m_14_384`; в `model` можно указать репозиторий HF либо путь к такой директории, относительный
+путь считается от файла конфига, например `../../../../weights/tulip_so400m_14_384`.
+
 ## Коллекция
 
 ```bash
@@ -63,3 +76,16 @@ python -m vinishko.pipeline.steps.vis_searcher.build_catalog \
 
 `debug_path` — директория для разбора глазами: на каждый вызов поддиректория с меткой времени, в ней `q<N>_query_<uuid>.jpg` — кроп
 запроса, `q<N>_<ранг>_<slug>_<cos>.jpg` — кандидаты, в режиме групп `q<N>_<ранг>_<группа>_<slug>_<cos>[_bygroup].jpg`, и `results.json`.
+
+## Оценка на тесте
+
+```bash
+python -m vinishko.pipeline.steps.vis_searcher.evaluate --test-dir datasets/hack-vine/test        # test.csv: image_filename, slug
+```
+
+Каждое фото проходит нормализацию и поиск по `config.yaml`; ответ — кандидаты бутылки с лучшим скором отбора. По фото, чей slug есть
+в коллекции, считаются recall@1/3/5 и `group_recall` (slug состоит в группе какого-то кандидата); отдельно `recall@k_any_bottle` по всем
+бутылкам фото, для полок. Пустой slug значит, что ответа нет: `correct_reject` — поиск отказал, `false_accept` — выдал кандидатов;
+`false_reject` — ответ был, а поиск отказал; `no_bottle` — нормализация не нашла годной бутылки. В отчёт идут квантили косинуса top-1
+для попаданий, промахов и ложных принятий — по ним калибруются пороги. Результат в `reports/vis_searcher/<время>/`: `report.json`,
+`per_image.csv` и дампы поиска по промахам (`--dump all|none`).
