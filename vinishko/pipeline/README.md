@@ -1,5 +1,35 @@
 # Пайплайн
 
+## Быстрый запуск
+
+Команды выполняются из корня репозитория. Для полного прогона скопируйте `.env.example` в `.env` и впишите ключ OpenRouter (ключ Qdrant — если сервер его требует):
+
+```powershell
+Copy-Item .env.example .env
+```
+
+```dotenv
+OPENROUTER_API_KEY=ваш_ключ
+# QDRANT_API_KEY=ключ_если_сервер_его_требует
+```
+
+Первые две фотографии из `datasets/local/test`:
+
+```powershell
+# Только нормализация — ключи не нужны
+.\.venv\Scripts\python.exe -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs --stage normalization --limit 2
+
+# Нормализация и векторный поиск — нужен доступ к Qdrant
+.\.venv\Scripts\python.exe -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs --stage search --limit 2
+
+# Полный pipeline, включая NDR — OpenRouter вызывается для групп из нескольких SKU
+.\.venv\Scripts\python.exe -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs --stage full --limit 2
+```
+
+`debug.py` автоматически загружает `.env` из корня репозитория; файл исключён из Git. Переменные окружения PowerShell имеют приоритет. Каждый запуск перезаписывает папки выбранных фото в `datasets/local/runs`. `--stage search` повторно выполняет нормализацию; без `--limit` выбираются все фото.
+
+## Как устроено
+
 Оркестратор `vinishko/pipeline/pipeline.py` связывает шаги: нормализация (`steps/normalization`) →
 визуальный поиск (`steps/vis_searcher`) → выбор точного SKU внутри группы (`steps/near_duplicates`, NDR v5). Общие структуры — `structs.py`: `BottleCrop` и `RejectedBottle` от
 нормализации, `Candidate`, `BottleCandidates` и `UnmatchedBottle` от поиска; причины отказов у каждого шага свои, наследник `Reason`.
@@ -18,36 +48,6 @@ result.timings          # секунды на шаг
 Поиск берёт один ближайший вектор из удалённого Qdrant и по его `group_slugs` загружает всю группу. Если в группе одна позиция, она становится ответом без вызова OpenRouter. Для группы из нескольких позиций NDR v5 получает нормализованный кроп запроса, оригинальные эталоны и карточки из локального `catalog.csv`. Он возвращает один slug либо `near_duplicate_not_found`; ошибки вызова и нарушения контракта поднимаются как ошибки пайплайна. `result.search[*].selection` показывает источник решения и наблюдения NDR.
 
 По текущему `steps/vis_searcher/config.yaml` оригинальные эталоны читаются из `datasets/local/catalog/images` по полю `source_image` в Qdrant, а полные карточки — из `datasets/local/catalog/catalog.csv`. S3 для запроса не нужен; `images: null` означает чтение оригиналов вместо кропов коллекции. Копия данных лежит в `datasets/local/catalog` и `datasets/local/test`, эти папки исключены из Git. Модель NDR по умолчанию `deepseek/deepseek-v4.1-flash`; `OPENROUTER_MODEL` её перекрывает. Настройки вызова и prompt-файлы скопированы из `ndr/solutions/v5`.
-
-## Ключи и запуск
-
-Скопируйте `.env.example` в `.env` в корне репозитория и впишите ключ:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-```dotenv
-OPENROUTER_API_KEY=ваш_ключ
-QDRANT_API_KEY=ключ_если_сервер_его_требует
-```
-
-`debug.py` автоматически загружает `.env` из корня репозитория; `.env` исключён из Git. Для `--stage normalization` ключи не нужны. Для `--stage search` нужен только доступ к Qdrant; для `--stage full` OpenRouter вызывается, если в найденной группе больше одного SKU. Можно задать ключи переменными окружения PowerShell; они имеют приоритет над `.env`.
-
-Первые две фотографии из `test.csv`, только нормализация:
-
-```powershell
-.venv/Scripts/python.exe -m vinishko.pipeline.debug datasets/local/test -o datasets/local/runs --stage normalization --limit 2
-```
-
-Те же два фото до векторного поиска или до финального ответа:
-
-```powershell
-.venv/Scripts/python.exe -m vinishko.pipeline.debug datasets/local/test -o datasets/local/runs --stage search --limit 2
-.venv/Scripts/python.exe -m vinishko.pipeline.debug datasets/local/test -o datasets/local/runs --stage full --limit 2
-```
-
-Каждый запуск перезаписывает папки выбранных фото в `datasets/local/runs`. Нормализатор и поиск загружаются один раз на весь выбранный набор. Можно передать один файл или директорию `images` вместо папки датасета. Без `--limit` выбираются все фото.
 
 Пробный запрос по одному фото:
 
