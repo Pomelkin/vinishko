@@ -238,7 +238,7 @@ def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) ->
     click.echo(
         f"размеченных картинок: {len(marked)}, найдено в {images}: {len(todo)}"
         + (
-            f", исключено по --exclude: {sum(1 for n in marked if excl and excl.search(n))}"
+            f", исключено по --exclude: {sum(1 for n in marked if excl and excl.search(n))}"  # ty: ignore[redundant-condition]
             if excl
             else ""
         )
