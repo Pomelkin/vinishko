@@ -13,7 +13,7 @@ from typing import Any
 NO_DATA = "Нет данных"
 MAX_EXPERT_VALUE_CHARACTERS = 500
 TEMPLATE_PATH = (
-    Path(__file__).resolve().parent.parent.parent
+    Path(__file__).resolve().parent.parent
     / "docs"
     / "EXPERT_KNOWLEDGE_TEMPLATE.json"
 )

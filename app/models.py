@@ -12,7 +12,7 @@ CatalogCard = Annotated[
     dict[str, CardValue],
     Field(
         min_length=1,
-        description="Каталожная карточка. Поля, не используемые solution v2, допускаются, но игнорируются моделью.",
+        description="Каталожная карточка. Неиспользуемые поля допускаются, но игнорируются моделью.",
     ),
 ]
 UserText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
@@ -57,7 +57,7 @@ class ErrorResponse(StrictModel):
 
 
 class StoredMessage(PublicMessage):
-    # The raw provider message is required for reasoning continuity in solution v2.
+    # The raw provider message is required for reasoning continuity.
     provider_message: dict[str, object] | None = None
 
     def public(self) -> PublicMessage:

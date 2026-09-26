@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from pydantic import model_validator
 
 
-FIRST_TURN_CLOSING = "Чем я могу помочь?"
+FIRST_TURN_CLOSING = "Чем я могу вам помочь?"
 
 
 class OutputContractError(ValueError):

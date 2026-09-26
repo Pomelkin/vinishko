@@ -1,4 +1,4 @@
-"""Session orchestration around the stateless v2 sommelier."""
+"""Session orchestration around the stateless sommelier."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import HTTPException
 from pydantic import UUID7, ValidationError
 
-from app.solution.v2 import respond
+from app.solution import respond
 from app.models import (
     OpenSessionRequest,
     SessionRecord,

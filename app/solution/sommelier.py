@@ -12,16 +12,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from app.solution.v2.config import SETTINGS
-from app.solution.v2.config import SommelierSettings
-from app.solution.v2.config import settings_with_overrides
-from app.solution.v2.knowledge import NO_DATA
-from app.solution.v2.knowledge import compile_expert_knowledge
-from app.solution.v2.knowledge import load_expert_knowledge
-from app.solution.v2.knowledge import normalize_catalog_card
-from app.solution.v2.models import OutputContractError
-from app.solution.v2.models import response_format
-from app.solution.v2.models import validate_first_turn
+from app.solution.config import SETTINGS
+from app.solution.config import SommelierSettings
+from app.solution.config import settings_with_overrides
+from app.solution.knowledge import NO_DATA
+from app.solution.knowledge import compile_expert_knowledge
+from app.solution.knowledge import load_expert_knowledge
+from app.solution.knowledge import normalize_catalog_card
+from app.solution.models import OutputContractError
+from app.solution.models import response_format
+from app.solution.models import validate_first_turn
 
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
@@ -289,13 +289,12 @@ def respond(request: Mapping[str, Any]) -> dict[str, Any]:  # noqa: C901
         return _failure(
             "request_error",
             f"{type(error).__name__}: {error}",
-            {"pipeline": "ai_sommelier_v2"},
+            {"pipeline": "ai_sommelier"},
         )
 
     endpoint = _endpoint(prepared.settings.api_base)
     trace: dict[str, Any] = {
-        "pipeline": "ai_sommelier_v2",
-        "prompt_version": prepared.settings.prompt_version,
+        "pipeline": "ai_sommelier",
         "prompt_sha256": prepared.prompt_sha256,
         "model": prepared.settings.model,
         "first_turn": prepared.first_turn,

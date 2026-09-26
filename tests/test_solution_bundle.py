@@ -1,4 +1,4 @@
-"""Check that the included v2 package has its required prompt and knowledge files."""
+"""Check that the included solution has its required prompt and knowledge files."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.main import app
-from app.solution.v2 import prepare_request, respond
+from app.solution import prepare_request, respond
 
 
 class FakeHTTPResponse:
@@ -24,7 +24,7 @@ class FakeHTTPResponse:
 
     def read(self):
         first_content = json.dumps({
-            "content": "Кокур — белое вино.\nЧем я могу помочь?",
+            "content": "Кокур — белое вино.\nЧем я могу вам помочь?",
             "suggestions": ["Что во вкусе?", "Как подавать?"],
         }, ensure_ascii=False)
         return json.dumps({"choices": [{"message": {"content": first_content}}]}, ensure_ascii=False).encode()
@@ -40,7 +40,7 @@ class SolutionBundleTests(unittest.TestCase):
                     "OPENROUTER_API_KEY": "env-secret",
                     "OPENROUTER_API_KEY_FILE": str(secret),
                 }),
-                patch("app.solution.v2.sommelier.urllib.request.urlopen", return_value=FakeHTTPResponse()) as send,
+                patch("app.solution.sommelier.urllib.request.urlopen", return_value=FakeHTTPResponse()) as send,
             ):
                 result = respond({"wine": {"Название вина": "Кокур"}, "candidates": [], "history": []})
 

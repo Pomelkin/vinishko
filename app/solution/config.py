@@ -28,7 +28,7 @@ ReasoningEffort = Literal[
 ] | Annotated[int, Field(ge=1, le=100)]
 
 PACKAGE_DIR = Path(__file__).resolve().parent
-APP_DIR = PACKAGE_DIR.parent.parent
+APP_DIR = PACKAGE_DIR.parent
 DEFAULT_KNOWLEDGE_PATH = (
     APP_DIR / "kb" / "EXPERT_KNOWLEDGE.json"
 )
@@ -85,9 +85,8 @@ class SommelierSettings(StrictSettings):
     api_key_env: NonEmptyString = "OPENROUTER_API_KEY"
     http_referer_env: NonEmptyString = "OPENROUTER_SITE_URL"
     app_title_env: NonEmptyString = "OPENROUTER_APP_TITLE"
-    user_agent: NonEmptyString = "vinishko-ai-sommelier/2"
+    user_agent: NonEmptyString = "vinishko-ai-sommelier"
     timeout_seconds: float = Field(default=30.0, gt=0, le=3600)
-    prompt_version: NonEmptyString = "v2"
     expert_knowledge_path: Path = DEFAULT_KNOWLEDGE_PATH
     generation: GenerationSettings = GenerationSettings()
     provider: ProviderSettings = ProviderSettings()
