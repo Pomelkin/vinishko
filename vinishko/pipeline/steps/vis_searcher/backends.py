@@ -68,7 +68,7 @@ def build_engine(
         1 << int(trt.NetworkDefinitionCreationFlag.STRONGLY_TYPED)
     )
     parser = trt.OnnxParser(network, trt_logger)
-    if not parser.parse_from_file(str(onnx)):
+    if not parser.parse(onnx.read_bytes()):
         errors = [parser.get_error(i).desc() for i in range(parser.num_errors)]
         raise RuntimeError(f"TensorRT не разобрал {onnx}: {errors[:3]}")
     config = builder.create_builder_config()
