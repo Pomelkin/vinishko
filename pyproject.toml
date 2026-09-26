@@ -20,20 +20,23 @@ dependencies = [
     "kostyl-toolkit[ml]>=0.2.6",
     "open-clip-torch",
     "torchvision==0.25.0",
+    "numba>=0.67.0",
+    "onnxruntime-gpu>=1.30.0",
+    "onnxscript>=0.7.2",
+    "qdrant-client>=1.19.1",
+    "boto3>=1.43.75",
+    "httpx>=0.28.1",
+    "platformdirs>=4.11.8",
+    "pydantic>=2.13.5",
 ]
 [dependency-groups]
+cpu-inference = [
+    "openvino>=2026.4.0",
+]
 dev = [
     "ipykernel>=7.3.0",
     "ipywidgets>=8.1.9",
     "polars>=1.44.2",
-]
-flash-inference = [
-    "causal-conv1d",
-    "flash-attn",
-    "flash-linear-attention>=0.5.2",
-    "late-interaction-kernels>=0.4.5",
-]
-scripts = [
     "faiss-cpu>=1.15.1",
     "httpx>=0.28.1",
     "huggingface-hub>=1.31.0",
@@ -42,11 +45,23 @@ scripts = [
     "requests>=2.34.2",
     "rich-click>=1.9.9",
     "tqdm>=4.70.1",
+    "dvc[s3]>=3.67.1",
+]
+flash-inference = [
+    "causal-conv1d",
+    "flash-attn",
+    "flash-linear-attention>=0.5.2",
+    "late-interaction-kernels>=0.4.5",
+    "tensorrt>=11.3.0.99",
 ]
 vis-searcher-training = [
+    "accelerate>=1.15.0",
+    "albumentations>=2.0.8",
     "clearml[s3]>=2.1.12",
     "lightning>=2.6.6",
+    "matplotlib>=3.11.2",
     "plotly>=7.1.0",
+    "tensorboard>=2.21.0",
 ]
 
 [tool.ty.environment]
@@ -167,6 +182,10 @@ section-order = [
   "first-party",
   "local-folder",
 ]
+
+[tool.uv]
+# albumentations тянет opencv-python-headless, а тот ставит свой cv2 поверх opencv-python
+override-dependencies = ["opencv-python-headless; sys_platform == 'never'"]
 
 [tool.uv.sources]
 clip = { git = "https://github.com/ultralytics/CLIP.git" }

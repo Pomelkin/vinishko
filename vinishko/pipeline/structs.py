@@ -6,7 +6,7 @@ import numpy as np
 
 
 def new_uuid() -> str:
-    """Идентификатор бутылки: одна и та же строка у Candidate, его Sample и Rejection, в который он может превратиться."""
+    """Идентификатор бутылки: одна и та же строка у BottleCrop и у RejectedBottle, в который он может превратиться."""
     return uuid4().hex
 
 
@@ -29,11 +29,11 @@ class Reason(StrEnum):
         return member
 
 
-@dataclass(frozen=True)
-class Rejection:
-    """Бутылка, которая дальше по пайплайну не идёт. Интерфейс показывает её маску и причину.
+@dataclass(frozen=True, slots=True)
+class RejectedBottle:
+    """Бутылка, по которой ответа не будет: не целевая, без читаемой этикетки, либо позже ничего не нашлось. Интерфейс показывает её маску и причину.
 
-    Появляется на шаге нормализации либо позже из Candidate через Candidate.reject, тогда uuid сохраняется.
+    Появляется на шаге нормализации либо позже из BottleCrop через BottleCrop.reject, тогда uuid сохраняется.
     Все координаты в пикселях оригинала после EXIF-поворота.
     """
 
@@ -48,7 +48,7 @@ class Rejection:
     label: list | None
     """Маска этикетки, если она нашлась; None, если этикетка не искалась или не найдена."""
     uuid: str = field(default_factory=new_uuid)
-    """Идентификатор бутылки; у отказа, полученного из Candidate, совпадает с его uuid."""
+    """Идентификатор бутылки; у отказа, полученного из BottleCrop, совпадает с его uuid."""
 
     @property
     def message(self) -> str:
@@ -56,9 +56,14 @@ class Rejection:
         return f"{self.reason.title}: {self.detail}"
 
 
-@dataclass(frozen=True)
-class Candidate:
-    """Годная бутылка: целевая, с читаемой основной этикеткой. Все координаты в пикселях оригинала после EXIF-поворота."""
+@dataclass(frozen=True, eq=False, slots=True)
+class BottleCrop:
+    """Годная бутылка с готовым кропом для энкодера: целевая, с читаемой основной этикеткой.
+
+    Единица, которой оперируют шаги после нормализации: поиск получает список BottleCrop, реранкер — кандидатов Candidate
+    с BottleCrop внутри. Маски и углы в пикселях оригинала после EXIF-поворота. Сравнение и хэш по идентичности объекта:
+    внутри массив кропа.
+    """
 
     index: int
     """Номер годной бутылки на картинке с 1, по убыванию score."""
@@ -73,43 +78,76 @@ class Candidate:
 
     Равен 0, если виден короткий обрубок бутылки, обычно крупный план: ось у такой маски неустойчива, кадр не поворачивается.
     """
+    crop: np.ndarray
+    """RGB-кроп для энкодера: поворот на angle, окно вокруг основной этикетки с запасом в пределах маски бутылки, фон вне маски залит; см. render_bottle."""
+    crop_info: dict
+    """Как кроп получен из оригинала — угол, запас, матрицы matrix_src_to_dst и matrix_dst_to_src; см. render_bottle."""
     uuid: str = field(default_factory=new_uuid)
-    """Идентификатор бутылки; по нему Sample и возможный Rejection связаны с этим кандидатом."""
+    """Идентификатор бутылки; по нему возможный RejectedBottle связан с этим кропом."""
 
-    def reject(self, reason: Reason, detail: str) -> Rejection:
+    def reject(self, reason: Reason, detail: str) -> RejectedBottle:
         """Отказ по этой бутылке на более позднем шаге пайплайна: те же маски, скор и uuid."""
-        return Rejection(reason, detail, self.score, self.bottle, self.label, self.uuid)
+        return RejectedBottle(
+            reason, detail, self.score, self.bottle, self.label, self.uuid
+        )
+
+    def markup(self) -> dict:
+        """Разметка без кропа для JSON: index, score, bottle, label, angle, uuid — формат строк normalization.jsonl."""
+        return {
+            "index": self.index,
+            "score": self.score,
+            "bottle": self.bottle,
+            "label": self.label,
+            "angle": self.angle,
+            "uuid": self.uuid,
+        }
 
 
-@dataclass(eq=False)
-class Sample:
-    """Одна годная бутылка на пути по пайплайну: шаги дописывают сюда свои результаты.
+@dataclass(frozen=True, eq=False, slots=True)
+class Candidate:
+    """Позиция каталога, предложенная визуальным поиском для одной бутылки; единица работы второго уровня.
 
-    Создаётся нормализацией, один Sample на один Candidate. Новый шаг добавляет свои поля ниже со значением None по умолчанию.
-    Шаг, который бракует бутылку, убирает Sample из потока и заменяет её Candidate в списке разметки на Rejection, см. reject.
+    Сравнение и хэш по идентичности объекта: внутри массив картинки.
     """
 
-    candidate: Candidate
-    """Бутылка, которой принадлежит всё остальное."""
-    crop: np.ndarray
-    """Нормализация: RGB-кроп для энкодера — поворот на candidate.angle, окно вокруг основной этикетки с запасом в пределах маски бутылки, фон вне маски залит серым."""
-    crop_info: dict
-    """Нормализация: как кроп получен из оригинала — угол, запас, матрицы matrix_src_to_dst и matrix_dst_to_src; см. render_bottle."""
+    slug: str
+    """Идентификатор позиции каталога, он же ответ системы."""
+    score: float
+    """Косинус: собственный, если вектор позиции пришёл в выдаче, иначе косинус её группы — лучший из пришедших векторов группы."""
+    image: np.ndarray
+    """RGB-кроп позиции из коллекции, с которого считался её вектор: нужен верификации второго уровня."""
+    crop: BottleCrop
+    """Бутылка запроса, для которой предложена позиция."""
+    group: str
+    """Группа одинакового дизайна, к которой относится позиция; у позиции без группы совпадает со slug."""
+    retrieved: bool
+    """Вектор позиции был в выдаче поиска, а не добавлен как член группы."""
+    payload: dict
+    """Метаданные точки коллекции: название, винодельня, винтаж и прочее из каталога — для второго уровня."""
 
-    @property
-    def uuid(self) -> str:
-        """Идентификатор бутылки, тот же, что у candidate."""
-        return self.candidate.uuid
+
+@dataclass(frozen=True, eq=False, slots=True)
+class BottleCandidates:
+    """Ответ визуального поиска по бутылке, для которой нашлись позиции каталога; список кандидатов не пуст.
+
+    Ответов поиска, BottleCandidates либо UnmatchedBottle, ровно столько, сколько BottleCrop на входе, и в том же порядке.
+    """
+
+    crop: BottleCrop
+    candidates: list[Candidate]
+
+    def __post_init__(self) -> None:
+        if not self.candidates:
+            raise ValueError("BottleCandidates без кандидатов; для бутылки без ответа — UnmatchedBottle")
 
 
-def reject(
-    samples: list[Sample],
-    items: list[Candidate | Rejection],
-    sample: Sample,
-    reason: Reason,
-    detail: str,
-) -> None:
-    """Шаг пайплайна бракует бутылку: Sample уходит из потока, её Candidate в разметке становится Rejection с тем же uuid."""
-    samples.remove(sample)
-    position = next(n for n, item in enumerate(items) if item.uuid == sample.uuid)
-    items[position] = sample.candidate.reject(reason, detail)
+@dataclass(frozen=True, eq=False, slots=True)
+class UnmatchedBottle:
+    """Ответ визуального поиска по бутылке, для которой ничего похожего в каталоге нет: та же бутылка отказом с причиной шага поиска."""
+
+    crop: BottleCrop
+    rejected: RejectedBottle
+
+    def __post_init__(self) -> None:
+        if self.rejected.uuid != self.crop.uuid:
+            raise ValueError("отказ относится к другой бутылке")

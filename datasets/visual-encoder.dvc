@@ -1,0 +1,6 @@
+outs:
+- md5: 9c26ea2c347a24733de17010af4ac3c3.dir
+  size: 15877062644
+  nfiles: 403538
+  hash: md5
+  path: visual-encoder

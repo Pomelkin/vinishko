@@ -1,5 +1,3 @@
-import hashlib
-import urllib.request
 from functools import partial
 from pathlib import Path
 from typing import Any, cast
@@ -15,30 +13,20 @@ from ultralytics.engine.results import Results
 from ultralytics.models.sam import SAM3SemanticPredictor
 from ultralytics.utils.ops import xywh2xyxy
 
+from vinishko.pipeline.device import resolve_torch_device
+from vinishko.pipeline.steps.normalization.weights import SAM3_FILE, sam3_weights
+
+ENV_DEVICE = "NORMALIZER_DEV"
+"""Перекрывает segmentation.device конфига: auto, cpu либо cuda:<индекс>."""
 BOTTLE = 39  # класс bottle в COCO
 MIN_CONTOUR_AREA = 10  # контуры меньше этого в пикселях кадра модели — шум маски
-SHARPNESS_HEIGHT = 160  # к этой высоте приводится вырезка этикетки перед оценкой резкости
+SHARPNESS_HEIGHT = (
+    160  # к этой высоте приводится вырезка этикетки перед оценкой резкости
+)
 
-Masks = tuple[np.ndarray, np.ndarray, np.ndarray]  # уверенности, боксы xyxy, bool-маски (N, H, W)
-
-# оригинал facebook/sam3 на HuggingFace закрыт подтверждением доступа, тот же файл открыто лежит на ModelScope
-SAM3_URL = "https://modelscope.cn/models/facebook/sam3/resolve/master/sam3.pt"
-SAM3_SHA256 = "9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e"
-
-
-def download_sam3(path: Path) -> None:
-    """Скачивает веса SAM3 в path и сверяет SHA256; при несовпадении файл не остаётся на диске."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    part, digest = path.with_name(path.name + ".part"), hashlib.sha256()
-    print(f"скачиваю веса SAM3 (3,4 ГБ) в {path}", flush=True)
-    with urllib.request.urlopen(SAM3_URL) as resp, part.open("wb") as f:  # noqa: S310 — https-адрес зафиксирован константой
-        while chunk := resp.read(1 << 20):
-            f.write(chunk)
-            digest.update(chunk)
-    if digest.hexdigest() != SAM3_SHA256:
-        part.unlink()
-        raise RuntimeError(f"SHA256 скачанных весов не совпал с {SAM3_SHA256}, файл удалён")
-    part.replace(path)
+Masks = tuple[
+    np.ndarray, np.ndarray, np.ndarray
+]  # уверенности, боксы xyxy, bool-маски (N, H, W)
 
 
 def to_numpy(x: Tensor | np.ndarray) -> np.ndarray:
@@ -67,16 +55,25 @@ def masks_of(result: Results) -> Masks:
     )
 
 
-def mask_polys(mask: np.ndarray, offset: tuple[int, int], scale: float, origin: tuple[int, int] = (0, 0)) -> list:
+def mask_polys(
+    mask: np.ndarray,
+    offset: tuple[int, int],
+    scale: float,
+    origin: tuple[int, int] = (0, 0),
+) -> list:
     """Полигоны маски в пикселях оригинала. offset задан как (y, x) в кадре модели, origin как (x, y) в оригинале.
 
     Пиксель i уменьшенной маски покрывает в оригинале отрезок [i/scale, (i+1)/scale), поэтому точка переводится
     через центр пикселя: без этого правый и нижний края маски получались короче на 1/scale пикселей.
     """
-    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(
+        mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
     shift = np.array([offset[1], offset[0]]) + 0.5
     return [
-        np.round((cv2.approxPolyDP(c, 1.0, True)[:, 0] + shift) / scale - 0.5 + origin).astype(int).tolist()
+        np.round((cv2.approxPolyDP(c, 1.0, True)[:, 0] + shift) / scale - 0.5 + origin)
+        .astype(int)
+        .tolist()
         for c in contours
         if cv2.contourArea(c) > MIN_CONTOUR_AREA
     ]
@@ -95,17 +92,23 @@ def band_fill(bottle: np.ndarray, label: np.ndarray) -> float:
     ly, lx = np.nonzero(label)
     if len(lx) < 10 or len(xs) < 30:
         return 0.0
-    step = max(1, len(xs) // 20000)  # ось по подвыборке точек, на больших масках так быстрее
+    step = max(
+        1, len(xs) // 20000
+    )  # ось по подвыборке точек, на больших масках так быстрее
     pts = np.stack([xs[::step], ys[::step]], 1).astype(np.float64)
     c = pts.mean(0)
     axis = np.linalg.eigh(np.cov((pts - c).T))[1][:, -1]
     t_b = (np.stack([xs, ys], 1) - c) @ axis
     t_l = (np.stack([lx, ly], 1) - c) @ axis
     lo, hi = np.percentile(t_l, 5), np.percentile(t_l, 95)
-    return float(((t_l >= lo) & (t_l <= hi)).sum() / max(1, ((t_b >= lo) & (t_b <= hi)).sum()))
+    return float(
+        ((t_l >= lo) & (t_l <= hi)).sum() / max(1, ((t_b >= lo) & (t_b <= hi)).sum())
+    )
 
 
-def label_sharpness(gray_full: np.ndarray, label: np.ndarray, offset: tuple[int, int], k: float) -> float:
+def label_sharpness(
+    gray_full: np.ndarray, label: np.ndarray, offset: tuple[int, int], k: float
+) -> float:
     """Резкость этикетки: дисперсия лапласиана внутри её маски на вырезке, приведённой к высоте SHARPNESS_HEIGHT.
 
     Вырезка берётся из оригинала. Мелкую этикетку приведение растягивает, и она получает низкую резкость,
@@ -117,15 +120,25 @@ def label_sharpness(gray_full: np.ndarray, label: np.ndarray, offset: tuple[int,
         return 0.0
     y1, y2, x1, x2 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     oy, ox = offset
-    crop = gray_full[int((y1 + oy) / k) : int((y2 + oy) / k), int((x1 + ox) / k) : int((x2 + ox) / k)].astype(np.float32)
+    crop = gray_full[
+        int((y1 + oy) / k) : int((y2 + oy) / k), int((x1 + ox) / k) : int((x2 + ox) / k)
+    ].astype(np.float32)
     if crop.shape[0] < 2 or crop.shape[1] < 2:
         return 0.0
     s = SHARPNESS_HEIGHT / crop.shape[0]
     size = (max(8, round(crop.shape[1] * s)), SHARPNESS_HEIGHT)
-    crop = cv2.resize(crop, size, interpolation=cv2.INTER_AREA if s < 1 else cv2.INTER_CUBIC)
-    m = cv2.resize(label[y1:y2, x1:x2].astype(np.uint8), size, interpolation=cv2.INTER_NEAREST)
+    crop = cv2.resize(
+        crop, size, interpolation=cv2.INTER_AREA if s < 1 else cv2.INTER_CUBIC
+    )
+    m = cv2.resize(
+        label[y1:y2, x1:x2].astype(np.uint8), size, interpolation=cv2.INTER_NEAREST
+    )
     inner = cv2.erode(m, np.ones((7, 7), np.uint8)) > 0
-    return round(float(cv2.Laplacian(crop, cv2.CV_32F)[inner].var()), 1) if inner.sum() > 50 else 0.0
+    return (
+        round(float(cv2.Laplacian(crop, cv2.CV_32F)[inner].var()), 1)
+        if inner.sum() > 50
+        else 0.0
+    )
 
 
 def body_labels(
@@ -151,7 +164,11 @@ def body_labels(
     for c, lm in zip(label_confs, label_masks, strict=True):
         crop = lm[y1:y2, x1:x2]
         inter = np.logical_and(crop, b).sum()
-        if inter == 0 or inter < 0.5 * lm.sum() or np.logical_and(crop, ex).sum() >= 0.5 * crop.sum():
+        if (
+            inter == 0
+            or inter < 0.5 * lm.sum()
+            or np.logical_and(crop, ex).sum() >= 0.5 * crop.sum()
+        ):
             continue
         best = max(best, float(c))
         if c >= min_conf:
@@ -177,7 +194,9 @@ def stats_of(
         "conf": round(best, 3),
         "cover": round(float(body.sum() / b.sum()), 3),
         "fill": round(band_fill(b, body), 3),
-        "sharpness": label_sharpness(gray_full, body, offset, k) if gray_full is not None else 0.0,
+        "sharpness": label_sharpness(gray_full, body, offset, k)
+        if gray_full is not None
+        else 0.0,
     }
 
 
@@ -195,7 +214,9 @@ def label_stats(
     conf: лучшая уверенность среди этикеток корпуса. cover: доля площади бутылки под ними.
     fill: доля полосы бутылки на высоте этикетки (band_fill). sharpness: резкость (label_sharpness).
     """
-    offset, b, kept, best = body_labels(bottle, label_confs, label_masks, min_conf, exclude)
+    offset, b, kept, best = body_labels(
+        bottle, label_confs, label_masks, min_conf, exclude
+    )
     return stats_of(offset, b, kept, best, gray_full, k)
 
 
@@ -213,7 +234,7 @@ class Segmenter:
 
     def __init__(
         self,
-        model: Path | str,
+        model: Path | str | None = None,
         prompt: str = "wine bottle",
         conf: float | None = None,
         imgsz: int | None = None,
@@ -221,41 +242,54 @@ class Segmenter:
         label_prompt: str | None = None,
         label_conf: float = 0.4,
         exclude_prompts: tuple[str, ...] | list[str] = (),
+        device: torch.device | None = None,
     ) -> None:
-        """Путь к весам model: SAM3 узнаётся по имени файла и требует весов на диске, для YOLO промпт не используется."""
-        self.model = str(model)
-        self.is_sam3 = "sam3" in Path(model).name
-        if self.is_sam3 and not Path(model).is_file():
-            if Path(model).name != "sam3.pt":  # скачивается только официальный файл, чужие веса под другим именем — ошибка пути
-                raise FileNotFoundError(f"нет весов {model}")
-            download_sam3(Path(model))
+        """Путь к весам model: SAM3 узнаётся по имени файла, для YOLO промпт не используется.
+
+        Без model берётся SAM3 из кэша пользователя, веса скачиваются при первой загрузке модели. Без device — NORMALIZER_DEV, иначе auto.
+        На CUDA модель считается в half, на CPU во float: NMS torchvision для half на CPU не реализован.
+        """
+        self.device = device if device is not None else resolve_torch_device(ENV_DEVICE)
+        self.model = None if model is None else str(model)
+        self.name = SAM3_FILE if model is None else Path(model).name
+        self.is_sam3 = "sam3" in self.name
+        if model is not None and self.is_sam3 and not Path(model).is_file():
+            raise FileNotFoundError(
+                f"нет весов {model}; без пути SAM3 скачается в кэш сам"
+            )
         self.prompt = prompt if self.is_sam3 else "class bottle"
         self.imgsz = imgsz or (1008 if self.is_sam3 else 640)
         # SAM3 даёт бокалам 0.1–0.37, бутылкам 0.8+
         self.conf = conf if conf is not None else (0.3 if self.is_sam3 else 0.1)
         self.max_side = max_side  # маски 6000px на 20 кандидатов не влезут в VRAM
-        self.label_prompt = label_prompt if self.is_sam3 else None  # YOLO этикетки не ищет
+        self.label_prompt = (
+            label_prompt if self.is_sam3 else None
+        )  # YOLO этикетки не ищет
         self.label_conf = label_conf
         self.exclude_prompts = list(exclude_prompts)
         if self.label_prompt and label_conf < self.conf:
-            raise ValueError(f"label_conf {label_conf} ниже conf сегментации {self.conf}: такие этикетки SAM3 не вернёт")
+            raise ValueError(
+                f"label_conf {label_conf} ниже conf сегментации {self.conf}: такие этикетки SAM3 не вернёт"
+            )
         self._predictor: SAM3SemanticPredictor | YOLO | None = None
 
     @property
     def tag(self) -> str:
         """Идентификатор настроек сегментации; калибровка записывает, под какие настройки обучена."""
         suffix = f"_{self.prompt.replace(' ', '-')}" if self.is_sam3 else ""
-        return f"{Path(self.model).stem}_{self.imgsz}_c{self.conf}{suffix}"
+        return f"{Path(self.name).stem}_{self.imgsz}_c{self.conf}{suffix}"
 
     def _load(self) -> SAM3SemanticPredictor | YOLO:
+        weights = self.model or str(sam3_weights())
         if not self.is_sam3:
-            return YOLO(self.model)
+            return YOLO(weights)
         predictor = SAM3SemanticPredictor(
             overrides={
-                "model": self.model,
+                "model": weights,
                 "conf": self.conf,
                 "imgsz": self.imgsz,
-                "quantize": 16,
+                "device": str(self.device),
+                "quantize": 16 if self.device.type == "cuda" else 32,
                 "task": "segment",
                 "mode": "predict",
                 "save": False,
@@ -273,7 +307,12 @@ class Segmenter:
         return predictor
 
     @torch.inference_mode()
-    def _ground(self, predictor: SAM3SemanticPredictor, prompts: list[str], shape: tuple[int, int]) -> dict[str, Masks]:
+    def _ground(
+        self,
+        predictor: SAM3SemanticPredictor,
+        prompts: list[str],
+        shape: tuple[int, int],
+    ) -> dict[str, Masks]:
         """Все промпты одним батчем на признаках кадра, которые посчитал set_image. shape — (высота, ширина) кадра.
 
         Промпты в батче независимы: у каждого свои текстовые признаки и свои 200 запросов декодера, детекции те же,
@@ -283,21 +322,34 @@ class Segmenter:
         model = cast(Any, predictor.model)
         if new := [p for p in prompts if p not in model.names]:
             model.set_classes([*model.names, *new])
-        ids = torch.tensor([model.names.index(p) for p in prompts], device=predictor.device)
+        ids = torch.tensor(
+            [model.names.index(p) for p in prompts], device=predictor.device
+        )
         out = model.forward_grounding(backbone_out=predictor.features, text_ids=ids)
-        scores = (out["pred_logits"].sigmoid() * out["presence_logit_dec"].sigmoid().unsqueeze(1)).squeeze(-1)
-        size = torch.tensor([shape[1], shape[0], shape[1], shape[0]], device=predictor.device)
+        scores = (
+            out["pred_logits"].sigmoid()
+            * out["presence_logit_dec"].sigmoid().unsqueeze(1)
+        ).squeeze(-1)
+        size = torch.tensor(
+            [shape[1], shape[0], shape[1], shape[0]], device=predictor.device
+        )
         results: dict[str, Masks] = {}
         for i, prompt in enumerate(prompts):
             keep = scores[i] > self.conf
-            conf, boxes, masks = scores[i][keep], xywh2xyxy(out["pred_boxes"][i][keep]), out["pred_masks"][i][keep]
+            conf, boxes, masks = (
+                scores[i][keep],
+                xywh2xyxy(out["pred_boxes"][i][keep]),
+                out["pred_masks"][i][keep],
+            )
             keep = nms(boxes, conf, predictor.args.iou)
             if not len(keep):
                 results[prompt] = no_masks()
                 continue
             results[prompt] = (
                 to_numpy(conf[keep].float()),
-                to_numpy(boxes[keep] * size).astype(np.float64),  # в fp16, как в ultralytics: на таких боксах обучена калибровка отбора
+                to_numpy(boxes[keep] * size).astype(
+                    np.float64
+                ),  # в fp16, как в ultralytics: на таких боксах обучена калибровка отбора
                 to_numpy(predictor._upscale_masks(masks[keep], shape)),
             )
         return results
@@ -311,12 +363,22 @@ class Segmenter:
             self._predictor = self._load()
         bgr = np.ascontiguousarray(np.asarray(img)[:, :, ::-1])
         if isinstance(self._predictor, YOLO):
-            results = self._predictor.predict(bgr, classes=[BOTTLE], conf=self.conf, imgsz=self.imgsz, retina_masks=True, verbose=False)
+            results = self._predictor.predict(
+                bgr,
+                classes=[BOTTLE],
+                conf=self.conf,
+                imgsz=self.imgsz,
+                retina_masks=True,
+                verbose=False,
+                device=str(self.device),
+            )
             return {self.prompt: masks_of(cast(Results, next(iter(results))))}
         self._predictor.set_image(bgr)
         return self._ground(self._predictor, prompts, (bgr.shape[0], bgr.shape[1]))
 
-    def _labels(self, results: dict[str, Masks]) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
+    def _labels(
+        self, results: dict[str, Masks]
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
         """Уверенности этикеток, их маски и зона крышек и горлышек (или None) из результатов query."""
         lconf, _, lmasks = results[cast(str, self.label_prompt)]
         ex = [results[p][2] for p in self.exclude_prompts if len(results[p][2])]
@@ -326,8 +388,15 @@ class Segmenter:
         """Кандидаты-бутылки одной картинки. Не потокобезопасно: вызывающий держит лок, если зовёт из нескольких потоков."""
         w, h = img.size
         k = min(1.0, self.max_side / max(w, h))
-        small = img.resize((round(w * k), round(h * k)), Image.Resampling.BILINEAR) if k < 1 else img
-        prompts = [self.prompt, *([self.label_prompt, *self.exclude_prompts] if self.label_prompt else [])]
+        small = (
+            img.resize((round(w * k), round(h * k)), Image.Resampling.BILINEAR)
+            if k < 1
+            else img
+        )
+        prompts = [
+            self.prompt,
+            *([self.label_prompt, *self.exclude_prompts] if self.label_prompt else []),
+        ]
         results = self.query(small, prompts)
         labels = self._labels(results) if self.label_prompt else None
         gray_full = np.asarray(img.convert("L")) if labels else None
@@ -340,9 +409,14 @@ class Segmenter:
                 "polys": mask_polys(m, (0, 0), k),
             }
             if labels:
-                offset, b, kept, best = body_labels(m, labels[0], labels[1], self.label_conf, labels[2])
+                offset, b, kept, best = body_labels(
+                    m, labels[0], labels[1], self.label_conf, labels[2]
+                )
                 cand["label"] = stats_of(offset, b, kept, best, gray_full, k)
-                cand["label_polys"] = [{"conf": round(c, 3), "polys": mask_polys(lm, offset, k)} for c, lm in kept]
+                cand["label_polys"] = [
+                    {"conf": round(c, 3), "polys": mask_polys(lm, offset, k)}
+                    for c, lm in kept
+                ]
             cands.append(cand)
         cands.sort(key=lambda c: -c["conf"])
         for i, c in enumerate(cands, 1):
@@ -350,14 +424,16 @@ class Segmenter:
         return {
             "w": w,
             "h": h,
-            "model": Path(self.model).name,
+            "model": self.name,
             "prompt": self.prompt,
             "imgsz": self.imgsz,
             "scale": round(k, 4),
             "cands": cands,
         }
 
-    def labels_on_crop(self, img: Image.Image, bottle_polys: list, margin: float = 0.05) -> list[dict]:
+    def labels_on_crop(
+        self, img: Image.Image, bottle_polys: list, margin: float = 0.05
+    ) -> list[dict]:
         """Второй проход: SAM3 ищет этикетки на вырезке бутылки из оригинала, в более высоком разрешении.
 
         Маска бутылки берётся из первого прохода. Возвращает [{"conf", "polys"}] в пикселях оригинала.
@@ -370,9 +446,26 @@ class Segmenter:
         region = img.crop((x1, y1, x2, y2))
         s = min(1.0, self.imgsz / max(region.size))
         if s < 1:
-            region = region.resize((max(1, round(region.width * s)), max(1, round(region.height * s))), Image.Resampling.BILINEAR)
-        lconf, lmasks, exclude = self._labels(self.query(region, [cast(str, self.label_prompt), *self.exclude_prompts]))
+            region = region.resize(
+                (max(1, round(region.width * s)), max(1, round(region.height * s))),
+                Image.Resampling.BILINEAR,
+            )
+        lconf, lmasks, exclude = self._labels(
+            self.query(region, [cast(str, self.label_prompt), *self.exclude_prompts])
+        )
         bottle = np.zeros((region.height, region.width), np.uint8)
-        cv2.fillPoly(bottle, [np.round((np.asarray(p) - [x1, y1]) * s).astype(np.int32) for p in bottle_polys], 1)
-        offset, _, kept, _ = body_labels(bottle.astype(bool), lconf, lmasks, self.label_conf, exclude)
-        return [{"conf": round(c, 3), "polys": mask_polys(m, offset, s, (x1, y1))} for c, m in kept]
+        cv2.fillPoly(
+            bottle,
+            [
+                np.round((np.asarray(p) - [x1, y1]) * s).astype(np.int32)
+                for p in bottle_polys
+            ],
+            1,
+        )
+        offset, _, kept, _ = body_labels(
+            bottle.astype(bool), lconf, lmasks, self.label_conf, exclude
+        )
+        return [
+            {"conf": round(c, 3), "polys": mask_polys(m, offset, s, (x1, y1))}
+            for c, m in kept
+        ]

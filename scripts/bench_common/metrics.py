@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 
 from scripts.bench_common.data import Split
-from scripts.bench_common.data import query_rows
+from scripts.bench_common.data import protocol_rows
 
 KS = (1, 3, 5)
 TOP = max(KS)
@@ -41,12 +41,16 @@ class ModeResult:
     """Замер одного режима входа: целое фото либо кроп нормализации."""
 
     mode: str
+    protocol: str
     gallery: Split
+    """Сплит val: номера Retrieval.ids указывают в него при любом протоколе."""
+    gallery_size: int
+    """Сколько картинок val реально лежит в галерее при этом протоколе."""
     val: Retrieval
     hits: np.ndarray
     """(запросы val, TOP): на этом месте выдачи стоит картинка того же класса, что запрос."""
     total_queries: int
-    """Запросов val по протоколу до нормализации; знаменатель сквозного recall."""
+    """Запросов val по этому протоколу до нормализации; знаменатель сквозного recall."""
     rejects: dict[str, Retrieval]
     """Запросы без позитивов в галерее: distractors и negatives."""
     dropped: dict[str, tuple[int, int]]
@@ -54,6 +58,11 @@ class ModeResult:
     images: int
     seconds: float
     metrics: dict[str, float] = field(default_factory=dict)
+
+    @property
+    def key(self) -> str:
+        """Идентификатор столбца отчёта."""
+        return f"{self.mode}-{self.protocol}"
 
     @property
     def speed(self) -> float:
@@ -75,7 +84,9 @@ def rejection_metrics(positives: Retrieval, negatives: Retrieval) -> dict[str, f
     out: dict[str, float] = {}
     for signal in SIGNALS:
         pos, neg = getattr(positives, signal), getattr(negatives, signal)
-        out[f"auc_{signal}"] = float(roc_auc_score(np.r_[np.ones(len(pos)), np.zeros(len(neg))], np.r_[pos, neg]))
+        out[f"auc_{signal}"] = float(
+            roc_auc_score(np.r_[np.ones(len(pos)), np.zeros(len(neg))], np.r_[pos, neg])
+        )
         for fpr in FPRS:
             out[f"tpr_{signal}@{fpr}"] = float((pos > np.quantile(neg, 1 - fpr)).mean())
     return out
@@ -83,9 +94,11 @@ def rejection_metrics(positives: Retrieval, negatives: Retrieval) -> dict[str, f
 
 def make_result(
     mode: str,
+    protocol: str,
     raw: dict[str, Split],
     splits: dict[str, Split],
     dropped: dict[str, tuple[int, int]],
+    gallery_size: int,
     val: Retrieval,
     rejects: dict[str, Retrieval],
     seconds: float,
@@ -93,10 +106,12 @@ def make_result(
     """Собирает замер режима из выдач и считает метрики. raw — сплиты до нормализации: по ним берётся знаменатель сквозного recall."""
     result = ModeResult(
         mode=mode,
+        protocol=protocol,
         gallery=splits["val"],
+        gallery_size=gallery_size,
         val=val,
         hits=hit_matrix(val),
-        total_queries=len(query_rows(raw["val"])),
+        total_queries=len(protocol_rows(raw["val"], protocol)[1]),
         rejects=rejects,
         dropped=dropped,
         images=sum(len(split) for split in splits.values()),

@@ -217,6 +217,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-/datasets/
+/datasets/hack
+/datasets/winesensed-extra
 sam3.pt
-weights/
+# Результаты прогонов обучения: в git идёт только config.yaml эксперимента
+vis_seacher_training/experiments/*/*/
+/weights
+# встроенный qdrant для локальной отладки vis_searcher
+/.qdrant
+/datasets/hack-vine
+/catalog
+/reports/vis_searcher

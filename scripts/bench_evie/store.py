@@ -34,7 +34,9 @@ class TokenStore:
     @cached_property
     def tokens(self) -> np.memmap:
         """Все токены сплита, только на чтение."""
-        return np.memmap(self.path, np.float16, "r", shape=(int(self.offsets[-1]), self.dim))
+        return np.memmap(
+            self.path, np.float16, "r", shape=(int(self.offsets[-1]), self.dim)
+        )
 
     @property
     def nbytes(self) -> int:
@@ -45,23 +47,27 @@ class TokenStore:
         """Батч (картинки, максимум токенов, dim), добитый нулями: MaxSim пайплайна рассчитан на нулевые векторы вместо маски."""
         out = np.zeros((len(rows), int(self.lengths[rows].max()), self.dim), np.float16)
         for n, row in enumerate(rows):
-            out[n, : self.lengths[row]] = self.tokens[self.offsets[row] : self.offsets[row + 1]]
+            out[n, : self.lengths[row]] = self.tokens[
+                self.offsets[row] : self.offsets[row + 1]
+            ]
         return out
 
-    def blocks(self, max_tokens: int) -> list[np.ndarray]:
-        """Картинки подряд, разбитые на блоки так, чтобы добитый нулями блок не превышал max_tokens токенов."""
+    def blocks(self, rows: np.ndarray, max_tokens: int) -> list[np.ndarray]:
+        """Картинки rows по порядку, разбитые на блоки так, чтобы добитый нулями блок не превышал max_tokens токенов."""
         blocks: list[np.ndarray] = []
         start, longest = 0, 0
-        for row, length in enumerate(self.lengths):
+        for n, length in enumerate(self.lengths[rows]):
             longest = max(longest, int(length))
-            if row > start and (row - start + 1) * longest > max_tokens:
-                blocks.append(np.arange(start, row))
-                start, longest = row, int(length)
-        blocks.append(np.arange(start, len(self)))
+            if n > start and (n - start + 1) * longest > max_tokens:
+                blocks.append(rows[start:n])
+                start, longest = n, int(length)
+        blocks.append(rows[start:])
         return blocks
 
 
-def join_parts(parts: list[Path], lengths: list[np.ndarray], path: Path, dim: int) -> TokenStore:
+def join_parts(
+    parts: list[Path], lengths: list[np.ndarray], path: Path, dim: int
+) -> TokenStore:
     """Склеивает куски, записанные разными устройствами, в один файл в порядке сплита; куски удаляются."""
     with path.open("wb") as out:
         for part in parts:

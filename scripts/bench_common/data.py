@@ -43,7 +43,12 @@ class Split:
 
     def part(self, start: int, stop: int) -> "Split":
         """Картинки с start по stop: кусок сплита для одного устройства."""
-        return replace(self, names=self.names[start:stop], labels=self.labels[start:stop], spans=None if self.spans is None else self.spans[start:stop])
+        return replace(
+            self,
+            names=self.names[start:stop],
+            labels=self.labels[start:stop],
+            spans=None if self.spans is None else self.spans[start:stop],
+        )
 
 
 def read_split(root: Path, file: str, role: str) -> Split:
@@ -63,7 +68,11 @@ def limit_split(split: Split, limit: int) -> Split:
         if len(rows) >= limit:
             break
         rows.extend(members)
-    return replace(split, names=[split.names[i] for i in rows], labels=[split.labels[i] for i in rows])
+    return replace(
+        split,
+        names=[split.names[i] for i in rows],
+        labels=[split.labels[i] for i in rows],
+    )
 
 
 def index_markup(root: Path, wanted: set[str], progress: Progress) -> dict[str, Span]:
@@ -74,8 +83,12 @@ def index_markup(root: Path, wanted: set[str], progress: Progress) -> dict[str, 
     """
     path = root / MARKUP_NAME
     if not path.exists():
-        raise click.ClickException(f"нет {path}: разметьте датасет через python -m scripts.normalize_dataset run {root}")
-    task = progress.add_task(path.name, name=f"разметка {root.name}", total=path.stat().st_size)
+        raise click.ClickException(
+            f"нет {path}: разметьте датасет через python -m scripts.normalize_dataset run {root}"
+        )
+    task = progress.add_task(
+        path.name, name=f"разметка {root.name}", total=path.stat().st_size
+    )
     spans: dict[str, Span] = {}
     left = set(wanted)
     offset = 0
@@ -92,7 +105,9 @@ def index_markup(root: Path, wanted: set[str], progress: Progress) -> dict[str, 
             progress.update(task, completed=offset)
     progress.remove_task(task)
     if left:
-        raise click.ClickException(f"в {path} нет разметки для {len(left)} картинок, например {sorted(left)[:3]}: доразметьте датасет через scripts.normalize_dataset")
+        raise click.ClickException(
+            f"в {path} нет разметки для {len(left)} картинок, например {sorted(left)[:3]}: доразметьте датасет через scripts.normalize_dataset"
+        )
     return spans
 
 
@@ -107,10 +122,25 @@ def normalized(split: Split, spans: dict[str, Span]) -> Split:
     )
 
 
-def query_rows(split: Split) -> np.ndarray:
-    """Строки val, которые идут запросами leave-one-out: у класса в галерее есть ещё хотя бы одна картинка."""
-    sizes = Counter(split.labels)
-    return np.array([i for i, label in enumerate(split.labels) if sizes[label] >= 2], dtype=np.int64)
+def protocol_rows(split: Split, protocol: str) -> tuple[np.ndarray, np.ndarray]:
+    """Строки val, которые идут в галерею, и строки-запросы.
+
+    loo — leave-one-out из README датасетов: в галерее вся val, запрос ищет среди всех остальных картинок, включая прочие фото своего класса;
+    запросами идут картинки классов, где их две и больше. Попаданием считается любое из оставшихся фото класса, а их в среднем четыре.
+    oneshot — как в бою, где у позиции каталога одно фото: в галерее первая по порядку сплита картинка каждого класса, запросами идут
+    все остальные. Порядок сплита — порядок дампа, к качеству фото он не привязан. Одиночные классы остаются в галерее дистракторами.
+    """
+    if protocol == "loo":
+        sizes = Counter(split.labels)
+        return np.arange(len(split)), np.array(
+            [i for i, label in enumerate(split.labels) if sizes[label] >= 2],
+            dtype=np.int64,
+        )
+    first: dict[str, int] = {}
+    for i, label in enumerate(split.labels):
+        first.setdefault(label, i)
+    gallery = np.array(sorted(first.values()), dtype=np.int64)
+    return gallery, np.setdiff1d(np.arange(len(split)), gallery)
 
 
 def load_view(split: Split, i: int, render_cfg: dict) -> Image.Image:
@@ -125,14 +155,18 @@ def load_view(split: Split, i: int, render_cfg: dict) -> Image.Image:
     with (split.root / MARKUP_NAME).open("rb") as f:
         f.seek(offset)
         cand = json.loads(f.read(length))["candidates"][0]
-    crop, _ = render_bottle(np.asarray(img), cand["bottle"], cand["label"], render_cfg, angle=cand["angle"])
+    crop, _ = render_bottle(
+        np.asarray(img), cand["bottle"], cand["label"], render_cfg, angle=cand["angle"]
+    )
     return Image.fromarray(crop)
 
 
 class Views(Dataset):
     """Даталоадеру: вход энкодера после preprocess и номер картинки в сплите."""
 
-    def __init__(self, split: Split, preprocess: Callable[[Image.Image], Any], render_cfg: dict) -> None:
+    def __init__(
+        self, split: Split, preprocess: Callable[[Image.Image], Any], render_cfg: dict
+    ) -> None:
         self.split, self.preprocess, self.render_cfg = split, preprocess, render_cfg
 
     def __len__(self) -> int:
