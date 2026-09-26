@@ -150,6 +150,9 @@ activemq-data/
 
 # Environments
 .env
+/data/
+/secrets/*
+!/secrets/*.example
 .envrc
 .venv
 env/
@@ -222,6 +225,7 @@ __marimo__/
 sam3.pt
 # Результаты прогонов обучения: в git идёт только config.yaml эксперимента
 vis_seacher_training/experiments/*/*/
+/wheels
 /weights
-# встроенный qdrant для локальной отладки vis_searcher
-/.qdrant
+
+secrets/
