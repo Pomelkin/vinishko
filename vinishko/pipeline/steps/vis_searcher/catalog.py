@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, ScoredPoint, VectorParams
+from qdrant_client.models import Distance, PointStruct, QueryRequest, ScoredPoint, VectorParams
 
 from vinishko.pipeline.steps.vis_searcher.configs import QdrantConfig
 
@@ -31,11 +31,17 @@ def connect(cfg: QdrantConfig) -> QdrantClient:
     """Клиент qdrant: встроенный по пути либо сервер."""
     if cfg.path is not None:
         return QdrantClient(path=str(cfg.path))
+    api_key = os.environ.get("QDRANT_API_KEY")
+    if api_key and not api_key.isascii():
+        raise ValueError(
+            "QDRANT_API_KEY must be ASCII; replace the placeholder in .env "
+            "with the real key from your colleague"
+        )
     return QdrantClient(
         host=cfg.host,
         port=cfg.port,
         https=cfg.https,
-        api_key=os.environ.get("QDRANT_API_KEY"),
+        api_key=api_key or None,
         timeout=int(cfg.timeout),
     )
 
@@ -119,6 +125,26 @@ def search(
     return client.query_points(
         name, query=vector.tolist(), limit=top_k, with_payload=True, with_vectors=False
     ).points
+
+
+def search_many(
+    client: QdrantClient, name: str, vectors: np.ndarray, top_k: int
+) -> list[list[ScoredPoint]]:
+    """Ближайшие точки для нескольких векторов за один сетевой запрос к Qdrant."""
+    if len(vectors) == 0:
+        return []
+    if len(vectors) == 1:
+        return [search(client, name, vectors[0], top_k)]
+    responses = client.query_batch_points(
+        name,
+        requests=[
+            QueryRequest(query=vector.tolist(), limit=top_k, with_payload=True, with_vector=False)
+            for vector in vectors
+        ],
+    )
+    if len(responses) != len(vectors):
+        raise RuntimeError(f"Qdrant вернул {len(responses)} ответов на {len(vectors)} векторов")
+    return [response.points for response in responses]
 
 
 def retrieve(client: QdrantClient, name: str, slugs: list[str]) -> dict[str, dict]:

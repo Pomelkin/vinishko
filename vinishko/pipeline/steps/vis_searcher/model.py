@@ -131,9 +131,10 @@ class Encoder:
     """Кропы бутылок → L2-нормированные эмбеддинги; бэкенд по устройству, батчи не больше max_batch."""
 
     def __init__(
-        self, files: ModelFiles, device: Device, max_batch: int, cache_dir: Path
+        self, files: ModelFiles, device: Device, max_batch: int, cache_dir: Path, cpu_max_batch: int = 1
     ) -> None:
-        self.files, self.device, self.max_batch = files, device, max_batch
+        self.files, self.device = files, device
+        self.max_batch = min(max_batch, cpu_max_batch) if device.backend == "openvino" else max_batch
         self.preprocess = Preprocess(files.input_size, files.pad_color)
         onnx = download_onnx(files)
         self.runner: Runner
@@ -160,7 +161,7 @@ class Encoder:
     @property
     def description(self) -> str:
         """Модель, устройство и бэкенд одной строкой для логов."""
-        return f"{self.files.repo}@{self.files.revision[:8]} {self.files.onnx_name}, {self.device}, {self.runner.description}"
+        return f"{self.files.repo}@{self.files.revision[:8]} {self.files.onnx_name}, {self.device}, {self.runner.description}, batch≤{self.max_batch}"
 
     def __call__(self, images: Sequence[np.ndarray]) -> np.ndarray:
         """Эмбеддинги float32 (n, embed_dim), L2-нормированные; граф уже нормирует выход, повторная нормировка страхует от численного дрейфа."""

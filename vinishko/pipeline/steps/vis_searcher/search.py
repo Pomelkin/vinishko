@@ -5,10 +5,10 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
-import numpy as np
 from kostyl.utils import setup_logger
 from PIL import Image
 from qdrant_client import QdrantClient
+from qdrant_client.models import ScoredPoint
 
 from vinishko.pipeline.steps.vis_searcher.catalog import (
     FIELD_GROUP,
@@ -20,7 +20,7 @@ from vinishko.pipeline.steps.vis_searcher.catalog import (
     inspect,
     retrieve,
     sample_payload,
-    search,
+    search_many,
 )
 from vinishko.pipeline.steps.vis_searcher.configs import (
     GroupSearch,
@@ -52,7 +52,7 @@ class SearchReason(Reason):
 class VisSearcher:
     """Кропы бутылок → ответ на каждый кроп, в том же порядке: BottleCandidates с кандидатами каталога либо UnmatchedBottle с отказом и причиной.
 
-    При создании сначала дешёвые проверки: контракт модели с Hugging Face, коллекция существует и не пуста, построена той же моделью
+    При создании сначала проверяются доступность Qdrant и коллекции, затем контракт модели с Hugging Face: коллекция построена той же моделью
     и ревизией, размерность векторов и размер входа совпадают. Потом скачивается граф и поднимается энкодер, последней читается картинка
     первой точки из хранилища. Без cfg — config.yaml рядом с модулем, без device — VIS_SEARCHER_DEV либо автоматически.
     client — готовый клиент qdrant вместо подключения по конфигу, для тестов.
@@ -66,11 +66,12 @@ class VisSearcher:
     ) -> None:
         self.cfg = cfg = cfg or load_config()
         self.device = device or resolve_device(cfg.device)
-        self.files = fetch_model(cfg.model, self.device.precision, cfg.revision)
         self.client = client or connect(cfg.qdrant)
         self.collection = cfg.qdrant.collection
-        self.info = self._check_collection(inspect(self.client, self.collection))
-        self.encoder = Encoder(self.files, self.device, cfg.batch_size, cfg.cache_dir)
+        collection_info = inspect(self.client, self.collection)
+        self.files = fetch_model(cfg.model, self.device.precision, cfg.revision)
+        self.info = self._check_collection(collection_info)
+        self.encoder = Encoder(self.files, self.device, cfg.batch_size, cfg.cache_dir, cfg.cpu_batch_size)
         if cfg.images is None:
             if cfg.reference_images is None:
                 raise ValueError("для поиска нужны images или reference_images")
@@ -122,18 +123,19 @@ class VisSearcher:
         if not crops:
             return []
         vectors = self.encoder([crop.crop for crop in crops])
+        hits_by_crop = search_many(self.client, self.collection, vectors, self.cfg.top_k)
         results = [
-            self._search(crop, vector)
-            for crop, vector in zip(crops, vectors, strict=True)
+            self._search(crop, hits)
+            for crop, hits in zip(crops, hits_by_crop, strict=True)
         ]
         if self.cfg.debug_path is not None:
             self.dump(results, self.cfg.debug_path / datetime.now(tz=UTC).astimezone().strftime("%Y-%m-%d_%H-%M-%S_%f"))
         return results
 
-    def _search(self, crop: BottleCrop, vector: np.ndarray) -> BottleCandidates | UnmatchedBottle:
+    def _search(self, crop: BottleCrop, points: list[ScoredPoint]) -> BottleCandidates | UnmatchedBottle:
         hits = [
             (float(p.score), p.payload)
-            for p in search(self.client, self.collection, vector, self.cfg.top_k)
+            for p in points
             if p.payload is not None
         ]
         mode = self.cfg.search

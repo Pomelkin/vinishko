@@ -374,7 +374,12 @@ class Segmenter:
             )
             return {self.prompt: masks_of(cast(Results, next(iter(results))))}
         self._predictor.set_image(bgr)
-        return self._ground(self._predictor, prompts, (bgr.shape[0], bgr.shape[1]))
+        try:
+            return self._ground(self._predictor, prompts, (bgr.shape[0], bgr.shape[1]))
+        finally:
+            # Признаки прошлого кадра не нужны после копирования масок на CPU;
+            # на машине без GPU это освобождает память перед поиском и следующим кадром.
+            self._predictor.reset_image()
 
     def _labels(
         self, results: dict[str, Masks]

@@ -73,6 +73,8 @@ class VisSearcherConfig(StrictModel):
     """auto, cpu либо cuda:<индекс>; переменная окружения VIS_SEARCHER_DEV перекрывает это значение. auto — cuda:0 при доступной CUDA, иначе cpu."""
     batch_size: int = Field(default=16, gt=0)
     """Потолок батча энкодера; для TensorRT — размер профиля engine."""
+    cpu_batch_size: int = Field(default=1, gt=0)
+    """Дополнительный потолок батча OpenVINO, чтобы ограничить расход ОЗУ."""
     top_k: int = Field(default=10, gt=0)
     """Сколько ближайших векторов брать из коллекции."""
     qdrant: QdrantConfig

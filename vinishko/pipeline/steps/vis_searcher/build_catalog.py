@@ -371,7 +371,7 @@ def main(
         f"конфиг {config_path}: модель {cfg.model}, коллекция {collection}; каталог: {len(rows)} строк с фото, {skipped} без фото; "
         f"группы: {'колонка ' + group_column if has_group else 'нет, позиция = группа'}; кропы: {store.description}; нормализация на {norm.device}"
     )
-    encoder = Encoder(files, device, cfg.batch_size, cfg.cache_dir)
+    encoder = Encoder(files, device, cfg.batch_size, cfg.cache_dir, cfg.cpu_batch_size)
     logger.info(f"энкодер: {encoder.description}")
     create_collection(client, collection, encoder.embed_dim)
     state = build(rows, images, norm, encoder, store, fmt, quality, skip_failures=on_failure == "skip")

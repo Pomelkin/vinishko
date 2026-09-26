@@ -3,6 +3,7 @@
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from collections.abc import Callable, Sequence
 from typing import Protocol
 
 from PIL import Image
@@ -68,17 +69,55 @@ class Pipeline:
 
     def __call__(self, img: Image.Image | Path | str) -> PipelineResult:
         """Картинка → выходы шагов: разметка нормализации, ответы поиска по годным бутылкам, время каждого шага."""
-        started = time.perf_counter()
-        normalization = self.normalizer(img)
-        result = PipelineResult(normalization, timings={"normalization": time.perf_counter() - started})
-        crops = [item for item in normalization if isinstance(item, BottleCrop)]
-        if not crops or self.searcher is None:
-            return result
-        started = time.perf_counter()
-        result.search = self.searcher(crops)
-        result.timings["search"] = time.perf_counter() - started
-        if self.reranker is not None:
+        return self.run_many([img])[0]
+
+    def run_many(
+        self,
+        images: Sequence[Image.Image | Path | str],
+        *,
+        before_rerank: Callable[[int], None] | None = None,
+        on_result: Callable[[int, PipelineResult], None] | None = None,
+    ) -> list[PipelineResult]:
+        """Нормализует фото по одному, ищет все их кропы одним батчем, затем уточняет ответы по фото.
+
+        Вызывающий ограничивает число фото в пачке, чтобы не держать много кропов в памяти.
+        before_rerank получает индекс фото; CLI использует его для директории trace.
+        Время общего поиска распределяется между фото пропорционально числу кропов.
+        """
+        emit = on_result or (lambda _index, _result: None)
+        results: list[PipelineResult] = []
+        crops_by_image: list[list[BottleCrop]] = []
+        for img in images:
             started = time.perf_counter()
-            result.search = self.reranker(result.search)
-            result.timings["rerank"] = time.perf_counter() - started
-        return result
+            normalization = self.normalizer(img)
+            results.append(PipelineResult(normalization, timings={"normalization": time.perf_counter() - started}))
+            crops_by_image.append([item for item in normalization if isinstance(item, BottleCrop)])
+
+        crops = [crop for group in crops_by_image for crop in group]
+        if not crops or self.searcher is None:
+            for index, result in enumerate(results):
+                emit(index, result)
+            return results
+
+        started = time.perf_counter()
+        found = self.searcher(crops)
+        search_time = time.perf_counter() - started
+        if len(found) != len(crops):
+            raise ValueError(f"поиск вернул {len(found)} ответов на {len(crops)} кропов")
+        offset = 0
+        for index, (result, group) in enumerate(zip(results, crops_by_image, strict=True)):
+            count = len(group)
+            if not count:
+                emit(index, result)
+                continue
+            result.search = found[offset : offset + count]
+            result.timings["search"] = search_time * count / len(crops)
+            offset += count
+            if self.reranker is not None:
+                if before_rerank is not None:
+                    before_rerank(index)
+                started = time.perf_counter()
+                result.search = self.reranker(result.search)
+                result.timings["rerank"] = time.perf_counter() - started
+            emit(index, result)
+        return results
