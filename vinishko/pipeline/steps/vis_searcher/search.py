@@ -65,7 +65,7 @@ class VisSearcher:
         client: QdrantClient | None = None,
     ) -> None:
         self.cfg = cfg = cfg or load_config()
-        self.device = device or resolve_device()
+        self.device = device or resolve_device(cfg.device)
         self.files = fetch_model(cfg.model, self.device.precision, cfg.revision)
         self.client = client or connect(cfg.qdrant)
         self.collection = cfg.qdrant.collection

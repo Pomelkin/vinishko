@@ -1,7 +1,7 @@
 """Устройство и бэкенд инференса энкодера.
 
-Переменная окружения VIS_SEARCHER_DEV задаёт устройство как в torch: cpu либо cuda:<индекс>. Без неё берётся cuda:0, если CUDA доступна,
-иначе cpu. На CUDA граф исполняет TensorRT, в bfloat16 на картах с его аппаратной поддержкой (Ampere и новее), иначе во float32;
+Устройство — поле device конфига (auto, cpu либо cuda:<индекс>); переменная окружения VIS_SEARCHER_DEV его перекрывает. auto — cuda:0,
+если CUDA доступна, иначе cpu. На CUDA граф исполняет TensorRT, в bfloat16 на картах с его аппаратной поддержкой (Ampere и новее), иначе во float32;
 на CPU — OpenVINO во float32.
 """
 
@@ -30,9 +30,9 @@ class Device:
         return f"{self.torch_device}, {self.backend}, {self.precision}"
 
 
-def resolve_device(spec: str | None = None) -> Device:
-    """Устройство по строке spec, иначе по VIS_SEARCHER_DEV, иначе автоматически; заданное проверяется на доступность."""
-    device = resolve_torch_device(ENV_DEVICE, spec)
+def resolve_device(configured: str | None = None) -> Device:
+    """Устройство и бэкенд: VIS_SEARCHER_DEV, иначе configured из конфига, иначе auto; заданное проверяется на доступность."""
+    device = resolve_torch_device(ENV_DEVICE, configured)
     if device.type == "cuda":
         if find_spec("tensorrt") is None:
             raise RuntimeError(

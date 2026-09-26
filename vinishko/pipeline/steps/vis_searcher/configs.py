@@ -69,6 +69,8 @@ class VisSearcherConfig(StrictModel):
     """Репозиторий Hugging Face с экспортом DinoV3ForWine: config.json, preprocess.json, model.onnx и model.bf16.onnx."""
     revision: str | None = None
     """Ревизия репозитория; без неё последняя. Коллекция помнит, какой ревизией построена, и с другой не работает."""
+    device: str = "auto"
+    """auto, cpu либо cuda:<индекс>; переменная окружения VIS_SEARCHER_DEV перекрывает это значение. auto — cuda:0 при доступной CUDA, иначе cpu."""
     batch_size: int = Field(default=16, gt=0)
     """Потолок батча энкодера; для TensorRT — размер профиля engine."""
     top_k: int = Field(default=10, gt=0)

@@ -17,7 +17,7 @@ from vinishko.pipeline.device import resolve_torch_device
 from vinishko.pipeline.steps.normalization.weights import SAM3_FILE, sam3_weights
 
 ENV_DEVICE = "NORMALIZER_DEV"
-"""Устройство нормализации: cpu либо cuda:<индекс>; без переменной cuda:0 при доступной CUDA, иначе cpu."""
+"""Перекрывает segmentation.device конфига: auto, cpu либо cuda:<индекс>."""
 BOTTLE = 39  # класс bottle в COCO
 MIN_CONTOUR_AREA = 10  # контуры меньше этого в пикселях кадра модели — шум маски
 SHARPNESS_HEIGHT = (
@@ -246,7 +246,7 @@ class Segmenter:
     ) -> None:
         """Путь к весам model: SAM3 узнаётся по имени файла, для YOLO промпт не используется.
 
-        Без model берётся SAM3 из кэша пользователя, веса скачиваются при первой загрузке модели. Без device — NORMALIZER_DEV либо автоматически.
+        Без model берётся SAM3 из кэша пользователя, веса скачиваются при первой загрузке модели. Без device — NORMALIZER_DEV, иначе auto.
         На CUDA модель считается в half, на CPU во float: NMS torchvision для half на CPU не реализован.
         """
         self.device = device if device is not None else resolve_torch_device(ENV_DEVICE)

@@ -7,7 +7,7 @@
 ```python
 from vinishko.pipeline.steps.vis_searcher import VisSearcher
 
-searcher = VisSearcher()  # config.yaml рядом с модулем, устройство по VIS_SEARCHER_DEV; свой конфиг: VisSearcher(load_config(Path(...)))
+searcher = VisSearcher()  # config.yaml рядом с модулем, устройство из конфига или VIS_SEARCHER_DEV; свой конфиг: VisSearcher(load_config(Path(...)))
 results = searcher(
     crops
 )  # crops: list[BottleCrop] от нормализации → list[BottleCandidates | UnmatchedBottle], у каждого .candidates либо .rejected
@@ -22,7 +22,7 @@ results = searcher(
 Предобработка целиком по `preprocess.json`: кроп вписывается в `input_size` с сохранением пропорций, поля цвета `pad_color` по центру,
 float32 в 0…255, нормировка ImageNet внутри графа.
 
-Устройство задаёт переменная окружения `VIS_SEARCHER_DEV`: `cpu` либо `cuda:<индекс>`; без неё `cuda:0`, если CUDA доступна, иначе `cpu`.
+Устройство — поле `device` конфига: `auto`, `cpu` либо `cuda:<индекс>`; переменная окружения `VIS_SEARCHER_DEV` его перекрывает. `auto` — `cuda:0`, если CUDA доступна, иначе `cpu`.
 Заданное проверяется: нет такой карты или нужного пакета — ошибка, а не тихий откат. На CUDA граф исполняет TensorRT
 (пакет `tensorrt`, группа `flash-inference`), в bfloat16 на картах с его аппаратной поддержкой, Ampere и новее, иначе во float32;
 engine собирается при первом запуске несколько минут и кэшируется в `cache_dir/engines/<репозиторий>/<ревизия>/`. На CPU —
@@ -32,16 +32,22 @@ OpenVINO во float32 (пакет `openvino`, группа `cpu-inference`), о�
 
 ```bash
 python -m vinishko.pipeline.steps.vis_searcher.build_catalog \
-  --csv datasets/hack/strapi/catalog_dataset.csv --images datasets/hack/strapi/img \
-  --collection catalog_vitl16_512 --store-dir datasets/hack/catalog_crops        # либо --s3-endpoint … --s3-bucket … [--s3-prefix …], но не то и другое сразу
+  --csv datasets/hack-vine/catalog/catalog.csv --images datasets/hack-vine/catalog/images \
+  --photo-column image_filename --group-column near_duplicate_group_slug --on-failure skip
 ```
+
+Модель и ревизия, qdrant с именем коллекции, хранилище кропов, `batch_size` и `cache_dir` берутся из того же `config.yaml`
+(`--config` — другой файл), с которым потом ищет `VisSearcher`: собрать одной моделью, а искать другой нельзя по построению.
+Устройство энкодера — `VIS_SEARCHER_DEV`, нормализации — `NORMALIZER_DEV`.
 
 Каждое фото каталога проходит нормализацию, на нём должна найтись ровно одна годная бутылка (`--on-failure skip` пропускает остальные
 и перечисляет их в конце, `--report` пишет JSON). Кроп уходит в хранилище картинок под именем `<slug>.jpg`, вектор — в qdrant.
 Метаданные точки: `slug`, `group`, `group_slugs` — все позиции группы, попавшие в коллекцию, `image`, `source_image`, поля каталога
-(`name`, `winery`, `vintage`, `abv`, …), `model`, `model_revision`, `input_size`, `precision`. Группа берётся из колонки `group` CSV;
-без колонки каждая позиция — своя группа. Существующая коллекция пересоздаётся только после подтверждения в терминале; без терминала это ошибка.
-`--qdrant-path` поднимает встроенный qdrant в директории вместо сервера.
+(`name`, `winery`, `vintage`, `abv`, …), `model`, `model_revision`, `input_size`, `precision`. Группа берётся из колонки `--group-column`;
+пустое значение или отсутствие колонки — позиция сама себе группа. Дешёвые проверки идут до загрузки моделей: колонки CSV и дубли slug,
+наличие всех фото, qdrant отвечает и коллекции ещё нет, хранилище доступно (директория с правами на запись либо `head_bucket`).
+Существующая коллекция пересоздаётся только после подтверждения в терминале; без терминала это ошибка. `qdrant.path` в конфиге
+поднимает встроенный qdrant в директории вместо сервера.
 
 ## Поиск
 

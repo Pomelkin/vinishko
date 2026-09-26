@@ -1,6 +1,6 @@
 services:
   qdrant:
-    image: qdrant/qdrant:v1.17
+    image: qdrant/qdrant:v1.19.0
     container_name: qdrant
     restart: unless-stopped
     ports:
@@ -14,7 +14,7 @@ services:
       QDRANT__TLS__CERT_TTL: 3600
     volumes:
       # целиком: файлы в live/ — симлинки на ../../archive/
-      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ${CERTIFICATE:?CERTIFICATE не задан, положите путь к сертификатам в .env}:/etc/letsencrypt:ro
       - qdrant_storage:/qdrant/storage
 
 volumes:

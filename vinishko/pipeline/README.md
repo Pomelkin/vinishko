@@ -15,12 +15,12 @@ result.items            # итоговая разметка: бутылка бе
 result.timings          # секунды на шаг
 ```
 
-Устройства — переменные окружения `NORMALIZER_DEV` и `VIS_SEARCHER_DEV` (`cpu` либо `cuda:<индекс>`, без них `cuda:0` при доступной CUDA).
+Устройства — `segmentation.device` в normalize.toml и `device` в config.yaml (`auto`, `cpu` либо `cuda:<индекс>`); переменные окружения `NORMALIZER_DEV` и `VIS_SEARCHER_DEV` их перекрывают.
 
 ## Прогон одной картинки
 
 ```bash
-python -m vinishko.pipeline.run photo.jpg -o runs/            # --no-search: только нормализация
+python -m vinishko.pipeline.debug photo.jpg -o runs/            # --no-search: только нормализация
 ```
 
 В `runs/photo/` (старая директория с тем же именем удаляется):

@@ -1,7 +1,6 @@
 import json
 import math
 import re
-import sys
 import time
 import tomllib
 from pathlib import Path
@@ -9,6 +8,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import rich_click as click
+from kostyl.utils import setup_logger
 from PIL import Image
 
 from vinishko.pipeline.steps.normalization.features import (
@@ -26,6 +26,8 @@ from vinishko.pipeline.structs import BottleCrop, Reason, RejectedBottle
 import torch
 
 torch.set_float32_matmul_precision("high")
+
+logger = setup_logger(fmt="detailed")
 
 HERE = Path(__file__).resolve().parent
 EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
@@ -436,13 +438,14 @@ class Normalizer:
     ) -> None:
         """Читает калибровку и поднимает сегментатор.
 
-        Без аргументов — normalize.toml рядом с модулем и устройство из NORMALIZER_DEV, без неё cuda:0 при доступной CUDA, иначе cpu.
+        Без аргументов — normalize.toml рядом с модулем; устройство — segmentation.device конфига, переменная NORMALIZER_DEV его перекрывает,
+        auto — cuda:0 при доступной CUDA, иначе cpu.
         base — папка, от которой считаются пути в cfg, по умолчанию директория модуля.
         """
         if cfg is None:
             cfg = load_config(HERE / "normalize.toml", [])
         self.cfg, self.base = cfg, base or HERE
-        self.device = device if device is not None else resolve_torch_device(ENV_DEVICE)
+        self.device = device if device is not None else resolve_torch_device(ENV_DEVICE, cfg["segmentation"]["device"])
         base = self.base
         sel, sc, lb = cfg["selection"], cfg["segmentation"], cfg["label"]
         self.calib = json.loads(resolve(sel["calibration"], base).read_text())
@@ -465,10 +468,7 @@ class Normalizer:
                 "годная бутылка определяется по этикетке: нужны веса SAM3 и непустой label.prompt"
             )
         if self.seg.tag != self.calib.get("segmentation"):
-            print(
-                f"внимание: калибровка сделана для сегментации {self.calib.get('segmentation')}, сейчас {self.seg.tag}",
-                file=sys.stderr,
-            )
+            logger.warning(f"калибровка сделана для сегментации {self.calib.get('segmentation')}, сейчас {self.seg.tag}")
 
     def largest_label(self, labels: list[dict], ax: dict) -> list | None:
         """Полигоны самой крупной этикетки корпуса; полоски уже min_width_frac ширины бутылки, то есть акцизные марки, не считаются.
@@ -987,7 +987,7 @@ def main(
                 f"{f', отказы: {rejected}' if rejected else ''}, {round((time.perf_counter() - t0) * 1000)} мс"
             )
         except Exception as e:  # одна битая картинка не должна ронять весь пакет
-            click.echo(f"{f.name}: ошибка {e!r}", err=True)
+            logger.error(f"{f.name}: ошибка {e!r}")
 
 
 if __name__ == "__main__":

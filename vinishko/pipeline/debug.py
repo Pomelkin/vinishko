@@ -1,4 +1,4 @@
-"""Прогон пайплайна на одной картинке с записью выходов каждого шага. Запуск из корня: python -m vinishko.pipeline.run <фото> -o <директория>."""
+"""Прогон пайплайна на одной картинке с записью выходов каждого шага. Запуск из корня: python -m vinishko.pipeline.debug <фото> -o <директория>."""
 
 import json
 import shutil
@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import rich_click as click
+from kostyl.utils import setup_logger
 from rich.console import Console
 from rich.table import Table
 
@@ -21,6 +22,7 @@ from vinishko.pipeline.steps.vis_searcher.configs import DEFAULT_CONFIG
 from vinishko.pipeline.structs import BottleCandidates, BottleCrop, RejectedBottle, UnmatchedBottle
 
 console = Console()
+logger = setup_logger(fmt="detailed")
 
 
 def normalization_markup(items: list[BottleCrop | RejectedBottle], stem: str, fmt: str) -> list[dict]:
@@ -112,7 +114,7 @@ def main(image: Path, output_dir: Path, no_search: bool, search_config: Path, no
     report = summary(image, result)
     (out / "result.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     print_summary(report)
-    console.print(f"результаты: {out}")
+    logger.info(f"результаты: {out}")
 
 
 if __name__ == "__main__":

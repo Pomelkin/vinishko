@@ -1,6 +1,7 @@
 # Визуальный поиск: настройки по умолчанию. Относительные пути считаются от этого файла, ../../../../ — корень репозитория.
 model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-512 # репозиторий Hugging Face с экспортом DinoV3ForWine
 revision: null # ревизия репозитория; коллекция помнит свою и с другой не работает
+device: auto                                            # auto | cpu | cuda:<индекс>; переменная VIS_SEARCHER_DEV перекрывает; auto — cuda:0 при доступной CUDA, иначе cpu
 batch_size: 16 # потолок батча энкодера, для TensorRT — профиль engine
 top_k: 10 # сколько ближайших векторов брать из коллекции
 
@@ -20,7 +21,7 @@ search:
 
 images:
   kind: local # кропы коллекции, которые положил build_catalog
-  dir: ../../../../datasets/hack/catalog_crops
+  dir: ../../../../datasets/catalog_crops
   # kind: s3
   # endpoint: https://s3.ru-6.storage.selcloud.ru
   # bucket: vino

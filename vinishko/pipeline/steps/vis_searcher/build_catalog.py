@@ -1,6 +1,7 @@
 """Сборка коллекции каталога: CSV → нормализация каждого фото → кроп в хранилище → вектор в qdrant.
 
-Запуск из корня: python -m vinishko.pipeline.steps.vis_searcher.build_catalog --csv ... --images ... --collection ... --store-dir ...
+Модель, qdrant с именем коллекции и хранилище кропов берутся из того же config.yaml, с которым потом ищет VisSearcher: собрать одним, а искать
+другим нельзя по построению. Запуск из корня: python -m vinishko.pipeline.steps.vis_searcher.build_catalog --csv ... --images ...
 """
 
 import csv
@@ -15,6 +16,7 @@ import numpy as np
 import rich_click as click
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
+from kostyl.utils import setup_logger
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -46,11 +48,7 @@ from vinishko.pipeline.steps.vis_searcher.catalog import (
     point_id,
     upsert,
 )
-from vinishko.pipeline.steps.vis_searcher.configs import (
-    LocalImagesConfig,
-    QdrantConfig,
-    S3ImagesConfig,
-)
+from vinishko.pipeline.steps.vis_searcher.configs import DEFAULT_CONFIG, load_config
 from vinishko.pipeline.steps.vis_searcher.device import Device, resolve_device
 from vinishko.pipeline.steps.vis_searcher.model import Encoder, ModelFiles, fetch_model
 from vinishko.pipeline.steps.vis_searcher.storage import (
@@ -60,7 +58,6 @@ from vinishko.pipeline.steps.vis_searcher.storage import (
 )
 from vinishko.pipeline.structs import BottleCrop
 
-DEFAULT_MODEL = "pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-512"
 CSV_FIELDS = {
     "name": "Название вина",
     "category": "Категория",
@@ -75,6 +72,7 @@ CSV_FIELDS = {
 }
 """Колонки каталога, которые уходят в метаданные точки под латинскими именами: второму уровню нужны поля, а не весь CSV."""
 console = Console()
+logger = setup_logger(fmt="detailed")
 
 
 @dataclass(slots=True)
@@ -136,50 +134,11 @@ def read_rows(
     return rows[:limit], skipped, has_group
 
 
-def store_config(
-    store_dir: Path | None,
-    s3_endpoint: str | None,
-    s3_bucket: str | None,
-    s3_prefix: str | None,
-) -> LocalImagesConfig | S3ImagesConfig:
-    """Хранилище кропов ровно одно: директория либо S3 с эндпоинтом и бакетом; смесь опций и неполный S3 — ошибка."""
-    s3 = [
-        name
-        for name, value in (
-            ("--s3-endpoint", s3_endpoint),
-            ("--s3-bucket", s3_bucket),
-            ("--s3-prefix", s3_prefix),
-        )
-        if value is not None
-    ]
-    if store_dir is not None:
-        if s3:
-            raise click.UsageError(
-                f"--store-dir вместе с {', '.join(s3)}: хранилище одно, либо директория, либо S3"
-            )
-        return LocalImagesConfig(kind="local", dir=store_dir)
-    if not s3:
-        raise click.UsageError(
-            "нужно хранилище кропов: --store-dir либо --s3-endpoint с --s3-bucket"
-        )
-    missing = [name for name in ("--s3-endpoint", "--s3-bucket") if name not in s3]
-    if missing:
-        raise click.UsageError(f"для S3 не хватает {', '.join(missing)}")
-    return S3ImagesConfig(
-        kind="s3",
-        endpoint=str(s3_endpoint),
-        bucket=str(s3_bucket),
-        prefix=s3_prefix or "",
-    )
-
-
 def check_photos(rows: list[Row], images: Path) -> None:
     """Все фото из CSV лежат в images; иначе ошибка до старта, а не через час работы."""
     missing = [row.photo for row in rows if not (images / row.photo).is_file()]
     if missing:
-        raise click.UsageError(
-            f"в {images} нет {len(missing)} фото из CSV, например {missing[:3]}"
-        )
+        raise click.UsageError(f"в {images} нет {len(missing)} фото из CSV, например {missing[:3]}")
 
 
 def ensure_absent(client: QdrantClient, name: str) -> None:
@@ -339,9 +298,9 @@ def report(
         table.add_row(name, str(value))
     console.print(table)
     for failure in state.failures[:20]:
-        console.print(f"  {failure.slug}: {failure.photo}: {failure.reason}")
+        logger.warning(f"не попало: {failure.slug}: {failure.photo}: {failure.reason}")
     if len(state.failures) > 20:
-        console.print(f"  … и ещё {len(state.failures) - 20}")
+        logger.warning(f"… и ещё {len(state.failures) - 20} неудач, полный список в --report")
     if path is not None:
         path.write_text(
             json.dumps(
@@ -356,144 +315,27 @@ def report(
             ),
             encoding="utf-8",
         )
-        console.print(f"отчёт: {path}")
+        logger.info(f"отчёт: {path}")
 
 
 @click.command()
-@click.option(
-    "--csv",
-    "csv_path",
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
-    required=True,
-    help="Каталог: CSV с колонками slug, имени фото и группы",
-)
-@click.option(
-    "--images",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
-    required=True,
-    help="Директория с фото из CSV",
-)
-@click.option(
-    "--collection",
-    required=True,
-    help="Имя коллекции qdrant; существующую можно пересоздать только с подтверждением в терминале",
-)
-@click.option("--qdrant-host", default="localhost", show_default=True)
-@click.option("--qdrant-port", type=int, default=6333, show_default=True)
-@click.option(
-    "--qdrant-https",
-    is_flag=True,
-    help="Сервер за TLS; ключ API берётся из окружения QDRANT_API_KEY",
-)
-@click.option(
-    "--qdrant-path",
-    type=click.Path(file_okay=False, path_type=Path),
-    default=None,
-    help="Встроенный qdrant в этой директории вместо сервера",
-)
-@click.option(
-    "--store-dir",
-    type=click.Path(file_okay=False, path_type=Path),
-    default=None,
-    help="Куда складывать кропы коллекции: директория",
-)
-@click.option(
-    "--s3-endpoint",
-    default=None,
-    help="Либо S3: HTTP-эндпоинт, например https://s3.ru-6.storage.selcloud.ru; реквизиты как у boto3",
-)
-@click.option("--s3-bucket", default=None)
-@click.option("--s3-prefix", default=None, help="Путь внутри бакета")
-@click.option(
-    "--model",
-    default=DEFAULT_MODEL,
-    show_default=True,
-    help="Репозиторий Hugging Face с экспортом модели",
-)
-@click.option("--revision", default=None, help="Ревизия репозитория; без неё последняя")
-@click.option(
-    "--device",
-    "device_spec",
-    default=None,
-    help="cpu либо cuda:<индекс>; по умолчанию переменная VIS_SEARCHER_DEV, иначе автоматически",
-)
-@click.option("--batch-size", type=click.IntRange(min=1), default=16, show_default=True)
-@click.option(
-    "--cache-dir",
-    type=click.Path(file_okay=False, path_type=Path),
-    default=Path("~/.cache/vino"),
-    show_default=True,
-    help="Кэш engine TensorRT и картинок S3",
-)
+@click.option("--csv", "csv_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=True, help="Каталог: CSV с колонками slug, имени фото и группы")
+@click.option("--images", type=click.Path(exists=True, file_okay=False, path_type=Path), required=True, help="Директория с фото из CSV")
+@click.option("--config", "config_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=DEFAULT_CONFIG, show_default=True, help="Конфиг визуального поиска: модель и ревизия, qdrant и имя коллекции, хранилище кропов, batch_size, cache_dir")
 @click.option("--slug-column", default="Slug", show_default=True)
 @click.option("--photo-column", default="Название фото", show_default=True)
-@click.option(
-    "--group-column",
-    default="group",
-    show_default=True,
-    help="Колонка группы одинакового дизайна; если её нет, каждая позиция — своя группа",
-)
-@click.option(
-    "--format",
-    "fmt",
-    type=click.Choice(sorted(CONTENT_TYPES)),
-    default="jpg",
-    show_default=True,
-    help="Формат кропов в хранилище",
-)
+@click.option("--group-column", default="group", show_default=True, help="Колонка группы одинакового дизайна; если её нет, каждая позиция — своя группа")
+@click.option("--format", "fmt", type=click.Choice(sorted(CONTENT_TYPES)), default="jpg", show_default=True, help="Формат кропов в хранилище")
 @click.option("--quality", type=click.IntRange(1, 100), default=95, show_default=True)
-@click.option(
-    "--on-failure",
-    type=click.Choice(["stop", "skip"]),
-    default="stop",
-    show_default=True,
-    help="Фото без ровно одной годной бутылки: остановить сборку либо пропустить и перечислить в конце",
-)
-@click.option(
-    "--limit",
-    type=click.IntRange(min=1),
-    default=None,
-    help="Первые N строк с фото: для пробы",
-)
-@click.option(
-    "--report",
-    "report_path",
-    type=click.Path(dir_okay=False, path_type=Path),
-    default=None,
-    help="JSON с итогом и списком неудач",
-)
-@click.option(
-    "-c",
-    "--norm-config",
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
-    default=NORM_DIR / "normalize.toml",
-    show_default=True,
-    help="Конфиг нормализации",
-)
-@click.option(
-    "--set",
-    "overrides",
-    multiple=True,
-    metavar="секция.ключ=значение",
-    help="Переопределить параметр конфига нормализации",
-)
+@click.option("--on-failure", type=click.Choice(["stop", "skip"]), default="stop", show_default=True, help="Фото без ровно одной годной бутылки: остановить сборку либо пропустить и перечислить в конце")
+@click.option("--limit", type=click.IntRange(min=1), default=None, help="Первые N строк с фото: для пробы")
+@click.option("--report", "report_path", type=click.Path(dir_okay=False, path_type=Path), default=None, help="JSON с итогом и списком неудач")
+@click.option("-c", "--norm-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True, help="Конфиг нормализации")
+@click.option("--set", "overrides", multiple=True, metavar="секция.ключ=значение", help="Переопределить параметр конфига нормализации")
 def main(
     csv_path: Path,
     images: Path,
-    collection: str,
-    qdrant_host: str,
-    qdrant_port: int,
-    qdrant_https: bool,
-    qdrant_path: Path | None,
-    store_dir: Path | None,
-    s3_endpoint: str | None,
-    s3_bucket: str | None,
-    s3_prefix: str | None,
-    model: str,
-    revision: str | None,
-    device_spec: str | None,
-    batch_size: int,
-    cache_dir: Path,
+    config_path: Path,
     slug_column: str,
     photo_column: str,
     group_column: str,
@@ -505,51 +347,32 @@ def main(
     norm_config: Path,
     overrides: tuple[str, ...],
 ) -> None:
-    """Собрать коллекцию каталога для визуального поиска.
+    """Собрать коллекцию каталога для визуального поиска по config.yaml.
 
-    Каждое фото проходит нормализацию, на нём должна найтись ровно одна годная бутылка; её кроп уходит в хранилище картинок,
-    вектор — в qdrant вместе с метаданными: slug, группа и все slug группы, попавшие в коллекцию, имя кропа, поля каталога, модель и её ревизия.
+    Каждое фото проходит нормализацию, на нём должна найтись ровно одна годная бутылка; её кроп уходит в хранилище картинок из конфига,
+    вектор — в коллекцию qdrant из конфига вместе с метаданными: slug, группа и все slug группы, попавшие в коллекцию, имя кропа,
+    поля каталога, модель и её ревизия. Устройства — device в конфигах, переменные VIS_SEARCHER_DEV и NORMALIZER_DEV их перекрывают.
+    Дешёвые проверки идут до загрузки моделей: CSV и наличие всех фото, qdrant и отсутствие коллекции, доступность хранилища.
     """
-    images_cfg = store_config(store_dir, s3_endpoint, s3_bucket, s3_prefix)
-    rows, skipped, has_group = read_rows(
-        csv_path, slug_column, photo_column, group_column, limit
-    )
+    cfg = load_config(config_path)
+    rows, skipped, has_group = read_rows(csv_path, slug_column, photo_column, group_column, limit)
     check_photos(rows, images)
-    cache_dir = cache_dir.expanduser()
-    device = resolve_device(device_spec)
-    files = fetch_model(model, device.precision, revision)
-    client = connect(
-        QdrantConfig(
-            collection=collection,
-            host=qdrant_host,
-            port=qdrant_port,
-            https=qdrant_https,
-            path=qdrant_path,
-        )
-    )
+    device = resolve_device(cfg.device)
+    files = fetch_model(cfg.model, device.precision, cfg.revision)
+    client = connect(cfg.qdrant)
+    collection = cfg.qdrant.collection
     ensure_absent(client, collection)
-    store = make_store(images_cfg, cache_dir)
+    store = make_store(cfg.images, cfg.cache_dir)
     store.ensure_available()
-    norm = Normalizer(
-        load_norm_config(norm_config, list(overrides)), norm_config.resolve().parent
+    norm = Normalizer(load_norm_config(norm_config, list(overrides)), norm_config.resolve().parent)
+    logger.info(
+        f"конфиг {config_path}: модель {cfg.model}, коллекция {collection}; каталог: {len(rows)} строк с фото, {skipped} без фото; "
+        f"группы: {'колонка ' + group_column if has_group else 'нет, позиция = группа'}; кропы: {store.description}; нормализация на {norm.device}"
     )
-    console.print(
-        f"каталог: {len(rows)} строк с фото, {skipped} без фото; группы: {'колонка ' + group_column if has_group else 'нет, позиция = группа'}; "
-        f"кропы: {store.description}; нормализация на {norm.device}"
-    )
-    encoder = Encoder(files, device, batch_size, cache_dir)
-    console.print(f"энкодер: {encoder.description}")
+    encoder = Encoder(files, device, cfg.batch_size, cfg.cache_dir)
+    logger.info(f"энкодер: {encoder.description}")
     create_collection(client, collection, encoder.embed_dim)
-    state = build(
-        rows,
-        images,
-        norm,
-        encoder,
-        store,
-        fmt,
-        quality,
-        skip_failures=on_failure == "skip",
-    )
+    state = build(rows, images, norm, encoder, store, fmt, quality, skip_failures=on_failure == "skip")
     upsert(client, collection, state.points())
     report(state, rows, skipped, has_group, collection, report_path)
 
