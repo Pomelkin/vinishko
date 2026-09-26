@@ -9,7 +9,6 @@ from typing import Any
 from typing import Literal
 
 import httpx
-import httpx2
 import tenacity
 from openai import OpenAI
 from pydantic import BaseModel
@@ -17,33 +16,32 @@ from pydantic import Field
 from pydantic import create_model
 from qdrant_client import QdrantClient
 
-CATALOG_IMAGES_DIR = Path(__file__).parents[1] / "data" / "images_without_garbarage"
+from siglip_encoder import Siglip2Encoder
+
+HERE = Path(__file__).resolve().parent
+CATALOG_IMAGES_DIR = HERE.parent / "data" / "images_without_garbarage"
+
+QDRANT_URL = "http://127.0.0.1:6333"
+QDRANT_GRPC_PORT = 6334
+COLLECTION_NAME = "catalog_siglip2_dense"
+REQUEST_TIMEOUT_SECONDS = 600
+
 VLM_BASE_URL = "https://c3ed-35-197-132-174.ngrok-free.app/v1"
-VLM_API_KEY = "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"
-# VLM_MODEL = "qwen/qwen3.6-35b-a3b"
+VLM_API_KEY = ""
 VLM_MODEL = "Qwen/Qwen3.6-35B-A3B-FP8"
-VLM_EXTRA_BODY: dict[str, Any] = {
-    "chat_template_kwargs": {"enable_thinking": False},
-    # "reasoning": {
-    #   "enabled": False
-    # },
-    # "provider": {
-    #     "only": ["siliconflow/fp8"]
-    # }
-}
+VLM_PROXY: str | None = None
+VLM_EXTRA_BODY: dict[str, Any] = {"chat_template_kwargs": {"enable_thinking": False}}
 
 
 def make_result_model(candidate_count: int) -> type[BaseModel]:
     allowed_numbers = Literal.__getitem__(tuple(range(1, candidate_count + 1)))
-    pydantic_model = create_model(
+    return create_model(
         "WineMatch",
         image_number=(
             allowed_numbers,
-            # int,
             Field(description="Number of the single best matching candidate image."),
         ),
     )
-    return pydantic_model
 
 
 def build_system_prompt(result_model: type[BaseModel], candidate_count: int) -> str:
@@ -67,47 +65,36 @@ only JSON matching this schema:
 """.strip()
 
 
-class PrettyRetriever:
-    """Encode one image and retrieve the closest catalog items from Qdrant."""
+class DenseRetriever:
+    """Retrieve dense SigLIP2 image embeddings from Qdrant."""
 
-    def __init__(
-            self,
-            *,
-            encoder_url: str,
-            qdrant_url: str,
-            qdrant_grpc_port: int,
-            collection_name: str,
-            timeout_seconds: int = 600,
-            use_vlm: bool = False,
-    ) -> None:
-        self.encoder_url = encoder_url
-        self.collection_name = collection_name
-        self.encoder = httpx.Client(timeout=timeout_seconds, trust_env=False)
+    def __init__(self, *, use_vlm: bool = False) -> None:
+        self.encoder = Siglip2Encoder()
         self.qdrant = QdrantClient(
-            url=qdrant_url,
-            grpc_port=qdrant_grpc_port,
+            url=QDRANT_URL,
+            grpc_port=QDRANT_GRPC_PORT,
             prefer_grpc=True,
-            timeout=timeout_seconds,
+            timeout=REQUEST_TIMEOUT_SECONDS,
             grpc_options={
                 "grpc.max_send_message_length": -1,
                 "grpc.max_receive_message_length": -1,
             },
         )
-        httpx_client = httpx2.Client(proxy="http://localhost:12334")
+        if use_vlm and not VLM_API_KEY:
+            raise ValueError("Для USE_VLM=True заполните VLM_API_KEY в dense_retriever.py")
         self.vlm = (
             OpenAI(
                 base_url=VLM_BASE_URL,
                 api_key=VLM_API_KEY,
-                timeout=timeout_seconds,
+                timeout=REQUEST_TIMEOUT_SECONDS,
                 max_retries=0,
-                http_client=httpx_client,
+                http_client=httpx.Client(proxy=VLM_PROXY, trust_env=False),
             )
             if use_vlm
             else None
         )
 
     def retrieve(self, image_path: str | Path, *, limit: int = 10) -> list[dict[str, object]]:
-        """Return payload and raw/mean MaxSim score for the nearest points."""
         _, selected = self.retrieve_with_candidates(image_path, limit=limit)
         return selected
 
@@ -122,25 +109,24 @@ class PrettyRetriever:
             *,
             limit: int = 10,
     ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
-        """Return candidates before VLM and the final selection."""
-        embedding = self._encode(Path(image_path))
+        image_path = Path(image_path)
+        embedding = self.encoder.encode([image_path])[0]
         points = self.qdrant.query_points(
-            collection_name=self.collection_name,
+            collection_name=COLLECTION_NAME,
             query=embedding,
             limit=limit,
             with_payload=True,
         ).points
-
         results = [
             {
                 "point_id": str(point.id),
                 "metadata": dict(point.payload or {}),
                 "raw_score": float(point.score),
-                "normalized_score": float(point.score) / len(embedding),
+                "normalized_score": float(point.score),
             }
             for point in points
         ]
-        selected = self._select_with_vlm(Path(image_path), results) if self.vlm else results
+        selected = self._select_with_vlm(image_path, results) if self.vlm else results
         return results, selected
 
     def _select_with_vlm(
@@ -155,55 +141,24 @@ class PrettyRetriever:
 
         content: list[dict[str, Any]] = [
             {"type": "text", "text": "QUERY PHOTO:"},
-            {
-                "type": "image_url",
-                "image_url": {"url": self._image_url(query_image), "detail": "high"},
-            },
+            {"type": "image_url", "image_url": {"url": self._image_url(query_image), "detail": "high"}},
         ]
         for number, result in enumerate(results, start=1):
             metadata = result["metadata"]
             if not isinstance(metadata, dict) or "photo" not in metadata:
                 raise ValueError("У кандидата нет metadata.photo")
-            content.extend(
-                [
-                    {"type": "text", "text": f"CANDIDATE {number}:"},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": self._image_url(CATALOG_IMAGES_DIR / str(metadata["photo"])),
-                        },
-                    },
-                ]
-            )
-        content.append(
-            {
-                "type": "text",
-                "text": f"Return exactly one candidate number from 1 to {len(results)}.",
-            }
-        )
-
-        # print with truncated image URLs for debugging
-        # debug_content = []
-        # for item in content:
-        #     if item.get("type") == "image_url" and "image_url" in item:
-        #         url = item["image_url"].get("url", "")
-        #         if url.startswith("data:image/"):
-        #             item = dict(item)
-        #             item["image_url"] = dict(item["image_url"])
-        #             item["image_url"]["url"] = url[:100] + "...(truncated)"
-        #     debug_content.append(item)
-        # print(json.dumps(debug_content, ensure_ascii=False, indent=2))
-        #
-        # raise
+            content.extend([
+                {"type": "text", "text": f"CANDIDATE {number}:"},
+                {"type": "image_url",
+                 "image_url": {"url": self._image_url(CATALOG_IMAGES_DIR / str(metadata["photo"]))}},
+            ])
+        content.append({"type": "text", "text": f"Return exactly one candidate number from 1 to {len(results)}."})
 
         result_model = make_result_model(len(results))
         completion = self.vlm.chat.completions.parse(
             model=VLM_MODEL,
             messages=[
-                {
-                    "role": "system",
-                    "content": build_system_prompt(result_model, len(results)),
-                },
+                {"role": "system", "content": build_system_prompt(result_model, len(results))},
                 {"role": "user", "content": content},
             ],
             response_format=result_model,
@@ -213,9 +168,7 @@ class PrettyRetriever:
         message = completion.choices[0].message
         if message.parsed is None:
             raise RuntimeError(message.refusal or message.content or "VLM не вернула результат")
-
-        index = message.parsed.model_dump()["image_number"] - 1
-        return [results[index]]
+        return [results[message.parsed.model_dump()["image_number"] - 1]]
 
     @staticmethod
     def _image_url(image_path: Path) -> str:
@@ -229,37 +182,12 @@ class PrettyRetriever:
         encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
         return f"data:{media_type};base64,{encoded}"
 
-    def _encode(self, image_path: Path) -> list[list[float]]:
-        if not image_path.is_file():
-            raise FileNotFoundError(f"Не найдена фотография: {image_path}")
-
-        with image_path.open("rb") as image:
-            response = self.encoder.post(
-                self.encoder_url,
-                files={
-                    "files": (
-                        image_path.name,
-                        image,
-                        mimetypes.guess_type(image_path.name)[0] or "application/octet-stream",
-                    ),
-                },
-                headers={"ngrok-skip-browser-warning": "true"},
-            )
-
-        response.raise_for_status()
-        body = response.json()
-        embeddings = body.get("embeddings") if isinstance(body, dict) else None
-        if not isinstance(embeddings, list) or len(embeddings) != 1 or not embeddings[0]:
-            raise ValueError("Encoder вернул некорректный embedding")
-        return embeddings[0]
-
     def close(self) -> None:
-        self.encoder.close()
         self.qdrant.close()
         if self.vlm:
             self.vlm.close()
 
-    def __enter__(self) -> PrettyRetriever:
+    def __enter__(self) -> DenseRetriever:
         return self
 
     def __exit__(

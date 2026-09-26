@@ -15,10 +15,10 @@ HERE = Path(__file__).resolve().parent
 CATALOG_CSV = HERE / "data" / "catalog_dataset.csv"
 IMAGES_DIR = HERE / "data" / "images_without_garbarage"
 
-ENCODER_URL = "http://localhost:8000/encode"
+ENCODER_URL = "http://localhost:8001/encode"
 QDRANT_URL = "http://127.0.0.1:6333"
 QDRANT_GRPC_PORT = 6334
-COLLECTION_NAME = "catalog_evie"
+COLLECTION_NAME = "catalog_neo"
 
 BATCH_SIZE = 8
 QDRANT_BATCH_SIZE = 1

@@ -6,6 +6,17 @@ __pycache__/
 # C extensions
 *.so
 
+*.png
+*.jpg
+*.webp
+*.gif
+*.svg
+*.ico
+*.bmp
+*.tiff
+*.geojson
+*.
+
 # Distribution / packaging
 .Python
 build/
@@ -219,3 +230,8 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 /datasets/
+/experiments/candidates/
+/experiments/data/eval/
+/experiments/data/images_without_garbarage/
+/experiments/data/near_duplicates/
+/experiments/data/strapi/

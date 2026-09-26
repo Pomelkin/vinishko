@@ -12,6 +12,7 @@ from sentence_transformers import MultiVectorEncoder
 from torch.nn.functional import normalize
 
 
+# MODEL_NAME = "tencent/EVIE-4.5B"
 MODEL_NAME = "tencent/EVIE-4.5B"
 HEAD_DIM = 128
 HOST = "0.0.0.0"

@@ -1,0 +1,379 @@
+candidate_number,slug_1,slug_2,winery_1,winery_2,review_verdict,is_confirmed_near_duplicate,visual_relation,diff_percent
+2,fanagoriya-solera-porto-negro-saperavi-krasnoe-suhoe-15,fanagoriya-solera-saperavi-ruby-saperavi-krasnoe-suhoe-16,Фанагория,Фанагория,confirmed_near_duplicate,true,micro_diff,0.24
+3,fanagoriya-primum-alveus-brut-2014-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-extra-brut-2014-pino-nuar-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,micro_diff,0.25
+4,cantiani-riesling,cantiani-rkatsiteli,Шато АЛВИСА,Шато АЛВИСА,confirmed_near_duplicate,true,micro_diff,0.34
+5,fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13,fanagoriya-primum-alveus-extra-brut-2014-pino-nuar-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.51
+6,fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13,fanagoriya-primum-alveus-brut-2014-shardone-igristoe-bryut-beloe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.51
+7,chteau-le-grand-vostock-aligote-reserve-aligote-beloe-suhoe-13,chteau-le-grand-vostock-chardonnay-reserve-shardone-beloe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,0.53
+9,cantiani-aligote-riesling,cantiani-riesling,Шато АЛВИСА,Шато АЛВИСА,confirmed_near_duplicate,true,small_diff,0.55
+10,cantiani-aligote-riesling,cantiani-rkatsiteli,Шато АЛВИСА,Шато АЛВИСА,confirmed_near_duplicate,true,small_diff,0.63
+11,fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13,fanagoriya-primum-alveus-extra-brut-2014-pino-nuar-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.63
+12,fanagoriya-primum-alveus-brut-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.65
+13,chteau-le-grand-vostock-krasnostop-reserve-krasnostop-krasnoe-suhoe-14,chteau-le-grand-vostock-pinot-noir-reserve-pino-nuar-krasnoe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,0.67
+14,fanagoriya-rose-kaberne-sovinon-rozovoe-polusuhoe-13,fanagoriya-rose-saperavi-rozovoe-polusuhoe-125,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.69
+15,fanagoriya-primum-alveus-brut-2021-shardone-beloe-bryut-11-13,fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.70
+16,chteau-le-grand-vostock-cabernet-sauvignon-reserve-kaberne-sovinon-krasnoe-suhoe-14,chteau-le-grand-vostock-merlot-reserve-merlo-krasnoe-suhoe-145,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,0.70
+17,chteau-le-grand-vostock-cabernet-franc-reserve-kaberne-fran-krasnoe-suhoe-14,chteau-le-grand-vostock-le-chene-royal-reserve-merlo-krasnoe-suhoe-145,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,0.70
+18,chteau-le-grand-vostock-cabernet-franc-reserve-kaberne-fran-krasnoe-suhoe-14,chteau-le-grand-vostock-krasnostop-reserve-krasnostop-krasnoe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,0.71
+19,fanagoriya-brule-cabernet-sauvignon-polusladkoe-krasnoe-kaberne-sovinon-125,fanagoriya-brule-saperavi-saperavi-igristoe-sladkoe-krasnoe-bryut-125,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.73
+20,fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13,fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.73
+21,chteau-le-grand-vostock-cabernet-franc-reserve-kaberne-fran-krasnoe-suhoe-14,chteau-le-grand-vostock-pinot-noir-reserve-pino-nuar-krasnoe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,0.74
+22,fanagoriya-primum-alveus-brut-2014-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.76
+23,agora-rosa-viva-cabernet-sauvignon-shiraz,agora-rosa-viva-cabernet-franc,AGORA WINERY,AGORA WINERY,confirmed_near_duplicate,true,small_diff,0.76
+24,agrolayn-mountain-eagle-chardonnay-shardone-beloe-suhoe-12,agrolayn-mountain-eagle-viognier-vione-beloe-suhoe-115,Агролайн,Агролайн,confirmed_near_duplicate,true,small_diff,0.80
+25,chteau-le-grand-vostock-le-chene-royal-reserve-merlo-krasnoe-suhoe-145,chteau-le-grand-vostock-pinot-noir-reserve-pino-nuar-krasnoe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,0.81
+26,fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14,fanagoriya-dekanter-saperavi-2017-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.84
+27,fanagoriya-primum-alveus-bryut-2019-pino-nuar-igristoe-bryut-rozovoe-11-13,fanagoriya-primum-alveus-extra-brut-rose-2014-pino-nuar-rozovoe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.86
+28,fanagoriya-primum-alveus-brut-2016-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-extra-brut-2014-pino-nuar-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.88
+29,chteau-le-grand-vostock-krasnostop-reserve-krasnostop-krasnoe-suhoe-14,chteau-le-grand-vostock-le-chene-royal-reserve-merlo-krasnoe-suhoe-145,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,0.89
+30,derbent-vino-di-kaspiko-merlo-krasnoe-polusladkoe-11,derbent-vino-di-kaspiko-merlo-krasnoe-suhoe-13,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,small_diff,0.91
+31,fanagoriya-dekanter-kaberne-sovinon-2018-krasnoe-suhoe-14,fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.96
+32,derbent-vino-di-kaspiko-merlo-krasnoe-suhoe-13,derbent-vino-di-kaspiko-saperavi-krasnoe-suhoe-13,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,small_diff,0.96
+33,fanagoriya-100-ottenkov-krasnogo-kaberne-kaberne-sovinon-krasnoe-suhoe-135,fanagoriya-100-ottenkov-krasnogo-saperavi-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,0.97
+34,shato-taman-kaberne,shato-taman-saperavi,Кубань-Вино,Кубань-Вино,confirmed_near_duplicate,true,small_diff,0.98
+35,fanagoriya-dekanter-chardonnay-2020-shardone-beloe-suhoe-135,fanagoriya-dekanter-saperavi-2017-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.00
+36,fanagoriya-sur-lie-chardonnay-shardone-beloe-suhoe-135,fanagoriya-sur-lie-vi-vi-aligote-beloe-suhoe-125,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.04
+37,fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13,fanagoriya-primum-alveus-brut-2017-shardone-igristoe-bryut-beloe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.04
+38,derbent-vino-di-kaspiko-kaberne-sovinon-krasnoe-suhoe-135,derbent-vino-di-kaspiko-merlo-krasnoe-suhoe-13,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,small_diff,1.04
+39,chteau-le-grand-vostock-krasnostop-reserve-krasnostop-krasnoe-suhoe-14,chteau-le-grand-vostock-merlot-reserve-merlo-krasnoe-suhoe-145,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,1.05
+40,fanagoriya-primum-alveus-brut-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-extra-brut-2014-pino-nuar-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.06
+41,fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13,fanagoriya-primum-alveus-brut-2021-shardone-beloe-bryut-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.08
+42,fanagoriya-primum-alveus-brut-2021-shardone-beloe-bryut-11-13,fanagoriya-primum-alveus-extra-brut-2014-pino-nuar-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.10
+43,fanagoriya-primum-alveus-brut-2014-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-extra-brut-2016-shardone-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.12
+44,chteau-le-grand-vostock-cabernet-franc-reserve-kaberne-fran-krasnoe-suhoe-14,chteau-le-grand-vostock-merlot-reserve-merlo-krasnoe-suhoe-145,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,1.14
+45,fanagoriya-100-ottenkov-krasnogo-kaberne-kaberne-sovinon-krasnoe-suhoe-135,fanagoriya-100-ottenkov-shardone-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.17
+46,pino-gri-avtorskoe,kokur-avtorskoe,Массандра,Массандра,confirmed_near_duplicate,true,small_diff,1.18
+47,chteau-le-grand-vostock-merlot-reserve-merlo-krasnoe-suhoe-145,chteau-le-grand-vostock-pinot-noir-reserve-pino-nuar-krasnoe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,1.19
+48,fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13,fanagoriya-primum-alveus-brut-2016-shardone-igristoe-bryut-beloe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.19
+49,fanagoriya-primum-alveus-brut-2016-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-extra-brut-2016-shardone-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.25
+50,chteau-le-grand-vostock-cabernet-sauvignon-reserve-kaberne-sovinon-krasnoe-suhoe-14,chteau-le-grand-vostock-krasnostop-reserve-krasnostop-krasnoe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,1.26
+51,fanagoriya-cru-lermont-chardonnay-shardone-beloe-suhoe-14,fanagoriya-cru-lermont-petit-verdot-pti-verdo-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.27
+52,chteau-le-grand-vostock-cabernet-franc-reserve-kaberne-fran-krasnoe-suhoe-14,chteau-le-grand-vostock-cabernet-sauvignon-reserve-kaberne-sovinon-krasnoe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,1.28
+53,fanagoriya-dekanter-pino-nuar-2020-krasnoe-suhoe-135,fanagoriya-dekanter-riesling-2020-risling-reynskiy-beloe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.29
+54,chteau-le-grand-vostock-le-chene-royal-reserve-merlo-krasnoe-suhoe-145,chteau-le-grand-vostock-merlot-reserve-merlo-krasnoe-suhoe-145,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,1.31
+55,chteau-le-grand-vostock-cabernet-sauvignon-reserve-kaberne-sovinon-krasnoe-suhoe-14,chteau-le-grand-vostock-pinot-noir-reserve-pino-nuar-krasnoe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,1.35
+56,fanagoriya-primum-alveus-brut-2016-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.38
+57,fanagoriya-dekanter-chardonnay-2020-shardone-beloe-suhoe-135,fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.40
+58,fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13,fanagoriya-primum-alveus-extra-brut-2016-shardone-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.41
+59,fanagoriya-101-ottenok-krasnogo-kaberne-kaberne-sovinon-krasnoe-suhoe-14,fanagoriya-101-ottenok-krasnogo-saperavi-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.43
+60,chteau-le-grand-vostock-cabernet-sauvignon-reserve-kaberne-sovinon-krasnoe-suhoe-14,chteau-le-grand-vostock-le-chene-royal-reserve-merlo-krasnoe-suhoe-145,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,small_diff,1.44
+61,fanagoriya-dekanter-kaberne-sovinon-2018-krasnoe-suhoe-14,fanagoriya-dekanter-saperavi-2017-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.44
+62,fanagoriya-dekanter-kaberne-fran-2019-krasnoe-suhoe-13,fanagoriya-dekanter-kaberne-sovinon-2018-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.46
+63,fanagoriya-brule-cabernet-franc-polusuhoe-rozovoe-kaberne-fran-12,fanagoriya-brule-cabernet-sauvignon-polusladkoe-krasnoe-kaberne-sovinon-125,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.48
+64,fanagoriya-dekanter-chardonnay-2020-shardone-beloe-suhoe-135,fanagoriya-dekanter-pino-nuar-2020-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.52
+65,fanagoriya-cru-lermont-merlo-merlo-krasnoe-suhoe-14,fanagoriya-cru-lermont-saperavi-saperavi-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.52
+66,fanagoriya-dekanter-kaberne-fran-2019-krasnoe-suhoe-13,fanagoriya-dekanter-riesling-2020-risling-reynskiy-beloe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.52
+67,fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13,fanagoriya-primum-alveus-extra-brut-2016-shardone-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.54
+68,fanagoriya-100-ottenkov-krasnogo-saperavi-krasnoe-suhoe-14,fanagoriya-100-ottenkov-shardone-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.57
+69,fanagoriya-dekanter-chardonnay-2020-shardone-beloe-suhoe-135,fanagoriya-dekanter-riesling-2020-risling-reynskiy-beloe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.58
+70,derbent-vino-desono-risling-ekstra-bryut-beloe-105-125,derbent-vino-desono-sovinon-ekstra-bryut-sovinon-blan-beloe-105-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,small_diff,1.59
+71,derbent-vino-desono-risling-ekstra-bryut-beloe-105-125,derbent-vino-kavkazian-rkatsiteli-beloe-bryut-105-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,small_diff,1.59
+73,fanagoriya-dekanter-riesling-2020-risling-reynskiy-beloe-suhoe-13,fanagoriya-dekanter-saperavi-2017-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.64
+74,fanagoriya-dekanter-kaberne-fran-2019-krasnoe-suhoe-13,fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.66
+75,fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14,fanagoriya-dekanter-riesling-2020-risling-reynskiy-beloe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.66
+76,fanagoriya-brule-cabernet-franc-polusuhoe-rozovoe-kaberne-fran-12,fanagoriya-brule-muscat-ottonel-polusladkoe-muskat-ottonel-beloe-115,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.70
+77,derbent-vino-di-kaspiko-kaberne-sovinon-krasnoe-suhoe-135,derbent-vino-di-kaspiko-saperavi-krasnoe-suhoe-13,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,small_diff,1.72
+78,aligote-avtorskoe,kokur-avtorskoe,Массандра,Массандра,confirmed_near_duplicate,true,small_diff,1.77
+79,aligote-avtorskoe-vino,kokur-avtorskoe,Массандра,Массандра,confirmed_near_duplicate,true,small_diff,1.77
+80,fanagoriya-ice-wine-kaberne-kaberne-sovinon-krasnoe-sladkoe-11,fanagoriya-ice-wine-saperavi-tihoe-krasnoe-sladkoe-10,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.77
+81,fanagoriya-brule-cabernet-franc-polusuhoe-rozovoe-kaberne-fran-12,fanagoriya-brule-saperavi-saperavi-igristoe-sladkoe-krasnoe-bryut-125,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.83
+83,fanagoriya-dekanter-kaberne-fran-2019-krasnoe-suhoe-13,fanagoriya-dekanter-saperavi-2017-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.87
+84,fanagoriya-cru-lermont-cabernet-franc-kaberne-fran-krasnoe-suhoe-13,fanagoriya-cru-lermont-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.90
+85,fanagoriya-alveus-ultra-cuvee-brut-shardone-beloe-bryut-12,fanagoriya-alveus-ultra-cuvee-ekstra-bryut-rozovoe-merlo-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.92
+86,aligote-avtorskoe,pino-gri-avtorskoe,Массандра,Массандра,confirmed_near_duplicate,true,small_diff,1.93
+87,aligote-avtorskoe-vino,pino-gri-avtorskoe,Массандра,Массандра,confirmed_near_duplicate,true,small_diff,1.93
+88,fanagoriya-primum-alveus-brut-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-extra-brut-2016-shardone-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.93
+89,fanagoriya-dekanter-chardonnay-2020-shardone-beloe-suhoe-135,fanagoriya-dekanter-kaberne-sovinon-2018-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.94
+90,fanagoriya-primum-alveus-brut-2021-shardone-beloe-bryut-11-13,fanagoriya-primum-alveus-extra-brut-2016-shardone-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.96
+91,fanagoriya-dekanter-pino-nuar-2020-krasnoe-suhoe-135,fanagoriya-dekanter-saperavi-2017-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.97
+92,fanagoriya-cru-lermont-chardonnay-shardone-beloe-suhoe-14,fanagoriya-cru-lermont-saperavi-saperavi-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.98
+93,fanagoriya-cru-lermont-petit-verdot-pti-verdo-krasnoe-suhoe-13,fanagoriya-cru-lermont-saperavi-saperavi-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.98
+94,fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13,fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.99
+95,fanagoriya-brule-cabernet-sauvignon-polusladkoe-krasnoe-kaberne-sovinon-125,fanagoriya-brule-muscat-ottonel-polusladkoe-muskat-ottonel-beloe-115,Фанагория,Фанагория,confirmed_near_duplicate,true,small_diff,1.99
+96,derbent-vino-di-kaspiko-merlo-krasnoe-polusladkoe-11,derbent-vino-di-kaspiko-saperavi-krasnoe-suhoe-13,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,small_diff,1.99
+97,fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13,fanagoriya-primum-alveus-extra-brut-2016-shardone-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.04
+98,fanagoriya-dekanter-chardonnay-2020-shardone-beloe-suhoe-135,fanagoriya-dekanter-kaberne-fran-2019-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.05
+99,fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125,fanagoriya-5-elements-bryut-rozovoe-saperavi-igristoe-bryut-rozovoe-125,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.06
+100,fanagoriya-cru-lermont-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-13,fanagoriya-cru-lermont-merlo-merlo-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.08
+101,fanagoriya-cru-lermont-merlo-merlo-krasnoe-suhoe-14,fanagoriya-cru-lermont-petit-verdot-pti-verdo-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.08
+102,dubinin-winery-merlo-roze-rozovoe-suhoe-125,dubinin-winery-roze-kaberne-fran-rozovoe-suhoe-13,Dubinin Winery,Dubinin Winery,confirmed_near_duplicate,true,visible_diff,2.10
+103,fanagoriya-dekanter-kaberne-sovinon-2018-krasnoe-suhoe-14,fanagoriya-dekanter-riesling-2020-risling-reynskiy-beloe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.11
+104,fanagoriya-dekanter-kaberne-fran-2019-krasnoe-suhoe-13,fanagoriya-dekanter-pino-nuar-2020-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.15
+105,fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14,fanagoriya-dekanter-pino-nuar-2020-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.15
+106,fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13,fanagoriya-primum-alveus-brut-2017-shardone-igristoe-bryut-beloe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.17
+107,fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13,fanagoriya-primum-alveus-brut-2021-shardone-beloe-bryut-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.18
+108,fanagoriya-brule-muscat-ottonel-polusladkoe-muskat-ottonel-beloe-115,fanagoriya-brule-saperavi-saperavi-igristoe-sladkoe-krasnoe-bryut-125,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.18
+109,fanagoriya-cru-lermont-pinot-noir-pino-nuar-krasnoe-suhoe-13,fanagoriya-cru-lermont-saperavi-saperavi-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.19
+110,fanagoriya-cru-lermont-cabernet-franc-kaberne-fran-krasnoe-suhoe-13,fanagoriya-cru-lermont-pinot-noir-pino-nuar-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.21
+111,fanagoriya-cru-lermont-chardonnay-shardone-beloe-suhoe-14,fanagoriya-cru-lermont-merlo-merlo-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.23
+112,fanagoriya-cru-lermont-chardonnay-shardone-beloe-suhoe-14,fanagoriya-cru-lermont-pinot-noir-pino-nuar-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.23
+113,fanagoriya-cru-lermont-petit-verdot-pti-verdo-krasnoe-suhoe-13,fanagoriya-cru-lermont-pinot-noir-pino-nuar-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.25
+114,chteau-le-grand-vostock-aligote-reserve-aligote-beloe-suhoe-13,chteau-le-grand-vostock-sauvignon-blanc-reserve-sovinon-blan-beloe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,2.26
+115,fanagoriya-cru-lermont-cabernet-franc-kaberne-fran-krasnoe-suhoe-13,fanagoriya-cru-lermont-merlo-merlo-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.29
+116,chteau-le-grand-vostock-pinot-gris-reserve-pino-gri-beloe-suhoe-135,chteau-le-grand-vostock-sauvignon-blanc-reserve-sovinon-blan-beloe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,2.29
+117,fanagoriya-solera-moscatel-oro-muskat-ottonel-beloe-suhoe-16,fanagoriya-solera-rkatsiteli-ambra-rkatsiteli-beloe-suhoe-15,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.31
+118,fanagoriya-cru-lermont-merlo-merlo-krasnoe-suhoe-14,fanagoriya-cru-lermont-pinot-noir-pino-nuar-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.34
+119,chteau-le-grand-vostock-chardonnay-reserve-shardone-beloe-suhoe-14,chteau-le-grand-vostock-sauvignon-blanc-reserve-sovinon-blan-beloe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,2.34
+120,fanagoriya-alta-qortis-saperavi-krasnoe-suhoe-145,fanagoriya-formula-q-saperavi-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.35
+121,fanagoriya-cru-lermont-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-13,fanagoriya-cru-lermont-petit-verdot-pti-verdo-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.36
+122,derbent-vino-di-kaspiko-kaberne-sovinon-krasnoe-suhoe-135,derbent-vino-di-kaspiko-merlo-krasnoe-polusladkoe-11,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,2.39
+123,fanagoriya-cru-lermont-merlo-merlo-krasnoe-suhoe-14,fanagoriya-cru-lermont-rubinovyy-magaracha-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.40
+124,fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13,fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.43
+125,fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13,fanagoriya-primum-alveus-brut-2014-shardone-igristoe-bryut-beloe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.48
+126,fanagoriya-dekanter-kaberne-sovinon-2018-krasnoe-suhoe-14,fanagoriya-dekanter-pino-nuar-2020-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.56
+127,fanagoriya-cru-lermont-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-13,fanagoriya-cru-lermont-saperavi-saperavi-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.57
+128,fanagoriya-cru-lermont-cabernet-franc-kaberne-fran-krasnoe-suhoe-13,fanagoriya-cru-lermont-saperavi-saperavi-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.58
+129,fanagoriya-cru-lermont-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-13,fanagoriya-cru-lermont-rubinovyy-magaracha-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.66
+130,fanagoriya-cru-lermont-cabernet-franc-kaberne-fran-krasnoe-suhoe-13,fanagoriya-cru-lermont-rubinovyy-magaracha-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.69
+131,fanagoriya-cru-lermont-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-13,fanagoriya-cru-lermont-chardonnay-shardone-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.75
+132,fanagoriya-cru-lermont-rubinovyy-magaracha-krasnoe-suhoe-13,fanagoriya-cru-lermont-saperavi-saperavi-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.78
+133,fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13,fanagoriya-primum-alveus-extra-brut-2014-pino-nuar-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.80
+134,derbent-vino-di-kaspiko-rkatsiteli-beloe-suhoe-12,derbent-vino-di-kaspiko-shardone-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,2.81
+135,fanagoriya-cru-lermont-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-13,fanagoriya-cru-lermont-pinot-noir-pino-nuar-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.97
+136,fanagoriya-cru-lermont-petit-verdot-pti-verdo-krasnoe-suhoe-13,fanagoriya-cru-lermont-rubinovyy-magaracha-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.97
+137,fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13,fanagoriya-primum-alveus-brut-2016-shardone-igristoe-bryut-beloe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,2.98
+138,fanagoriya-cru-lermont-pinot-noir-pino-nuar-krasnoe-suhoe-13,fanagoriya-cru-lermont-rubinovyy-magaracha-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.02
+139,chteau-le-grand-vostock-aligote-reserve-aligote-beloe-suhoe-13,chteau-le-grand-vostock-pinot-gris-reserve-pino-gri-beloe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,3.09
+140,fanagoriya-cru-lermont-cabernet-franc-kaberne-fran-krasnoe-suhoe-13,fanagoriya-cru-lermont-petit-verdot-pti-verdo-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.16
+141,fanagoriya-cru-lermont-chardonnay-shardone-beloe-suhoe-14,fanagoriya-cru-lermont-rubinovyy-magaracha-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.20
+142,chteau-le-grand-vostock-chardonnay-reserve-shardone-beloe-suhoe-14,chteau-le-grand-vostock-pinot-gris-reserve-pino-gri-beloe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,3.24
+143,fanagoriya-cru-lermont-cabernet-franc-kaberne-fran-krasnoe-suhoe-13,fanagoriya-cru-lermont-chardonnay-shardone-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.43
+144,fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.44
+145,derbent-vino-di-kaspiko-risling-beloe-suhoe-12,derbent-vino-di-kaspiko-shardone-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,3.48
+146,derbent-vino-di-kaspiko-risling-beloe-suhoe-12,derbent-vino-di-kaspiko-rkatsiteli-beloe-suhoe-12,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,3.48
+147,agrolayn-mountain-eagle-semillon-semilon-beloe-suhoe-11,agrolayn-mountain-eagle-viognier-vione-beloe-suhoe-115,Агролайн,Агролайн,confirmed_near_duplicate,true,visible_diff,3.51
+148,agrolayn-mountain-eagle-traminer-traminer-beloe-suhoe-12,agrolayn-mountain-eagle-viognier-vione-beloe-suhoe-115,Агролайн,Агролайн,confirmed_near_duplicate,true,visible_diff,3.51
+149,fanagoriya-formula-q-saperavi-krasnoe-suhoe-135,fanagoriya-q-bordeaux-blend-kaberne-sovinon-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.69
+150,chateau-andre-gryuner-beloe-suhoe-13,chateau-andre-risling-beloe-suhoe-13,Chateau Andre,Chateau Andre,confirmed_near_duplicate,true,visible_diff,3.84
+151,fanagoriya-fanagoriya-bryut-beloe-sovinon-blan-igristoe-bryut-beloe-11-13,fanagoriya-fanagoriya-bryut-rozovoe-sovinon-blan-igristoe-bryut-rozovoe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.85
+152,fanagoriya-alta-qortis-saperavi-krasnoe-suhoe-145,fanagoriya-q-bordeaux-blend-kaberne-sovinon-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.89
+153,domaine-lipko-sovinon-blan-beloe-suhoe-118,domaine-lipko-white-blend-tsitronnyy-magaracha-beloe-suhoe-115,Domaine Lipko,Domaine Lipko,confirmed_near_duplicate,true,visible_diff,3.92
+154,cary-pandas-avtorskoe-vino,muskat-avtorskoe-vino,Массандра,Массандра,confirmed_near_duplicate,true,visible_diff,3.96
+155,fanagoriya-dekanter-formula-q-kaberne-sovinon-krasnoe-suhoe-135,fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.96
+156,fanagoriya-dekanter-formula-q-kaberne-sovinon-krasnoe-suhoe-135,fanagoriya-dekanter-saperavi-2017-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.98
+157,fanagoriya-dekanter-chardonnay-2020-shardone-beloe-suhoe-135,fanagoriya-dekanter-formula-q-kaberne-sovinon-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.98
+158,fanagoriya-dekanter-riesling-2020-risling-reynskiy-beloe-suhoe-13,fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,3.99
+159,fanagoriya-dekanter-formula-q-kaberne-sovinon-krasnoe-suhoe-135,fanagoriya-dekanter-riesling-2020-risling-reynskiy-beloe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.01
+160,fanagoriya-dekanter-chardonnay-2020-shardone-beloe-suhoe-135,fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.03
+161,fanagoriya-dekanter-formula-q-kaberne-sovinon-krasnoe-suhoe-135,fanagoriya-dekanter-pino-nuar-2020-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.03
+162,chteau-le-grand-vostock-cadet-karsov-shardone-beloe-suhoe-135,chteau-le-grand-vostock-fagotine-pino-gri-beloe-polusladkoe-105,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,4.07
+163,fanagoriya-dekanter-saperavi-2017-krasnoe-suhoe-135,fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.07
+164,fanagoriya-dekanter-formula-q-kaberne-sovinon-krasnoe-suhoe-135,fanagoriya-dekanter-kaberne-fran-2019-krasnoe-suhoe-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.09
+165,fanagoriya-dekanter-pino-nuar-2020-krasnoe-suhoe-135,fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.10
+166,derbent-vino-desono-risling-beloe-suhoe-125,derbent-vino-desono-saperavi-krasnoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,4.11
+167,fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14,fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.11
+168,fanagoriya-dekanter-formula-q-kaberne-sovinon-krasnoe-suhoe-135,fanagoriya-dekanter-kaberne-sovinon-2018-krasnoe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.13
+169,chateau-andre-pino-gri-beloe-suhoe-14,chateau-andre-sovinon-blan-beloe-suhoe-13,Chateau Andre,Chateau Andre,confirmed_near_duplicate,true,visible_diff,4.17
+170,fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.21
+171,fanagoriya-dekanter-kaberne-fran-2019-krasnoe-suhoe-13,fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.23
+172,fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.24
+173,chteau-le-grand-vostock-cadet-karsov-shardone-beloe-suhoe-135,chteau-le-grand-vostock-vostock-blanc-sovinon-blan-beloe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,4.24
+174,fanagoriya-dekanter-kaberne-sovinon-2018-krasnoe-suhoe-14,fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.27
+175,fanagoriya-brule-cabernet-franc-polusuhoe-rozovoe-kaberne-fran-12,fanagoriya-brule-sauvignon-blanc-brut-sovinon-blan-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.31
+176,derbent-vino-desono-risling-beloe-suhoe-125,derbent-vino-desono-shardone-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,4.34
+177,aya-organic-wine-vineyards-blush-1-sira-rozovoe-ekstra-bryut-135,aya-organic-wine-vineyards-blush-2-merlo-rozovoe-ekstra-bryut-135,AYA Organic Wine & Vineyards,AYA Organic Wine & Vineyards,confirmed_near_duplicate,true,visible_diff,4.35
+178,fanagoriya-brule-muscat-ottonel-polusladkoe-muskat-ottonel-beloe-115,fanagoriya-brule-sauvignon-blanc-brut-sovinon-blan-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.35
+179,abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12,abrau-dyurso-russkoe-igristoe-polusuhoe-shardone-beloe-12,Абрау-Дюрсо,Абрау-Дюрсо,confirmed_near_duplicate,true,visible_diff,4.35
+180,fanagoriya-alveus-ultra-cuvee-ekstra-bryut-beloe-risling-reynskiy-12,fanagoriya-alveus-ultra-cuvee-ekstra-bryut-rozovoe-merlo-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.36
+181,fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-brut-2017-shardone-igristoe-bryut-beloe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.36
+182,derbent-vino-desono-saperavi-krasnoe-suhoe-125,derbent-vino-desono-shardone-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,4.38
+183,fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-brut-2014-shardone-igristoe-bryut-beloe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.39
+184,chateau-andre-pino-nuar-roze-rozovoe-suhoe-13,chateau-andre-tsvaygelt-roze-rozovoe-suhoe-13,Chateau Andre,Chateau Andre,confirmed_near_duplicate,true,visible_diff,4.40
+185,fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-brut-2021-shardone-beloe-bryut-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.40
+186,fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-extra-brut-2016-shardone-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.42
+187,derbent-vino-desono-merlo-krasnoe-suhoe-125,derbent-vino-desono-shardone-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,4.50
+188,derbent-vino-desono-kaberne-fran-krasnoe-suhoe-125,derbent-vino-desono-shardone-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,4.53
+189,derbent-vino-desono-merlo-krasnoe-suhoe-125,derbent-vino-desono-risling-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,4.54
+190,fanagoriya-alveus-ultra-cuvee-brut-shardone-beloe-bryut-12,fanagoriya-alveus-ultra-cuvee-bryut-rozovoe-merlo-igristoe-bryut-rozovoe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.54
+191,chateau-andre-merlo-krasnoe-suhoe-14,chateau-andre-pino-nuar-krasnoe-suhoe-14,Chateau Andre,Chateau Andre,confirmed_near_duplicate,true,visible_diff,4.55
+192,derbent-vino-desono-merlo-krasnoe-suhoe-125,derbent-vino-desono-saperavi-krasnoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,4.57
+193,fanagoriya-brule-frizzante-brut-beloe-pino-nuar-bryut-115,fanagoriya-brule-frizzante-polusladkoe-beloe-pino-nuar-11,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.58
+194,fanagoriya-alveus-ultra-cuvee-brut-shardone-beloe-bryut-12,fanagoriya-alveus-ultra-cuvee-ekstra-bryut-beloe-risling-reynskiy-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.59
+195,fanagoriya-brule-frizzante-brut-beloe-pino-nuar-bryut-115,fanagoriya-brule-frizzante-brut-rozovoe-merlo-igristoe-bryut-rozovoe-115,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.67
+196,fanagoriya-brule-frizzante-brut-rozovoe-merlo-igristoe-bryut-rozovoe-115,fanagoriya-brule-frizzante-polusladkoe-beloe-pino-nuar-11,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.67
+197,derbent-vino-desono-kaberne-fran-krasnoe-suhoe-125,derbent-vino-desono-risling-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,4.71
+198,caperavi-avtorskoe-vino,cira-avtorskoe-vino,Массандра,Массандра,confirmed_near_duplicate,true,visible_diff,4.73
+199,derbent-vino-desono-kaberne-fran-krasnoe-suhoe-125,derbent-vino-desono-saperavi-krasnoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,4.74
+200,fanagoriya-brule-cabernet-sauvignon-polusladkoe-krasnoe-kaberne-sovinon-125,fanagoriya-brule-sauvignon-blanc-brut-sovinon-blan-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.80
+201,fanagoriya-brule-saperavi-saperavi-igristoe-sladkoe-krasnoe-bryut-125,fanagoriya-brule-sauvignon-blanc-brut-sovinon-blan-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.80
+202,fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-extra-brut-2014-pino-nuar-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.90
+203,fanagoriya-dekanter-formula-q-kaberne-sovinon-krasnoe-suhoe-135,fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,4.91
+204,derbent-vino-di-kaspiko-shardone-beloe-bryut-105-125,derbent-vino-di-kaspiko-sovinon-sovinon-blan-beloe-suhoe-12,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,4.94
+205,derbent-vino-desono-kaberne-fran-krasnoe-suhoe-125,derbent-vino-desono-merlo-krasnoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,5.15
+206,chteau-le-grand-vostock-fagotine-pino-gri-beloe-polusladkoe-105,chteau-le-grand-vostock-vostock-blanc-sovinon-blan-beloe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,5.18
+207,derbent-vino-desono-kaberne-sovinon-krasnoe-suhoe-125,derbent-vino-desono-shardone-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,5.23
+208,derbent-vino-desono-kaberne-sovinon-krasnoe-suhoe-125,derbent-vino-desono-saperavi-krasnoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,5.27
+209,derbent-vino-di-kaspiko-sovinon-sovinon-blan-beloe-suhoe-12,igristoe-vino-bryut-beloe-di-caspico,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,5.29
+210,derbent-vino-desono-kaberne-sovinon-krasnoe-suhoe-125,derbent-vino-desono-risling-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,5.33
+211,agora-yachting-cabernet-sauvignon,agora-yachting-chardonnay,AGORA WINERY,AGORA WINERY,confirmed_near_duplicate,true,visible_diff,5.36
+212,agora-yachting-sauvignon,agora-yachting-chardonnay,AGORA WINERY,AGORA WINERY,confirmed_near_duplicate,true,visible_diff,5.36
+213,fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12,fanagoriya-primum-alveus-brut-2016-shardone-igristoe-bryut-beloe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,5.43
+214,derbent-vino-di-kaspiko-shardone-beloe-polusladkoe-105-125,derbent-vino-di-kaspiko-sovinon-sovinon-blan-beloe-suhoe-12,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,5.53
+215,chteau-le-grand-vostock-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-14,chteau-le-grand-vostock-merlot-merlo-krasnoe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,5.54
+216,derbent-vino-di-kaspiko-shardone-beloe-polusladkoe-105-125,igristoe-vino-ekstra-bryut-beloe-di-caspico,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,5.54
+217,fanagoriya-brule-muscat-ottonel-brut-muskat-ottonel-beloe-polusladkoe-12,fanagoriya-brule-muscat-ottonel-polusladkoe-muskat-ottonel-beloe-115,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,5.56
+218,fanagoriya-alveus-ultra-cuvee-bryut-rozovoe-merlo-igristoe-bryut-rozovoe-12,fanagoriya-alveus-ultra-cuvee-ekstra-bryut-rozovoe-merlo-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,5.62
+219,derbent-vino-desono-kaberne-sovinon-krasnoe-suhoe-125,derbent-vino-desono-kaberne-fran-krasnoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,5.68
+220,fanagoriya-brule-cabernet-franc-polusuhoe-rozovoe-kaberne-fran-12,fanagoriya-brule-muscat-ottonel-brut-muskat-ottonel-beloe-polusladkoe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,5.81
+221,fanagoriya-ona-skazala-da-beloe-polusladkoe,fanagoriya-ona-skazala-da-beloe-bryut,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,5.99
+222,fanagoriya-formula-q-kaberne-sovinon-krasnoe-suhoe-135,fanagoriya-saqra-saperavi-krasnoe-suhoe-135,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,6.00
+223,fanagoriya-ice-wine-risling-tihoe-beloe-sladkoe-10,fanagoriya-ice-wine-saperavi-tihoe-krasnoe-sladkoe-10,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,6.07
+224,zb-vajn-vajt-suhoe-beloe,zb-vajn-roze-suhoe-rozovoe,Золотая Балка,Золотая Балка,confirmed_near_duplicate,true,visible_diff,6.12
+225,fanagoriya-brule-muscat-ottonel-brut-muskat-ottonel-beloe-polusladkoe-12,fanagoriya-brule-saperavi-saperavi-igristoe-sladkoe-krasnoe-bryut-125,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,6.14
+226,fanagoriya-brule-cabernet-sauvignon-polusladkoe-krasnoe-kaberne-sovinon-125,fanagoriya-brule-muscat-ottonel-brut-muskat-ottonel-beloe-polusladkoe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,6.23
+227,abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12,abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115,Абрау-Дюрсо,Абрау-Дюрсо,confirmed_near_duplicate,true,visible_diff,6.25
+228,agrolayn-mountain-eagle-muscat-muskat-beloe-suhoe-125,agrolayn-mountain-eagle-white-blend-vione-beloe-suhoe-115,Агролайн,Агролайн,confirmed_near_duplicate,true,visible_diff,6.41
+229,cantiani-riesling-rkatsiteli,cantiani-riesling,Шато АЛВИСА,Шато АЛВИСА,confirmed_near_duplicate,true,visible_diff,6.42
+230,cantiani-aligote-riesling,cantiani-riesling-rkatsiteli,Шато АЛВИСА,Шато АЛВИСА,confirmed_near_duplicate,true,visible_diff,6.46
+231,cantiani-riesling-rkatsiteli,cantiani-rkatsiteli,Шато АЛВИСА,Шато АЛВИСА,confirmed_near_duplicate,true,visible_diff,6.47
+232,fanagoriya-ice-wine-kaberne-kaberne-sovinon-krasnoe-sladkoe-11,fanagoriya-ice-wine-risling-tihoe-beloe-sladkoe-10,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,6.52
+233,agora-yachting-merlot,agora-yachting-cabernet-sauvignon,AGORA WINERY,AGORA WINERY,confirmed_near_duplicate,true,visible_diff,6.61
+234,agora-yachting-merlot,agora-yachting-sauvignon,AGORA WINERY,AGORA WINERY,confirmed_near_duplicate,true,visible_diff,6.61
+235,alma-valley-petit-arvin-beloe-suhoe-13,alma-valley-pino-gri-beloe-polusuhoe-15,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,6.69
+236,chteau-le-grand-vostock-chardonnay-shardone-beloe-suhoe-14,chteau-le-grand-vostock-sauvignon-blanc-sovinon-blan-beloe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,6.79
+237,alma-valley-kaberne-fran-krasnoe-suhoe-145,alma-valley-shiraz-krasnoe-suhoe-13,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,6.87
+238,alma-valley-kolombar-beloe-polusuhoe-135,alma-valley-semilon-beloe-suhoe-135,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,6.89
+240,agora-yachting-merlot,agora-yachting-chardonnay,AGORA WINERY,AGORA WINERY,confirmed_near_duplicate,true,visible_diff,6.96
+241,fanagoriya-brule-cabernet-franc-polusuhoe-rozovoe-kaberne-fran-12,fanagoriya-brule-cuve-brut-rozovoe-merlo-igristoe-bryut-rozovoe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,6.97
+242,alma-valley-pino-blan-rezerv-beloe-suhoe-14,alma-valley-sovinon-blan-rezerv-beloe-suhoe-14,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,6.99
+243,fanagoriya-brule-cuve-brut-rozovoe-merlo-igristoe-bryut-rozovoe-12,fanagoriya-brule-saperavi-saperavi-igristoe-sladkoe-krasnoe-bryut-125,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,7.15
+244,dva-serdtsa-kokur-beloe-suhoe-125,dva-serdtsa-vione-beloe-suhoe-125,Два Сердца,Два Сердца,confirmed_near_duplicate,true,visible_diff,7.16
+245,fanagoriya-fanagoriya-blanc-de-blancs-beloe-iz-belogo-shardone-igristoe-bryut-beloe-11-13,fanagoriya-fanagoriya-rose-de-noirs-roze-de-nuar-merlo-igristoe-bryut-rozovoe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,7.33
+246,igristoe-vino-endemy-bianka-bryut-beloe,derbent-vino-endemy-kaberne-sovinon-krasnoe-suhoe-13,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,7.33
+247,fanagoriya-blanc-de-noir-mene-extra-brut-2019-pino-nuar-beloe-ekstra-bryut-12,fanagoriya-fanagoriya-blanc-de-noirs-beloe-iz-chyornogo-merlo-igristoe-bryut-beloe-11-13,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,7.40
+248,derbent-vino-desono-kaberne-fran-krasnoe-suhoe-125,derbent-vino-desono-saperavi-roze-rozovoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,7.42
+249,fanagoriya-brule-cabernet-sauvignon-polusladkoe-krasnoe-kaberne-sovinon-125,fanagoriya-brule-cuve-brut-rozovoe-merlo-igristoe-bryut-rozovoe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,7.45
+250,derbent-vino-desono-merlo-krasnoe-suhoe-125,derbent-vino-desono-saperavi-roze-rozovoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,7.47
+252,esse-esse-sira-krasnoe-suhoe-12,esse-kaberne-sovinon-krasnoe-suhoe-14,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,7.50
+253,derbent-vino-desono-saperavi-roze-rozovoe-suhoe-125,derbent-vino-desono-shardone-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,7.51
+254,andryus-yutsis-orange-vermentino-beloe-suhoe-112,andryus-yutsis-pinot-grigio-pino-gri-beloe-suhoe-125,Andryus Yutsis,Andryus Yutsis,confirmed_near_duplicate,true,visible_diff,7.56
+255,agora-yachting-chardonnay,agora-yachting-shiraz,AGORA WINERY,AGORA WINERY,confirmed_near_duplicate,true,visible_diff,7.64
+256,derbent-vino-desono-risling-beloe-suhoe-125,derbent-vino-desono-saperavi-roze-rozovoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,7.65
+257,fanagoriya-brule-cuve-brut-rozovoe-merlo-igristoe-bryut-rozovoe-12,fanagoriya-brule-muscat-ottonel-polusladkoe-muskat-ottonel-beloe-115,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,7.72
+258,agora-yachting-cabernet-sauvignon,agora-yachting-shiraz,AGORA WINERY,AGORA WINERY,confirmed_near_duplicate,true,visible_diff,7.73
+259,agora-yachting-sauvignon,agora-yachting-shiraz,AGORA WINERY,AGORA WINERY,confirmed_near_duplicate,true,visible_diff,7.73
+260,agrolayn-mountain-eagle-pedro-ximenez-pedro-himenes-beloe-suhoe-11,agrolayn-mountain-eagle-viognier-vione-beloe-suhoe-115,Агролайн,Агролайн,confirmed_near_duplicate,true,visible_diff,7.76
+261,derbent-vino-desono-saperavi-krasnoe-suhoe-125,derbent-vino-desono-saperavi-roze-rozovoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,7.79
+262,esse-muskat-muskat-belyy-beloe-suhoe-115,esse-rkatsiteli-beloe-suhoe-125,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,7.85
+263,novyj-svet-kollekczionnoe-bryut,novyj-svet-polusuhoe-kollekczionnoe,Новый Свет. Дом шампанских вин,Новый Свет. Дом шампанских вин,confirmed_near_duplicate,true,visible_diff,7.93
+264,gavras-areni-krasnoe-suhoe-13,gavras-sira-krasnoe-suhoe-135,GAVRAS,GAVRAS,confirmed_near_duplicate,true,visible_diff,8.02
+265,derbent-vino-desono-kaberne-sovinon-krasnoe-suhoe-125,derbent-vino-desono-rkatsiteli-oranzh-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,8.05
+266,derbent-vino-desono-merlo-krasnoe-suhoe-125,derbent-vino-desono-rkatsiteli-oranzh-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,8.05
+267,fanagoriya-brule-muscat-ottonel-brut-muskat-ottonel-beloe-polusladkoe-12,fanagoriya-brule-sauvignon-blanc-brut-sovinon-blan-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,8.06
+268,igristoe-vino-bryut-beloe-di-kaspiko-blan-de-blan-di-caspico-blanc-de-blancs,igristoe-vino-bryut-rozovoe-di-kaspiko-blan-de-nuar-di-caspico-blanc-de-noirs,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,8.09
+269,esse-muskat-muskat-belyy-beloe-suhoe-115,esse-sovinon-blan-beloe-suhoe-12,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,8.16
+270,andryus-yutsis-muscat-blanc-muskat-beloe-suhoe-112,andryus-yutsis-orange-vermentino-beloe-suhoe-112,Andryus Yutsis,Andryus Yutsis,confirmed_near_duplicate,true,visible_diff,8.18
+271,agrolayn-mountain-eagle-chardonnay-shardone-beloe-suhoe-12,agrolayn-mountain-eagle-pedro-ximenez-pedro-himenes-beloe-suhoe-11,Агролайн,Агролайн,confirmed_near_duplicate,true,visible_diff,8.21
+272,gavras-areni-krasnoe-suhoe-13,gavras-levokumskiy-krasnoe-suhoe-12,GAVRAS,GAVRAS,confirmed_near_duplicate,true,visible_diff,8.21
+273,alma-valley-kolombar-beloe-polusuhoe-135,alma-valley-shardone-beloe-suhoe-135,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,8.44
+274,esse-rkatsiteli-beloe-suhoe-125,esse-sovinon-blan-beloe-suhoe-12,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,8.47
+275,derbent-vino-desono-kaberne-sovinon-krasnoe-suhoe-125,derbent-vino-desono-saperavi-roze-rozovoe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,8.49
+276,alma-valley-petit-arvin-beloe-suhoe-13,alma-valley-rislaner-beloe-polusladkoe-125,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,8.49
+277,igristoe-vino-bryut-beloe-di-caspico,derbent-vino-di-kaspiko-shardone-beloe-polusladkoe-105-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,8.50
+278,dnk-alleli,dnk-pokolenie,Усадьба Меркотан,Усадьба Меркотан,confirmed_near_duplicate,true,visible_diff,8.54
+279,agora-yachting-merlot,agora-yachting-shiraz,AGORA WINERY,AGORA WINERY,confirmed_near_duplicate,true,visible_diff,8.61
+280,gavras-levokumskiy-krasnoe-suhoe-12,gavras-sira-krasnoe-suhoe-135,GAVRAS,GAVRAS,confirmed_near_duplicate,true,visible_diff,8.64
+281,derbent-vino-endemy-pino-nuar-rozovoe-bryut-105-125,derbent-vino-endemy-risling-beloe-bryut-105-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,8.74
+282,novyj-svet-kaberne-sovinon,novyj-svet-kaberne-sovinon-polusladkoe,Новый Свет. Дом шампанских вин,Новый Свет. Дом шампанских вин,confirmed_near_duplicate,true,visible_diff,8.77
+283,fanagoriya-alveus-ultra-cuvee-bryut-rozovoe-merlo-igristoe-bryut-rozovoe-12,fanagoriya-alveus-ultra-cuvee-ekstra-bryut-beloe-risling-reynskiy-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,8.92
+284,alma-valley-pino-gri-beloe-polusuhoe-15,alma-valley-rislaner-beloe-polusladkoe-125,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,9.10
+285,abrau-dyurso-abrau-kupazh-krasnyy-polsusladkoe-kaberne-sovinon-krasnoe-polusladkoe-11,abrau-dyurso-abrau-kupazh-tyomnyy-suhoe-kaberne-sovinon-krasnoe-13,Абрау-Дюрсо,Абрау-Дюрсо,confirmed_near_duplicate,true,visible_diff,9.13
+286,derbent-vino-endemy-risling-beloe-bryut-105-125,derbent-vino-endemy-shardone-beloe-bryut-105-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,9.21
+287,derbent-vino-endemy-risling-beloe-bryut-105-125,derbent-vino-endemy-shardone-beloe-suhoe-13,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,9.21
+288,chteau-le-grand-vostock-fagotine-pino-gri-beloe-polusladkoe-105,chteau-le-grand-vostock-sauvignon-blanc-reserve-sovinon-blan-beloe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,9.26
+289,chteau-le-grand-vostock-aligote-reserve-aligote-beloe-suhoe-13,chteau-le-grand-vostock-fagotine-pino-gri-beloe-polusladkoe-105,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,9.35
+290,agrolayn-mountain-eagle-chardonnay-shardone-beloe-suhoe-12,agrolayn-mountain-eagle-semillon-semilon-beloe-suhoe-11,Агролайн,Агролайн,confirmed_near_duplicate,true,visible_diff,9.39
+291,agrolayn-mountain-eagle-chardonnay-shardone-beloe-suhoe-12,agrolayn-mountain-eagle-traminer-traminer-beloe-suhoe-12,Агролайн,Агролайн,confirmed_near_duplicate,true,visible_diff,9.39
+292,chteau-le-grand-vostock-chardonnay-reserve-shardone-beloe-suhoe-14,chteau-le-grand-vostock-fagotine-pino-gri-beloe-polusladkoe-105,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,9.44
+293,donskoe-vinodelcheskoe-hozyaystvo-elbuzd-risling-beloe-suhoe-12,donskoe-vinodelcheskoe-hozyaystvo-elbuzd-sovinon-blan-beloe-suhoe-12,"Донское винодельческое хозяйство ""Эльбузд""","Донское винодельческое хозяйство ""Эльбузд""",confirmed_near_duplicate,true,visible_diff,9.44
+294,esse-rkatsiteli-beloe-suhoe-125,esse-shardone-otbornoe-beloe-suhoe-12,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,9.54
+295,agrolayn-mountain-eagle-pedro-ximenez-pedro-himenes-beloe-suhoe-11,agrolayn-mountain-eagle-semillon-semilon-beloe-suhoe-11,Агролайн,Агролайн,confirmed_near_duplicate,true,visible_diff,9.56
+296,agrolayn-mountain-eagle-pedro-ximenez-pedro-himenes-beloe-suhoe-11,agrolayn-mountain-eagle-traminer-traminer-beloe-suhoe-12,Агролайн,Агролайн,confirmed_near_duplicate,true,visible_diff,9.56
+297,fanagoriya-brule-cuve-brut-rozovoe-merlo-igristoe-bryut-rozovoe-12,fanagoriya-brule-sauvignon-blanc-brut-sovinon-blan-beloe-bryut-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,9.60
+298,marquetry-syrah,marquetry-syrah-merlot-cabernet-franc,AYA Organic Wine & Vineyards,AYA Organic Wine & Vineyards,confirmed_near_duplicate,true,visible_diff,9.66
+299,cock-test-belle-kyuve-1-blanc-de-blancs-shardone-beloe-ekstra-bryut-12,cock-test-belle-kyuve-5-roze-shardone-rozovoe-ekstra-bryut-12,Cock t'est belle,Cock t'est belle,confirmed_near_duplicate,true,visible_diff,9.74
+300,esse-shardone-otbornoe-beloe-suhoe-12,esse-sovinon-blan-beloe-suhoe-12,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,9.74
+301,chteau-le-grand-vostock-fagotine-pino-gri-beloe-polusladkoe-105,chteau-le-grand-vostock-pinot-gris-reserve-pino-gri-beloe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,9.87
+302,esse-muskat-muskat-belyy-beloe-suhoe-115,esse-shardone-otbornoe-beloe-suhoe-12,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,9.91
+303,esse-brut-zero-dosage-shardone-beloe-ekstra-bryut-135,esse-rose-cuvee-prestige-pino-nuar-rozovoe-bryut-13,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,10.16
+304,derbent-vino-desono-rkatsiteli-oranzh-beloe-suhoe-125,derbent-vino-desono-shardone-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,10.18
+305,cantiani-brut,cantiani-riesling-1,Шато АЛВИСА,Шато АЛВИСА,confirmed_near_duplicate,true,visible_diff,10.19
+306,belbek-belbek-sira-krasnoe-suhoe-132,belbek-sira-rezerv-krasnoe-suhoe-132,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,10.24
+307,alma-valley-kaberne-fran-krasnoe-suhoe-145,alma-valley-tempranilo-krasnoe-suhoe-13,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,10.36
+308,alma-valley-merlo-krasnoe-suhoe-13,alma-valley-shiraz-krasnoe-suhoe-13,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,10.38
+309,chteau-le-grand-vostock-fagotine-pino-gri-rozovoe-polusladkoe-11,chteau-le-grand-vostock-pinot-gris-rose-reserve-pino-gri-rozovoe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,10.46
+310,fanagoriya-blanc-de-noir-mene-extra-brut-2019-pino-nuar-beloe-ekstra-bryut-12,fanagoriya-primum-alveus-blanc-de-blancs-2017-shardone-igristoe-bryut-beloe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,10.61
+311,alma-valley-semilon-beloe-suhoe-135,alma-valley-shardone-beloe-suhoe-135,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,10.62
+312,alma-valley-shardone-rezerv-beloe-suhoe-14,alma-valley-sovinon-blan-rezerv-beloe-suhoe-14,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,10.73
+313,fanagoriya-brule-cuve-brut-rozovoe-merlo-igristoe-bryut-rozovoe-12,fanagoriya-brule-muscat-ottonel-brut-muskat-ottonel-beloe-polusladkoe-12,Фанагория,Фанагория,confirmed_near_duplicate,true,visible_diff,10.83
+314,alma-valley-kaberne-fran-krasnoe-suhoe-145,alma-valley-merlo-krasnoe-suhoe-13,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,10.87
+316,derbent-vino-endemy-pino-nuar-rozovoe-bryut-105-125,derbent-vino-endemy-shardone-beloe-bryut-105-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,11.04
+317,derbent-vino-endemy-pino-nuar-rozovoe-bryut-105-125,derbent-vino-endemy-shardone-beloe-suhoe-13,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,11.04
+318,chteau-le-grand-vostock-aligote-reserve-aligote-beloe-suhoe-13,chteau-le-grand-vostock-cadet-karsov-shardone-beloe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,11.06
+319,chteau-le-grand-vostock-cadet-karsov-shardone-beloe-suhoe-135,chteau-le-grand-vostock-chardonnay-reserve-shardone-beloe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,11.11
+320,alma-valley-shiraz-krasnoe-suhoe-13,alma-valley-tempranilo-krasnoe-suhoe-13,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,11.24
+321,alma-valley-kaberne-fran-rezerv-krasnoe-suhoe-15,alma-valley-merlo-rezerv-krasnoe-suhoe-15,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,11.31
+322,esse-gevyurtstraminer-beloe-suhoe-12,esse-risling-beloe-suhoe-115,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,11.40
+323,alma-valley-kaberne-sovinon-rezerv-krasnoe-suhoe-15,alma-valley-merlo-rezerv-krasnoe-suhoe-15,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,11.48
+324,chteau-le-grand-vostock-cadet-karsov-shardone-beloe-suhoe-135,chteau-le-grand-vostock-sauvignon-blanc-reserve-sovinon-blan-beloe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,11.53
+325,chateau-de-talu-krasnostop-rezerv-krasnostop-anapskiy-krasnoe-suhoe-137,chateau-de-talu-shiraz-rezerv-sira-krasnoe-suhoe-14,Chateau de Talu,Chateau de Talu,confirmed_near_duplicate,true,visible_diff,11.57
+326,shato-taman-kaberne,shato-taman-krasnostop,Кубань-Вино,Кубань-Вино,confirmed_near_duplicate,true,visible_diff,11.58
+327,chateau-de-talu-kaberne-sovinon-rezerv-krasnoe-suhoe-14,chateau-de-talu-krasnostop-rezerv-krasnostop-anapskiy-krasnoe-suhoe-137,Chateau de Talu,Chateau de Talu,confirmed_near_duplicate,true,visible_diff,11.63
+328,shato-taman-krasnostop,shato-taman-saperavi,Кубань-Вино,Кубань-Вино,confirmed_near_duplicate,true,visible_diff,11.64
+329,alma-valley-pino-blan-rezerv-beloe-suhoe-14,alma-valley-shardone-rezerv-beloe-suhoe-14,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,11.71
+330,donskoe-vinodelcheskoe-hozyaystvo-elbuzd-shardone-beloe-suhoe-13,donskoe-vinodelcheskoe-hozyaystvo-elbuzd-sovinon-blan-beloe-suhoe-12,"Донское винодельческое хозяйство ""Эльбузд""","Донское винодельческое хозяйство ""Эльбузд""",confirmed_near_duplicate,true,visible_diff,11.83
+331,alma-valley-pino-blan-beloe-suhoe-14,alma-valley-rislaner-beloe-polusladkoe-125,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,11.83
+332,chteau-le-grand-vostock-cadet-karsov-shardone-beloe-suhoe-135,chteau-le-grand-vostock-pinot-gris-reserve-pino-gri-beloe-suhoe-135,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,12.06
+333,esse-dolinnoe-cabernet-franc-kaberne-fran-krasnoe-suhoe-13,esse-sangiovese-sandzhoveze-krasnoe-suhoe-135,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,12.16
+334,donskoe-vinodelcheskoe-hozyaystvo-elbuzd-risling-beloe-suhoe-12,donskoe-vinodelcheskoe-hozyaystvo-elbuzd-shardone-beloe-suhoe-13,"Донское винодельческое хозяйство ""Эльбузд""","Донское винодельческое хозяйство ""Эльбузд""",confirmed_near_duplicate,true,visible_diff,12.36
+335,chateau-de-talu-kaberne-sovinon-rezerv-krasnoe-suhoe-14,chateau-de-talu-shiraz-rezerv-sira-krasnoe-suhoe-14,Chateau de Talu,Chateau de Talu,confirmed_near_duplicate,true,visible_diff,12.46
+336,derbent-vino-di-kaspiko-rkatsiteli-beloe-suhoe-12,derbent-vino-di-kaspiko-sovinon-sovinon-blan-beloe-suhoe-12,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,12.64
+337,aya-organic-wine-vineyards-purity-in-syrah-sira-krasnoe-suhoe-146,aya-organic-wine-vineyards-purity-in-trinity-pino-nuar-rozovoe-suhoe-13,AYA Organic Wine & Vineyards,AYA Organic Wine & Vineyards,confirmed_near_duplicate,true,visible_diff,12.75
+338,abrau-dyurso-brut-dor-blanc-de-blancs-shardone-beloe-bryut-125,abrau-dyurso-brut-dor-riesling-risling-beloe-bryut-12,Абрау-Дюрсо,Абрау-Дюрсо,confirmed_near_duplicate,true,visible_diff,12.83
+339,derbent-vino-di-kaspiko-shardone-beloe-suhoe-125,derbent-vino-di-kaspiko-sovinon-sovinon-blan-beloe-suhoe-12,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,12.85
+340,alma-valley-petit-arvin-beloe-suhoe-13,alma-valley-pino-blan-beloe-suhoe-14,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,13.00
+341,chateau-de-talu-kaberne-fran-rezerv-krasnoe-suhoe-13,chateau-de-talu-shiraz-rezerv-sira-krasnoe-suhoe-14,Chateau de Talu,Chateau de Talu,confirmed_near_duplicate,true,visible_diff,13.11
+342,alma-valley-pino-blan-beloe-suhoe-14,alma-valley-pino-gri-beloe-polusuhoe-15,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,13.18
+343,alma-valley-kaberne-sovinon-rezerv-krasnoe-suhoe-15,alma-valley-tempranilo-rezerv-krasnoe-suhoe-14,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,13.22
+344,chateau-de-talu-kaberne-fran-rezerv-krasnoe-suhoe-13,chateau-de-talu-merlo-rezerv-krasnoe-suhoe-14,Chateau de Talu,Chateau de Talu,confirmed_near_duplicate,true,visible_diff,13.26
+345,alma-valley-kokur-beloe-suhoe-14,alma-valley-shardone-beloe-suhoe-135,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,13.30
+346,alma-valley-kaberne-fran-rezerv-krasnoe-suhoe-15,alma-valley-shiraz-sira-rezerv-krasnoe-suhoe-14,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,13.41
+348,chateau-de-talu-merlo-rezerv-krasnoe-suhoe-14,chateau-de-talu-shiraz-rezerv-sira-krasnoe-suhoe-14,Chateau de Talu,Chateau de Talu,confirmed_near_duplicate,true,visible_diff,13.73
+349,dva-serdtsa-muskat-muskat-belyy-beloe-polusuhoe-12,dva-serdtsa-muskat-suhoy-muskat-belyy-beloe-suhoe-12,Два Сердца,Два Сердца,confirmed_near_duplicate,true,visible_diff,13.90
+350,alma-valley-merlo-krasnoe-suhoe-13,alma-valley-tempranilo-krasnoe-suhoe-13,Alma Valley,Alma Valley,confirmed_near_duplicate,true,visible_diff,14.16
+351,millstream-av-igristoe-molodoe-polusuhoe-beloe,millstream-av-igristoe-molodoe-suhoe-beloe,MILLSTREAM,MILLSTREAM,confirmed_near_duplicate,true,visible_diff,14.17
+352,chateau-de-talu-krasnostop-rezerv-krasnostop-anapskiy-krasnoe-suhoe-137,chateau-de-talu-merlo-rezerv-krasnoe-suhoe-14,Chateau de Talu,Chateau de Talu,confirmed_near_duplicate,true,visible_diff,14.33
+353,esse-kaberne-otbornoe-kaberne-sovinon-krasnoe-suhoe-12,esse-merlo-otbornoe-krasnoe-suhoe-13,ESSE,ESSE,confirmed_near_duplicate,true,visible_diff,14.38
+354,abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-beloe-bryut-125,abrau-dyurso-brut-dor-riesling-risling-beloe-bryut-12,Абрау-Дюрсо,Абрау-Дюрсо,confirmed_near_duplicate,true,visible_diff,14.55
+355,chateau-de-talu-kaberne-sovinon-rezerv-krasnoe-suhoe-14,chateau-de-talu-merlo-rezerv-krasnoe-suhoe-14,Chateau de Talu,Chateau de Talu,confirmed_near_duplicate,true,visible_diff,14.59
+356,aya-organic-wine-vineyards-blush-2-merlo-rozovoe-ekstra-bryut-135,aya-organic-wine-vineyards-blush-3-kaberne-fran-rozovoe-ekstra-bryut-132,AYA Organic Wine & Vineyards,AYA Organic Wine & Vineyards,confirmed_near_duplicate,true,visible_diff,14.68
+357,derbent-vino-di-kaspiko-roze-shardone-rozovoe-suhoe-12,derbent-vino-di-kaspiko-shardone-beloe-suhoe-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,15.19
+358,derbent-vino-di-kaspiko-rkatsiteli-beloe-suhoe-12,derbent-vino-di-kaspiko-roze-shardone-rozovoe-suhoe-12,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,15.21
+359,chateau-de-talu-kaberne-fran-rezerv-krasnoe-suhoe-13,chateau-de-talu-kaberne-sovinon-rezerv-krasnoe-suhoe-14,Chateau de Talu,Chateau de Talu,confirmed_near_duplicate,true,visible_diff,15.33
+360,dva-serdtsa-muskat-suhoy-muskat-belyy-beloe-suhoe-12,dva-serdtsa-vione-beloe-suhoe-125,Два Сердца,Два Сердца,confirmed_near_duplicate,true,visible_diff,15.59
+361,cock-test-belle-kyuve-1-blanc-de-blancs-shardone-beloe-ekstra-bryut-12,cock-test-belle-kyuve-2-blan-de-nuar-pino-mene-beloe-ekstra-bryut-12,Cock t'est belle,Cock t'est belle,confirmed_near_duplicate,true,visible_diff,16.20
+362,novyj-svet-shardone-kyuve-de-prestizh,novyj-svet-pino-gri-millezim,Новый Свет. Дом шампанских вин,Новый Свет. Дом шампанских вин,confirmed_near_duplicate,true,visible_diff,16.30
+363,chateau-de-talu-kaberne-fran-rezerv-krasnoe-suhoe-13,chateau-de-talu-krasnostop-rezerv-krasnostop-anapskiy-krasnoe-suhoe-137,Chateau de Talu,Chateau de Talu,confirmed_near_duplicate,true,visible_diff,17.10
+364,belbek-saperavi-rezerv-krasnoe-suhoe-14,belbek-sira-rezerv-krasnoe-suhoe-132,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,17.52
+365,chateau-andre-pino-gri-beloe-suhoe-14,chateau-andre-shardone-beloe-suhoe-13,Chateau Andre,Chateau Andre,confirmed_near_duplicate,true,visible_diff,17.58
+366,chteau-le-grand-vostock-pinot-gris-reserve-pino-gri-beloe-suhoe-135,chteau-le-grand-vostock-pinot-gris-rose-reserve-pino-gri-rozovoe-suhoe-14,Château Le Grand Vostock,Château Le Grand Vostock,confirmed_near_duplicate,true,visible_diff,17.91
+367,belbek-pino-nuar-krasnoe-suhoe-133,belbek-sira-rezerv-krasnoe-suhoe-132,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,18.03
+368,abrau-dyurso-victor-dravigny-polusladkoe-sovinon-blan-beloe-12,abrau-dyurso-victor-dravigny-polusuhoe-pino-blan-beloe-12,Абрау-Дюрсо,Абрау-Дюрсо,confirmed_near_duplicate,true,visible_diff,18.23
+369,belbek-pino-nuar-rezerv-krasnoe-suhoe-135,belbek-saperavi-rezerv-krasnoe-suhoe-14,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,18.41
+370,belbek-pino-nuar-krasnoe-suhoe-133,belbek-saperavi-rezerv-krasnoe-suhoe-14,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,18.56
+371,chateau-andre-shardone-beloe-suhoe-13,chateau-andre-sovinon-blan-beloe-suhoe-13,Chateau Andre,Chateau Andre,confirmed_near_duplicate,true,visible_diff,18.68
+372,cock-test-belle-kyuve-2-blan-de-nuar-pino-mene-beloe-ekstra-bryut-12,cock-test-belle-kyuve-5-roze-shardone-rozovoe-ekstra-bryut-12,Cock t'est belle,Cock t'est belle,confirmed_near_duplicate,true,visible_diff,19.13
+373,marquetry-cabernet-franc,marquetry-syrah,AYA Organic Wine & Vineyards,AYA Organic Wine & Vineyards,confirmed_near_duplicate,true,visible_diff,19.61
+374,belbek-belbek-sira-krasnoe-suhoe-132,belbek-saperavi-rezerv-krasnoe-suhoe-14,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,20.33
+375,novyj-svet-risling-kyuve-de-prestizh,novyj-svet-shardone-kyuve-de-prestizh,Новый Свет. Дом шампанских вин,Новый Свет. Дом шампанских вин,confirmed_near_duplicate,true,visible_diff,20.43
+376,belbek-pino-nuar-rezerv-krasnoe-suhoe-135,belbek-semilon-rezerv-beloe-suhoe-127,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,20.67
+377,novyj-svet-kaberne,novyj-svet-aligote,Новый Свет. Дом шампанских вин,Новый Свет. Дом шампанских вин,confirmed_near_duplicate,true,visible_diff,20.75
+378,belbek-belbek-pino-nuar-krasnoe-suhoe-13,belbek-sira-rezerv-krasnoe-suhoe-132,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,21.07
+379,belbek-belbek-sira-krasnoe-suhoe-132,belbek-pino-nuar-krasnoe-suhoe-133,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,21.22
+380,belbek-belbek-pino-nuar-krasnoe-suhoe-13,belbek-saperavi-rezerv-krasnoe-suhoe-14,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,21.46
+381,cantiani-semisweet,cantiani-riesling-1,Шато АЛВИСА,Шато АЛВИСА,confirmed_near_duplicate,true,visible_diff,21.51
+382,derbent-vino-graf-vorontsov-beloe-polusladkoe-sovinon-blan-105-125,derbent-vino-graf-vorontsov-bryut-beloe-sovinon-blan-105-125,Дербент Вино,Дербент Вино,confirmed_near_duplicate,true,visible_diff,21.51
+383,aristov-kyuve-aleksandr-blan-de-blan,aristov-kyuve-aleksandr-blan-de-nuar,Кубань-Вино,Кубань-Вино,confirmed_near_duplicate,true,visible_diff,21.85
+384,blagolyubov-sibirkovyy-beloe-suhoe-115,blagolyubov-stanichnoe-stanichnyy-beloe-suhoe-12,Благолюбов,Благолюбов,confirmed_near_duplicate,true,visible_diff,22.67
+385,belbek-belbek-pti-verdo-krasnoe-suhoe-121,belbek-pino-nuar-rezerv-krasnoe-suhoe-135,Бельбек,Бельбек,confirmed_near_duplicate,true,visible_diff,22.71
+386,chateau-cachalot-muskat-blan-muskat-belyy-beloe-suhoe-117,chateau-cachalot-vione-beloe-suhoe-112,Chateau Cachalot,Chateau Cachalot,confirmed_near_duplicate,true,visible_diff,24.88

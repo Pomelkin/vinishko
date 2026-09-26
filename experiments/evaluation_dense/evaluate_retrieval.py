@@ -4,28 +4,21 @@ import json
 from pathlib import Path
 
 import pandas as pd
-
-from pretty_retriever import PrettyRetriever
 from tqdm import tqdm
 
-tqdm.pandas(desc="Retrieving images")
+from dense_retriever import DenseRetriever
 
 HERE = Path(__file__).resolve().parent
 PROJECT_DIR = HERE.parents[1]
-
-INPUT_CSV = HERE / "sorted_photos.csv"
-OUTPUT_CSV = HERE / "sorted_photos_with_retrieval_neo.csv"
+INPUT_CSV = HERE.parent / "evaluation" / "sorted_photos.csv"
+OUTPUT_CSV = HERE / "sorted_photos_with_retrieval_siglip2_dense.csv"
 IMAGE_COLUMN = "image"
 RESULT_COLUMN = "retrieval_results"
 BEFORE_VLM_COLUMN = "retrieval_results_before_vlm"
 TOP_K = 3
 USE_VLM = False
 
-ENCODER_URL = "http://localhost:8001/encode"
-QDRANT_URL = "http://127.0.0.1:6333"
-QDRANT_GRPC_PORT = 6334
-COLLECTION_NAME = "catalog_neo"
-REQUEST_TIMEOUT_SECONDS = 600
+tqdm.pandas(desc="SigLIP2 dense retrieval")
 
 
 def main() -> None:
@@ -33,19 +26,9 @@ def main() -> None:
     if IMAGE_COLUMN not in dataset.columns:
         raise ValueError(f"В датасете нет колонки {IMAGE_COLUMN!r}")
 
-    with PrettyRetriever(
-            encoder_url=ENCODER_URL,
-            qdrant_url=QDRANT_URL,
-            qdrant_grpc_port=QDRANT_GRPC_PORT,
-            collection_name=COLLECTION_NAME,
-            timeout_seconds=REQUEST_TIMEOUT_SECONDS,
-            use_vlm=USE_VLM,
-    ) as retriever:
+    with DenseRetriever(use_vlm=USE_VLM) as retriever:
         retrievals = dataset[IMAGE_COLUMN].progress_apply(
-            lambda image: retriever.retrieve_with_candidates(
-                PROJECT_DIR / str(image),
-                limit=TOP_K,
-            )
+            lambda image: retriever.retrieve_with_candidates(PROJECT_DIR / str(image), limit=TOP_K)
         )
 
     image_column_index = dataset.columns.get_loc(IMAGE_COLUMN)
