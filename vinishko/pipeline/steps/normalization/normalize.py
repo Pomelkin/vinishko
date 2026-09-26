@@ -639,6 +639,10 @@ class Normalizer:
                 item = self.judge(img, rgb, c, score, seg["scale"], n_valid + 1)
             n_valid += isinstance(item, BottleCrop)
             items.append(item)
+        if self.cfg["selection"]["bypass"] and not n_valid:
+            w, h = img.size  # весь кадр как бутылка и этикетка, score 0: по нему дальше видно, что это обход, а отказы остаются в списке
+            frame = [[[0, 0], [w, 0], [w, h], [0, h]]]
+            items.append(Candidate(1, 0.0, frame, frame, 0.0))
         return items
 
     def annotate(self, path: Path | str) -> list[BottleCrop | RejectedBottle]:
