@@ -19,7 +19,7 @@ from vinishko.pipeline.steps.vis_searcher.device import Device, Precision
 ONNX_FP32, PREPROCESS_NAME, CONFIG_NAME = "model.onnx", "preprocess.json", "config.json"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ModelFiles:
     """Что скачано с Hugging Face и контракт входа из preprocess.json."""
 

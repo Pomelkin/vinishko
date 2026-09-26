@@ -1,20 +1,20 @@
 # Визуальный поиск
 
-Шаг пайплайна после нормализации: кроп бутылки → вектор DinoV3ForWine → ближайшие векторы каталога в qdrant → кандидаты `Candidate`
-(`vinishko/pipeline/structs.py`) с картинкой позиции из коллекции для второго уровня. Всё запускается из корня репозитория.
+Шаг пайплайна после нормализации: кроп бутылки → вектор DinoV3ForWine → ближайшие векторы каталога в qdrant → `SearchResult` на каждый кроп
+(`vinishko/pipeline/structs.py`): кандидаты `Candidate` с картинкой позиции из коллекции для второго уровня либо отказ `RejectedBottle`
+с причиной `SearchReason`, когда ничего похожего нет. Результатов ровно столько, сколько кропов, и в том же порядке. Всё запускается из корня репозитория.
 
 ```python
-from vinishko.pipeline.steps.vis_searcher import VisSearcher, load_config
+from vinishko.pipeline.steps.vis_searcher import VisSearcher
 
-searcher = VisSearcher(
-    load_config()
-)  # config.yaml рядом с модулем; load_config(Path(...)) — свой
-candidates = searcher(
+searcher = VisSearcher()  # config.yaml рядом с модулем, устройство по VIS_SEARCHER_DEV; свой конфиг: VisSearcher(load_config(Path(...)))
+results = searcher(
     crops
-)  # crops: list[BottleCrop] от нормализации → list[list[Candidate]]
+)  # crops: list[BottleCrop] от нормализации → list[SearchResult], у каждого .candidates либо .rejected
 ```
 
-`Pipeline(normalizer, searcher)` из `vinishko/pipeline/pipeline.py` связывает шаги сам.
+`Pipeline(searcher=VisSearcher())` из `vinishko/pipeline/pipeline.py` связывает шаги сам; нормализатор он поднимает как `Normalizer()`,
+а бутылку с отказом поиска подставляет в разметку `RejectedBottle` с тем же `uuid`.
 
 ## Модель и устройство
 
@@ -33,7 +33,7 @@ OpenVINO во float32 (пакет `openvino`, группа `cpu-inference`), о�
 ```bash
 python -m vinishko.pipeline.steps.vis_searcher.build_catalog \
   --csv datasets/hack/strapi/catalog_dataset.csv --images datasets/hack/strapi/img \
-  --collection catalog_vitl16_512 --store-dir datasets/hack/catalog_crops        # либо --s3-endpoint … --s3-bucket … --s3-prefix …
+  --collection catalog_vitl16_512 --store-dir datasets/hack/catalog_crops        # либо --s3-endpoint … --s3-bucket … [--s3-prefix …], но не то и другое сразу
 ```
 
 Каждое фото каталога проходит нормализацию, на нём должна найтись ровно одна годная бутылка (`--on-failure skip` пропускает остальные
@@ -47,10 +47,10 @@ python -m vinishko.pipeline.steps.vis_searcher.build_catalog \
 
 `top_k` ближайших векторов, дальше по `search.mode`:
 
-- `top_n` — кандидаты как есть; если косинус лучшего ниже `cosine_threshold`, кандидатов нет.
+- `top_n` — кандидаты как есть; если косинус лучшего ниже `cosine_threshold`, отказ `no_match`.
 - `groups` — позиции из выдачи собираются в группы по `group`, скор группы — лучший косинус её позиций. Берутся `top_groups` лучших групп
   с косинусом не ниже `group_threshold`; кандидатами идут все их позиции: пришедшие в выдачу со своим косинусом и `retrieved=True`,
-  остальные по `group_slugs` с косинусом группы. Внутри группы сначала пришедшие по убыванию косинуса. Ни одна группа не прошла — кандидатов нет.
+  остальные по `group_slugs` с косинусом группы. Внутри группы сначала пришедшие по убыванию косинуса. Ни одна группа не прошла — отказ `no_match`.
 
 При создании `VisSearcher` проверяет: qdrant отвечает, коллекция есть и не пуста, построена той же моделью и ревизией, размерность
 и размер входа совпадают, картинка первой точки читается из хранилища. Картинки из S3 оседают в `cache_dir/images/`.

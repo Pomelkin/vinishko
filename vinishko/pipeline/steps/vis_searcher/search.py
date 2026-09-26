@@ -1,4 +1,4 @@
-"""Визуальный поиск: кропы бутылок → кандидаты каталога. Шаг пайплайна после нормализации."""
+"""Визуальный поиск: кропы бутылок → кандидаты каталога либо отказ с причиной. Шаг пайплайна после нормализации."""
 
 import json
 import re
@@ -26,11 +26,12 @@ from vinishko.pipeline.steps.vis_searcher.configs import (
     GroupSearch,
     TopNSearch,
     VisSearcherConfig,
+    load_config,
 )
 from vinishko.pipeline.steps.vis_searcher.device import Device, resolve_device
 from vinishko.pipeline.steps.vis_searcher.model import Encoder, fetch_model
 from vinishko.pipeline.steps.vis_searcher.storage import ImageStore, make_store
-from vinishko.pipeline.structs import BottleCrop, Candidate
+from vinishko.pipeline.structs import BottleCrop, Candidate, Reason, SearchResult
 
 logger = setup_logger(fmt="detailed")
 
@@ -38,21 +39,32 @@ Hit = tuple[float, dict]
 """Косинус и метаданные точки из выдачи."""
 
 
+class SearchReason(Reason):
+    """Почему визуальный поиск не дал кандидатов."""
+
+    NO_MATCH = (
+        "no_match",
+        "Нет в каталоге",
+        "Похожих позиций в каталоге не нашлось: косинус лучшей ниже порога search.cosine_threshold либо search.group_threshold",
+    )
+
+
 class VisSearcher:
-    """Кропы бутылок → кандидаты каталога по каждому кропу; пустой список — ответа для бутылки нет.
+    """Кропы бутылок → SearchResult на каждый кроп, в том же порядке: кандидаты каталога либо отказ с причиной.
 
     При создании сначала дешёвые проверки: контракт модели с Hugging Face, коллекция существует и не пуста, построена той же моделью
     и ревизией, размерность векторов и размер входа совпадают. Потом скачивается граф и поднимается энкодер, последней читается картинка
-    первой точки из хранилища. client — готовый клиент qdrant вместо подключения по конфигу, для тестов.
+    первой точки из хранилища. Без cfg — config.yaml рядом с модулем, без device — VIS_SEARCHER_DEV либо автоматически.
+    client — готовый клиент qdrant вместо подключения по конфигу, для тестов.
     """
 
     def __init__(
         self,
-        cfg: VisSearcherConfig,
+        cfg: VisSearcherConfig | None = None,
         device: Device | None = None,
         client: QdrantClient | None = None,
     ) -> None:
-        self.cfg = cfg
+        self.cfg = cfg = cfg or load_config()
         self.device = device or resolve_device()
         self.files = fetch_model(cfg.model, self.device.precision, cfg.revision)
         self.client = client or connect(cfg.qdrant)
@@ -91,20 +103,20 @@ class VisSearcher:
             )
         self.store.get(name)
 
-    def __call__(self, crops: list[BottleCrop]) -> list[list[Candidate]]:
-        """Кандидаты по каждому кропу, в порядке кропов."""
+    def __call__(self, crops: list[BottleCrop]) -> list[SearchResult]:
+        """Ответ по каждому кропу, в порядке кропов: результатов ровно столько, сколько кропов."""
         if not crops:
             return []
         vectors = self.encoder([crop.crop for crop in crops])
-        candidates = [
-            self._candidates(crop, vector)
+        results = [
+            self._search(crop, vector)
             for crop, vector in zip(crops, vectors, strict=True)
         ]
         if self.cfg.debug_path is not None:
-            self._dump(self.cfg.debug_path, crops, candidates)
-        return candidates
+            self._dump(self.cfg.debug_path, results)
+        return results
 
-    def _candidates(self, crop: BottleCrop, vector: np.ndarray) -> list[Candidate]:
+    def _search(self, crop: BottleCrop, vector: np.ndarray) -> SearchResult:
         hits = [
             (float(p.score), p.payload)
             for p in search(self.client, self.collection, vector, self.cfg.top_k)
@@ -115,19 +127,34 @@ class VisSearcher:
             return self._top_n(crop, hits, mode)
         return self._by_groups(crop, hits, mode)
 
+    def _rejected(
+        self, crop: BottleCrop, best: float | None, threshold: float, what: str
+    ) -> SearchResult:
+        detail = (
+            f"косинус лучшей {what} {best:.3f}, порог {threshold:g}"
+            if best is not None
+            else "выдача коллекции пуста"
+        )
+        return SearchResult(crop, [], crop.reject(SearchReason.NO_MATCH, detail))
+
     def _top_n(
         self, crop: BottleCrop, hits: list[Hit], mode: TopNSearch
-    ) -> list[Candidate]:
+    ) -> SearchResult:
         if not hits or hits[0][0] < mode.cosine_threshold:
-            return []
-        return [
-            self._candidate(crop, payload, score, retrieved=True)
-            for score, payload in hits
-        ]
+            return self._rejected(
+                crop, hits[0][0] if hits else None, mode.cosine_threshold, "позиции"
+            )
+        return SearchResult(
+            crop,
+            [
+                self._candidate(crop, payload, score, retrieved=True)
+                for score, payload in hits
+            ],
+        )
 
     def _by_groups(
         self, crop: BottleCrop, hits: list[Hit], mode: GroupSearch
-    ) -> list[Candidate]:
+    ) -> SearchResult:
         """Группы по лучшему косинусу своих векторов; кандидаты — все позиции прошедших групп: пришедшие со своим косинусом, остальные с косинусом группы."""
         group_score: dict[str, float] = {}
         members: dict[str, list[str]] = {}
@@ -140,13 +167,15 @@ class VisSearcher:
             group_score.setdefault(group, score)
             members.setdefault(group, list(payload[FIELD_GROUP_SLUGS]))
             by_slug.setdefault(payload[FIELD_SLUG], (score, payload))
-        chosen = [
-            g
-            for g in sorted(group_score, key=lambda g: -group_score[g])[
-                : mode.top_groups
-            ]
-            if group_score[g] >= mode.group_threshold
-        ]
+        ranked = sorted(group_score, key=lambda g: -group_score[g])[: mode.top_groups]
+        chosen = [g for g in ranked if group_score[g] >= mode.group_threshold]
+        if not chosen:
+            return self._rejected(
+                crop,
+                group_score[ranked[0]] if ranked else None,
+                mode.group_threshold,
+                "группы",
+            )
         absent = [slug for g in chosen for slug in members[g] if slug not in by_slug]
         payloads = retrieve(self.client, self.collection, absent)
         out: list[Candidate] = []
@@ -168,7 +197,7 @@ class VisSearcher:
                 for slug in members[group]
                 if slug in payloads
             ]
-        return out
+        return SearchResult(crop, out)
 
     def _candidate(
         self, crop: BottleCrop, payload: dict, score: float, retrieved: bool
@@ -183,19 +212,18 @@ class VisSearcher:
             payload=payload,
         )
 
-    def _dump(
-        self, root: Path, crops: list[BottleCrop], candidates: list[list[Candidate]]
-    ) -> None:
+    def _dump(self, root: Path, results: list[SearchResult]) -> None:
         """Директория с меткой времени: кроп каждого запроса и картинки его кандидатов с косинусом, а в режиме групп и с группой, в имени файла."""
         out = root / datetime.now(tz=UTC).astimezone().strftime("%Y-%m-%d_%H-%M-%S_%f")
         out.mkdir(parents=True, exist_ok=True)
         grouped = isinstance(self.cfg.search, GroupSearch)
         report = []
-        for n, (crop, found) in enumerate(zip(crops, candidates, strict=True), 1):
+        for n, result in enumerate(results, 1):
+            crop = result.crop
             Image.fromarray(crop.crop).save(
                 out / f"q{n}_query_{crop.uuid[:8]}.jpg", quality=95
             )
-            for rank, c in enumerate(found, 1):
+            for rank, c in enumerate(result.candidates, 1):
                 parts = [
                     f"q{n}",
                     f"{rank:02d}",
@@ -211,6 +239,12 @@ class VisSearcher:
                 {
                     "query": crop.uuid,
                     "bottle_score": crop.score,
+                    "rejected": None
+                    if result.rejected is None
+                    else {
+                        "reason": result.rejected.reason,
+                        "detail": result.rejected.detail,
+                    },
                     "candidates": [
                         {
                             "slug": c.slug,
@@ -218,7 +252,7 @@ class VisSearcher:
                             "score": c.score,
                             "retrieved": c.retrieved,
                         }
-                        for c in found
+                        for c in result.candidates
                     ],
                 }
             )

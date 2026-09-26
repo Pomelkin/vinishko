@@ -5,33 +5,33 @@ from typing import Protocol
 from PIL import Image
 
 from vinishko.pipeline.steps.normalization.normalize import Normalizer
-from vinishko.pipeline.structs import BottleCrop, Candidate, RejectedBottle
+from vinishko.pipeline.structs import BottleCrop, RejectedBottle, SearchResult
 
 
 class Searcher(Protocol):
-    """Визуальный поиск: кропы бутылок → кандидаты каталога по каждому, в том же порядке; пустой список — ответа нет."""
+    """Визуальный поиск: кропы бутылок → SearchResult на каждый, в том же порядке: кандидаты каталога либо отказ с причиной."""
 
-    def __call__(self, crops: list[BottleCrop]) -> list[list[Candidate]]: ...
+    def __call__(self, crops: list[BottleCrop]) -> list[SearchResult]: ...
 
 
 class Reranker(Protocol):
-    """Уточнение внутри группы: те же списки кандидатов, переставленные и с пересчитанными скорами."""
+    """Уточнение внутри группы: те же результаты с переставленными и пересчитанными кандидатами."""
 
-    def __call__(self, candidates: list[list[Candidate]]) -> list[list[Candidate]]: ...
+    def __call__(self, results: list[SearchResult]) -> list[SearchResult]: ...
 
 
-@dataclass
+@dataclass(slots=True)
 class PipelineResult:
-    """Что пайплайн знает о картинке: все найденные бутылки и кандидаты по годным."""
+    """Что пайплайн знает о картинке: все найденные бутылки и ответ поиска по каждой годной."""
 
     items: list[BottleCrop | RejectedBottle]
     """Разметка нормализации по убыванию скора отбора; бутылка, забракованная позже, стоит здесь RejectedBottle с тем же uuid."""
-    candidates: list[list[Candidate]] = field(default_factory=list)
-    """Кандидаты по каждому BottleCrop из items, порядок тот же."""
+    results: list[SearchResult] = field(default_factory=list)
+    """По одному на каждую годную бутылку нормализации, в том же порядке; бутылка без ответа здесь с причиной, а в items уже RejectedBottle."""
 
     @property
     def crops(self) -> list[BottleCrop]:
-        """Годные бутылки."""
+        """Бутылки, оставшиеся годными после всех шагов."""
         return [item for item in self.items if isinstance(item, BottleCrop)]
 
 
@@ -46,24 +46,29 @@ def replace_rejected(
 class Pipeline:
     """Оркестратор: нормализация → визуальный поиск → реранкер. Шаги не знают друг о друге, их выходы связывает этот модуль.
 
-    Шаги после нормализации подключаются по мере готовности: без поиска результат — одна разметка.
+    Без normalizer поднимается Normalizer() с конфигом и устройством по умолчанию. Шаги после нормализации подключаются по мере готовности:
+    без поиска результат — одна разметка.
     """
 
     def __init__(
         self,
-        normalizer: Normalizer,
+        normalizer: Normalizer | None = None,
         searcher: Searcher | None = None,
         reranker: Reranker | None = None,
     ) -> None:
-        self.normalizer, self.searcher, self.reranker = normalizer, searcher, reranker
+        self.normalizer = normalizer or Normalizer()
+        self.searcher, self.reranker = searcher, reranker
 
     def __call__(self, img: Image.Image | Path | str) -> PipelineResult:
-        """Картинка → разметка бутылок и кандидаты каталога по годным."""
+        """Картинка → разметка бутылок и ответ поиска по каждой годной; бутылка без ответа становится в разметке отказом с причиной."""
         items = self.normalizer(img)
         crops = [item for item in items if isinstance(item, BottleCrop)]
         if not crops or self.searcher is None:
             return PipelineResult(items)
-        candidates = self.searcher(crops)
+        results = self.searcher(crops)
         if self.reranker is not None:
-            candidates = self.reranker(candidates)
-        return PipelineResult(items, candidates)
+            results = self.reranker(results)
+        items = replace_rejected(
+            items, [r.rejected for r in results if r.rejected is not None]
+        )
+        return PipelineResult(items, results)

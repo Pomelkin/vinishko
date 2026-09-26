@@ -58,7 +58,7 @@ def sample_payload(client: QdrantClient, name: str) -> dict:
     return points[0].payload
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CollectionInfo:
     """Что известно о коллекции перед работой."""
 

@@ -13,8 +13,11 @@ from ultralytics.engine.results import Results
 from ultralytics.models.sam import SAM3SemanticPredictor
 from ultralytics.utils.ops import xywh2xyxy
 
+from vinishko.pipeline.device import resolve_torch_device
 from vinishko.pipeline.steps.normalization.weights import SAM3_FILE, sam3_weights
 
+ENV_DEVICE = "NORMALIZER_DEV"
+"""Устройство нормализации: cpu либо cuda:<индекс>; без переменной cuda:0 при доступной CUDA, иначе cpu."""
 BOTTLE = 39  # класс bottle в COCO
 MIN_CONTOUR_AREA = 10  # контуры меньше этого в пикселях кадра модели — шум маски
 SHARPNESS_HEIGHT = (
@@ -239,11 +242,14 @@ class Segmenter:
         label_prompt: str | None = None,
         label_conf: float = 0.4,
         exclude_prompts: tuple[str, ...] | list[str] = (),
+        device: torch.device | None = None,
     ) -> None:
         """Путь к весам model: SAM3 узнаётся по имени файла, для YOLO промпт не используется.
 
-        Без model берётся SAM3 из кэша пользователя, веса скачиваются при первой загрузке модели.
+        Без model берётся SAM3 из кэша пользователя, веса скачиваются при первой загрузке модели. Без device — NORMALIZER_DEV либо автоматически.
+        На CUDA модель считается в half, на CPU во float: NMS torchvision для half на CPU не реализован.
         """
+        self.device = device if device is not None else resolve_torch_device(ENV_DEVICE)
         self.model = None if model is None else str(model)
         self.name = SAM3_FILE if model is None else Path(model).name
         self.is_sam3 = "sam3" in self.name
@@ -282,7 +288,8 @@ class Segmenter:
                 "model": weights,
                 "conf": self.conf,
                 "imgsz": self.imgsz,
-                "quantize": 16,
+                "device": str(self.device),
+                "quantize": 16 if self.device.type == "cuda" else 32,
                 "task": "segment",
                 "mode": "predict",
                 "save": False,
@@ -363,6 +370,7 @@ class Segmenter:
                 imgsz=self.imgsz,
                 retina_masks=True,
                 verbose=False,
+                device=str(self.device),
             )
             return {self.prompt: masks_of(cast(Results, next(iter(results))))}
         self._predictor.set_image(bgr)

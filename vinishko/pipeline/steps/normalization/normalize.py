@@ -15,7 +15,13 @@ from vinishko.pipeline.steps.normalization.features import (
     candidate_features,
     gray_small,
 )
-from vinishko.pipeline.steps.normalization.seg import Segmenter, label_stats, open_image
+from vinishko.pipeline.steps.normalization.seg import (
+    ENV_DEVICE,
+    Segmenter,
+    label_stats,
+    open_image,
+)
+from vinishko.pipeline.device import resolve_torch_device
 from vinishko.pipeline.structs import BottleCrop, Reason, RejectedBottle
 import torch
 
@@ -422,9 +428,22 @@ class NormalizationReason(Reason):
 class Normalizer:
     """Сегментация → отбор по калибровке → проверка этикетки → кропы. Разметка без рендера — annotate, кропы с разметкой — вызов."""
 
-    def __init__(self, cfg: dict, base: Path) -> None:
-        """Читает калибровку и поднимает сегментатор; base — папка, от которой считаются пути в cfg."""
-        self.cfg, self.base = cfg, base
+    def __init__(
+        self,
+        cfg: dict | None = None,
+        base: Path | None = None,
+        device: torch.device | None = None,
+    ) -> None:
+        """Читает калибровку и поднимает сегментатор.
+
+        Без аргументов — normalize.toml рядом с модулем и устройство из NORMALIZER_DEV, без неё cuda:0 при доступной CUDA, иначе cpu.
+        base — папка, от которой считаются пути в cfg, по умолчанию директория модуля.
+        """
+        if cfg is None:
+            cfg = load_config(HERE / "normalize.toml", [])
+        self.cfg, self.base = cfg, base or HERE
+        self.device = device if device is not None else resolve_torch_device(ENV_DEVICE)
+        base = self.base
         sel, sc, lb = cfg["selection"], cfg["segmentation"], cfg["label"]
         self.calib = json.loads(resolve(sel["calibration"], base).read_text())
         self.threshold = (
@@ -439,6 +458,7 @@ class Normalizer:
             label_prompt=lb["prompt"],
             label_conf=lb["min_conf"],
             exclude_prompts=lb["exclude_prompts"],
+            device=self.device,
         )
         if self.seg.label_prompt is None:
             raise ValueError(

@@ -1,5 +1,6 @@
 """Хранилище кропов коллекции: директория либо S3-совместимый бакет с кэшем на диске. Имя файла — из метаданных вектора."""
 
+import os
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Protocol
@@ -41,6 +42,8 @@ class ImageStore(Protocol):
 
     def exists(self, name: str) -> bool: ...
 
+    def ensure_available(self) -> None: ...
+
 
 class LocalStore:
     """Кропы в директории."""
@@ -61,6 +64,12 @@ class LocalStore:
     def exists(self, name: str) -> bool:
         """Есть ли файл."""
         return (self.root / name).is_file()
+
+    def ensure_available(self) -> None:
+        """Директория есть или создаётся, и в неё можно писать."""
+        self.root.mkdir(parents=True, exist_ok=True)
+        if not os.access(self.root, os.W_OK):
+            raise PermissionError(f"нет прав на запись в {self.root}")
 
 
 class S3Store:
@@ -120,6 +129,10 @@ class S3Store:
                 return False
             raise
         return True
+
+    def ensure_available(self) -> None:
+        """Бакет отвечает под текущими реквизитами; иначе ошибка boto3 как есть."""
+        self.client.head_bucket(Bucket=self.bucket)
 
 
 def make_store(cfg: LocalImagesConfig | S3ImagesConfig, cache_dir: Path) -> ImageStore:

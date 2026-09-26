@@ -77,7 +77,7 @@ CSV_FIELDS = {
 console = Console()
 
 
-@dataclass
+@dataclass(slots=True)
 class Row:
     """Строка каталога, у которой есть фото."""
 
@@ -87,7 +87,7 @@ class Row:
     fields: dict[str, str]
 
 
-@dataclass
+@dataclass(slots=True)
 class Failure:
     """Фото, не попавшее в коллекцию."""
 
@@ -134,6 +134,52 @@ def read_rows(
     if duplicates:
         raise ValueError(f"{path.name}: slug повторяются, например {duplicates[:5]}")
     return rows[:limit], skipped, has_group
+
+
+def store_config(
+    store_dir: Path | None,
+    s3_endpoint: str | None,
+    s3_bucket: str | None,
+    s3_prefix: str | None,
+) -> LocalImagesConfig | S3ImagesConfig:
+    """Хранилище кропов ровно одно: директория либо S3 с эндпоинтом и бакетом; смесь опций и неполный S3 — ошибка."""
+    s3 = [
+        name
+        for name, value in (
+            ("--s3-endpoint", s3_endpoint),
+            ("--s3-bucket", s3_bucket),
+            ("--s3-prefix", s3_prefix),
+        )
+        if value is not None
+    ]
+    if store_dir is not None:
+        if s3:
+            raise click.UsageError(
+                f"--store-dir вместе с {', '.join(s3)}: хранилище одно, либо директория, либо S3"
+            )
+        return LocalImagesConfig(kind="local", dir=store_dir)
+    if not s3:
+        raise click.UsageError(
+            "нужно хранилище кропов: --store-dir либо --s3-endpoint с --s3-bucket"
+        )
+    missing = [name for name in ("--s3-endpoint", "--s3-bucket") if name not in s3]
+    if missing:
+        raise click.UsageError(f"для S3 не хватает {', '.join(missing)}")
+    return S3ImagesConfig(
+        kind="s3",
+        endpoint=str(s3_endpoint),
+        bucket=str(s3_bucket),
+        prefix=s3_prefix or "",
+    )
+
+
+def check_photos(rows: list[Row], images: Path) -> None:
+    """Все фото из CSV лежат в images; иначе ошибка до старта, а не через час работы."""
+    missing = [row.photo for row in rows if not (images / row.photo).is_file()]
+    if missing:
+        raise click.UsageError(
+            f"в {images} нет {len(missing)} фото из CSV, например {missing[:3]}"
+        )
 
 
 def ensure_absent(client: QdrantClient, name: str) -> None:
@@ -206,7 +252,7 @@ def progress() -> Progress:
     )
 
 
-@dataclass
+@dataclass(slots=True)
 class Build:
     """Ход сборки: векторы и метаданные по slug, неудачи."""
 
@@ -352,7 +398,7 @@ def report(
     help="Либо S3: HTTP-эндпоинт, например https://s3.ru-6.storage.selcloud.ru; реквизиты как у boto3",
 )
 @click.option("--s3-bucket", default=None)
-@click.option("--s3-prefix", default="", help="Путь внутри бакета")
+@click.option("--s3-prefix", default=None, help="Путь внутри бакета")
 @click.option(
     "--model",
     default=DEFAULT_MODEL,
@@ -436,7 +482,7 @@ def main(
     store_dir: Path | None,
     s3_endpoint: str | None,
     s3_bucket: str | None,
-    s3_prefix: str,
+    s3_prefix: str | None,
     model: str,
     revision: str | None,
     device_spec: str | None,
@@ -458,12 +504,11 @@ def main(
     Каждое фото проходит нормализацию, на нём должна найтись ровно одна годная бутылка; её кроп уходит в хранилище картинок,
     вектор — в qdrant вместе с метаданными: slug, группа и все slug группы, попавшие в коллекцию, имя кропа, поля каталога, модель и её ревизия.
     """
-    if (store_dir is None) == (s3_endpoint is None and s3_bucket is None):
-        raise click.UsageError(
-            "нужно либо --store-dir, либо --s3-endpoint с --s3-bucket"
-        )
-    if store_dir is None and (s3_endpoint is None or s3_bucket is None):
-        raise click.UsageError("для S3 нужны и --s3-endpoint, и --s3-bucket")
+    images_cfg = store_config(store_dir, s3_endpoint, s3_bucket, s3_prefix)
+    rows, skipped, has_group = read_rows(
+        csv_path, slug_column, photo_column, group_column, limit
+    )
+    check_photos(rows, images)
     cache_dir = cache_dir.expanduser()
     device = resolve_device(device_spec)
     files = fetch_model(model, device.precision, revision)
@@ -473,28 +518,17 @@ def main(
         )
     )
     ensure_absent(client, collection)
-    encoder = Encoder(files, device, batch_size, cache_dir)
-    console.print(f"энкодер: {encoder.description}")
-    images_cfg = (
-        LocalImagesConfig(kind="local", dir=store_dir)
-        if store_dir is not None
-        else S3ImagesConfig(
-            kind="s3",
-            endpoint=str(s3_endpoint),
-            bucket=str(s3_bucket),
-            prefix=s3_prefix,
-        )
-    )
     store = make_store(images_cfg, cache_dir)
-    rows, skipped, has_group = read_rows(
-        csv_path, slug_column, photo_column, group_column, limit
-    )
-    console.print(
-        f"каталог: {len(rows)} строк с фото, {skipped} без фото; группы: {'колонка ' + group_column if has_group else 'нет, позиция = группа'}; кропы: {store.description}"
-    )
+    store.ensure_available()
     norm = Normalizer(
         load_norm_config(norm_config, list(overrides)), norm_config.resolve().parent
     )
+    console.print(
+        f"каталог: {len(rows)} строк с фото, {skipped} без фото; группы: {'колонка ' + group_column if has_group else 'нет, позиция = группа'}; "
+        f"кропы: {store.description}; нормализация на {norm.device}"
+    )
+    encoder = Encoder(files, device, batch_size, cache_dir)
+    console.print(f"энкодер: {encoder.description}")
     create_collection(client, collection, encoder.embed_dim)
     state = build(
         rows,

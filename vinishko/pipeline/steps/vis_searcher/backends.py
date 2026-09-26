@@ -56,7 +56,11 @@ def engine_path(
 def build_engine(
     onnx: Path, device: torch.device, max_batch: int, input_size: tuple[int, int]
 ) -> bytes:
-    """Сериализованный engine из ONNX: сеть strongly typed, точность берётся из типов графа, батч динамический до max_batch."""
+    """Сериализованный engine из ONNX для карты device: сеть strongly typed, точность берётся из типов графа, батч динамический до max_batch.
+
+    TensorRT собирает engine под текущее устройство CUDA и его тактики, поэтому устройство выставляется здесь, а не только в раннере.
+    """
+    torch.cuda.set_device(device)
     trt = load_tensorrt()
     trt_logger = trt.Logger(trt.Logger.WARNING)
     builder = trt.Builder(trt_logger)

@@ -29,7 +29,7 @@ class Reason(StrEnum):
         return member
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RejectedBottle:
     """Бутылка, по которой ответа не будет: не целевая, без читаемой этикетки, либо позже ничего не нашлось. Интерфейс показывает её маску и причину.
 
@@ -56,7 +56,7 @@ class RejectedBottle:
         return f"{self.reason.title}: {self.detail}"
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True, eq=False, slots=True)
 class BottleCrop:
     """Годная бутылка с готовым кропом для энкодера: целевая, с читаемой основной этикеткой.
 
@@ -103,7 +103,7 @@ class BottleCrop:
         }
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True, eq=False, slots=True)
 class Candidate:
     """Позиция каталога, предложенная визуальным поиском для одной бутылки; единица работы второго уровня.
 
@@ -124,3 +124,26 @@ class Candidate:
     """Вектор позиции был в выдаче поиска, а не добавлен как член группы."""
     payload: dict
     """Метаданные точки коллекции: название, винодельня, винтаж и прочее из каталога — для второго уровня."""
+
+
+@dataclass(frozen=True, eq=False, slots=True)
+class SearchResult:
+    """Ответ визуального поиска по одной бутылке: кандидаты либо отказ с причиной. Ровно один на каждый BottleCrop, в том же порядке.
+
+    Кандидатов нет ровно тогда, когда есть rejected: та же бутылка с тем же uuid и причиной из перечисления шага поиска.
+    """
+
+    crop: BottleCrop
+    candidates: list[Candidate]
+    rejected: RejectedBottle | None = None
+
+    def __post_init__(self) -> None:
+        if bool(self.candidates) == (self.rejected is not None):
+            raise ValueError("у SearchResult либо кандидаты, либо отказ")
+        if self.rejected is not None and self.rejected.uuid != self.crop.uuid:
+            raise ValueError("отказ относится к другой бутылке")
+
+    @property
+    def found(self) -> bool:
+        """Есть ли кандидаты."""
+        return self.rejected is None

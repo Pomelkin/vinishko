@@ -5,19 +5,20 @@
 на CPU — OpenVINO во float32.
 """
 
-import os
 from dataclasses import dataclass
 from importlib.util import find_spec
 from typing import Literal
 
 import torch
 
+from vinishko.pipeline.device import resolve_torch_device
+
 ENV_DEVICE = "VIS_SEARCHER_DEV"
 Backend = Literal["tensorrt", "openvino"]
 Precision = Literal["bf16", "fp32"]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Device:
     """Куда и чем считать энкодер."""
 
@@ -31,30 +32,20 @@ class Device:
 
 def resolve_device(spec: str | None = None) -> Device:
     """Устройство по строке spec, иначе по VIS_SEARCHER_DEV, иначе автоматически; заданное проверяется на доступность."""
-    spec = spec or os.environ.get(ENV_DEVICE)
-    if spec is None:
-        spec = "cuda:0" if torch.cuda.is_available() else "cpu"
-    device = torch.device(spec)
+    device = resolve_torch_device(ENV_DEVICE, spec)
     if device.type == "cuda":
-        if not torch.cuda.is_available():
-            raise RuntimeError(f"{ENV_DEVICE}={spec}: CUDA недоступна")
-        index = device.index or 0
-        if index >= torch.cuda.device_count():
-            raise RuntimeError(
-                f"{ENV_DEVICE}={spec}: видеокарт всего {torch.cuda.device_count()}"
-            )
         if find_spec("tensorrt") is None:
             raise RuntimeError(
                 "на CUDA граф исполняет TensorRT: нужен пакет tensorrt, группа flash-inference"
             )
         precision: Precision = (
-            "bf16" if torch.cuda.get_device_capability(index) >= (8, 0) else "fp32"
+            "bf16"
+            if torch.cuda.get_device_capability(device.index) >= (8, 0)
+            else "fp32"
         )
-        return Device(torch.device("cuda", index), "tensorrt", precision)
-    if device.type == "cpu":
-        if find_spec("openvino") is None:
-            raise RuntimeError(
-                "на CPU граф исполняет OpenVINO: нужен пакет openvino, группа cpu-inference"
-            )
-        return Device(device, "openvino", "fp32")
-    raise ValueError(f"{ENV_DEVICE}={spec}: ожидается cpu либо cuda:<индекс>")
+        return Device(device, "tensorrt", precision)
+    if find_spec("openvino") is None:
+        raise RuntimeError(
+            "на CPU граф исполняет OpenVINO: нужен пакет openvino, группа cpu-inference"
+        )
+    return Device(device, "openvino", "fp32")
