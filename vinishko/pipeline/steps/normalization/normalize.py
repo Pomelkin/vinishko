@@ -445,7 +445,11 @@ class Normalizer:
         if cfg is None:
             cfg = load_config(HERE / "normalize.toml", [])
         self.cfg, self.base = cfg, base or HERE
-        self.device = device if device is not None else resolve_torch_device(ENV_DEVICE, cfg["segmentation"]["device"])
+        self.device = (
+            device
+            if device is not None
+            else resolve_torch_device(ENV_DEVICE, cfg["segmentation"]["device"])
+        )
         base = self.base
         sel, sc, lb = cfg["selection"], cfg["segmentation"], cfg["label"]
         self.calib = json.loads(resolve(sel["calibration"], base).read_text())
@@ -468,7 +472,9 @@ class Normalizer:
                 "годная бутылка определяется по этикетке: нужны веса SAM3 и непустой label.prompt"
             )
         if self.seg.tag != self.calib.get("segmentation"):
-            logger.warning(f"калибровка сделана для сегментации {self.calib.get('segmentation')}, сейчас {self.seg.tag}")
+            logger.warning(
+                f"калибровка сделана для сегментации {self.calib.get('segmentation')}, сейчас {self.seg.tag}"
+            )
 
     def largest_label(self, labels: list[dict], ax: dict) -> list | None:
         """Полигоны самой крупной этикетки корпуса; полоски уже min_width_frac ширины бутылки, то есть акцизные марки, не считаются.
@@ -640,9 +646,12 @@ class Normalizer:
             n_valid += isinstance(item, BottleCrop)
             items.append(item)
         if self.cfg["selection"]["bypass"] and not n_valid:
-            w, h = img.size  # весь кадр как бутылка и этикетка, score 0: по нему дальше видно, что это обход, а отказы остаются в списке
+            w, h = (
+                img.size
+            )  # весь кадр как бутылка и этикетка, score 0: по нему дальше видно, что это обход, а отказы остаются в списке
             frame = [[[0, 0], [w, 0], [w, h], [0, h]]]
-            items.append(Candidate(1, 0.0, frame, frame, 0.0))
+            crop, info = render_bottle(rgb, frame, frame, self.cfg, angle=0.0)
+            items.append(BottleCrop(1, 0.0, frame, frame, 0.0, crop, info))
         return items
 
     def annotate(self, path: Path | str) -> list[BottleCrop | RejectedBottle]:

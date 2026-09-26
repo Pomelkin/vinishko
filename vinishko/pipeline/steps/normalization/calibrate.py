@@ -184,6 +184,30 @@ def best_threshold(
     return float(grid[int(np.argmax(scores))])
 
 
+def collect(
+    norm: Normalizer, cache: Path, pairs: list, folder: Path, max_cands: int = 0
+) -> tuple[list, list, int]:
+    """Признаки и метки всех картинок из pairs [(имя, метка)]: (результаты image_rows, вердикты этикетки, сколько тяжёлых пропущено)."""
+    res, verd, skipped = [], [], 0
+    for i, (n, v) in enumerate(pairs, 1):
+        img = open_image(folder / n)
+        f = cache / (n + ".json")
+        if f.exists() and f.stat().st_mtime >= (folder / n).stat().st_mtime:
+            seg = json.loads(f.read_text())
+        else:
+            seg = norm.seg(img)
+            f.write_text(json.dumps(seg))
+        row = image_rows(n, v, seg, gray_small(img))
+        if max_cands and row[4] > max_cands:
+            skipped += 1
+        else:
+            res.append(row)
+            verd += label_verdicts(norm, v, seg)
+        if i % 50 == 0 or i == len(pairs):
+            click.echo(f"  сегментация и признаки: {i}/{len(pairs)}")
+    return res, verd, skipped
+
+
 def holdout_report(
     hres: list, model: LogisticRegression, scaler: StandardScaler, thr: float
 ) -> None:
@@ -312,30 +336,7 @@ def main(
     )  # сегментация с этикетками: признаки перебираются без повторного прогона SAM3
     cache.mkdir(parents=True, exist_ok=True)
 
-    def collect(
-        pairs: list, folder: Path, skip_hard: bool = False
-    ) -> tuple[list, list, int]:
-        """Признаки и метки всех картинок из pairs [(имя, метка)]: (результаты image_rows, вердикты этикетки, сколько тяжёлых пропущено)."""
-        res, verd, skipped = [], [], 0
-        for i, (n, v) in enumerate(pairs, 1):
-            img = open_image(folder / n)
-            f = cache / (n + ".json")
-            if f.exists() and f.stat().st_mtime >= (folder / n).stat().st_mtime:
-                seg = json.loads(f.read_text())
-            else:
-                seg = segmenter(img)
-                f.write_text(json.dumps(seg))
-            row = image_rows(n, v, seg, gray_small(img))
-            if skip_hard and max_cands and row[4] > max_cands:
-                skipped += 1
-            else:
-                res.append(row)
-                verd += label_verdicts(norm, v, seg)
-            if i % 50 == 0 or i == len(pairs):
-                click.echo(f"  сегментация и признаки: {i}/{len(pairs)}")
-        return res, verd, skipped
-
-    results, verdicts, skipped_hard = collect(todo, images, skip_hard=True)
+    results, verdicts, skipped_hard = collect(norm, cache, todo, images, max_cands)
     if max_cands:
         click.echo(
             f"исключено сцен с более чем {max_cands} кандидатами: {skipped_hard}"
@@ -437,7 +438,7 @@ def main(
             for n, v in json.loads(holdout_labels.read_text()).items()
             if (holdout_images / n).is_file()
         ]
-        holdout_report(collect(hl, holdout_images)[0], lr, scaler, thr)
+        holdout_report(collect(norm, cache, hl, holdout_images)[0], lr, scaler, thr)
     label_report(verdicts)
 
 
