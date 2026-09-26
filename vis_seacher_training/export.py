@@ -96,27 +96,39 @@ def export_onnx(
 
 
 def verify_tensorrt(
-    reference: WineEncoderForExport, path: Path, images: torch.Tensor, input_size: tuple[int, int]
+    reference: WineEncoderForExport,
+    path: Path,
+    images: torch.Tensor,
+    input_size: tuple[int, int],
 ) -> float | None:
     """Сверка bf16-графа через TensorRT с эталоном PyTorch float32: наименьший косинус по батчу; None — TensorRT не установлен, сверить нечем.
 
     onnxruntime bf16-граф не исполняет, поэтому другого исполнителя у этого файла нет. Батч подгоняется под профиль engine — ровно input_size.
     """
-    from vis_seacher_training.trt import TensorRTRunner
-    from vis_seacher_training.trt import tensorrt_available
+    from vinishko.pipeline.steps.vis_searcher.backends import TensorRTRunner
+    from vinishko.pipeline.steps.vis_searcher.backends import tensorrt_available
 
     if not tensorrt_available():
-        logger.warning(f"{path.name} не сверен: нет tensorrt (группа flash-inference) либо CUDA")
+        logger.warning(
+            f"{path.name} не сверен: нет tensorrt (группа flash-inference) либо CUDA"
+        )
         return None
     batch = torch.zeros(images.shape[0], 3, *input_size)
-    height, width = min(input_size[0], images.shape[2]), min(input_size[1], images.shape[3])
+    height, width = (
+        min(input_size[0], images.shape[2]),
+        min(input_size[1], images.shape[3]),
+    )
     batch[:, :, :height, :width] = images[:, :, :height, :width]
-    runner = TensorRTRunner(path, torch.device("cuda", 0), max_batch=batch.shape[0], input_size=input_size)
+    runner = TensorRTRunner(
+        path, torch.device("cuda", 0), max_batch=batch.shape[0], input_size=input_size
+    )
     with torch.no_grad():
         want = reference(batch).numpy()
     got = runner(batch)
     cosine = float((want * got).sum(1).min())
-    logger.info(f"{path.name} через TensorRT: наименьший косинус с PyTorch float32 {cosine:.5f}")
+    logger.info(
+        f"{path.name} через TensorRT: наименьший косинус с PyTorch float32 {cosine:.5f}"
+    )
     return cosine
 
 
@@ -160,14 +172,20 @@ def export_model(
     images = export_onnx(encoder, output / ONNX_NAME, patch, input_size)
     worst = verify_onnx(encoder, output / ONNX_NAME, images, patch)
     if worst > 1e-3:
-        raise RuntimeError(f"ONNX расходится с PyTorch на {worst:.2e}: экспорт не годится")
+        raise RuntimeError(
+            f"ONNX расходится с PyTorch на {worst:.2e}: экспорт не годится"
+        )
     trt_cosine = None
     if bf16:
         half = WineEncoderForExport(copy.deepcopy(model), mean, std, torch.bfloat16)
         export_onnx(half, output / ONNX_BF16_NAME, patch, input_size)
-        trt_cosine = verify_tensorrt(encoder, output / ONNX_BF16_NAME, images, input_size)
+        trt_cosine = verify_tensorrt(
+            encoder, output / ONNX_BF16_NAME, images, input_size
+        )
         if trt_cosine is not None and trt_cosine < BF16_MIN_COSINE:
-            raise RuntimeError(f"bf16-граф через TensorRT расходится с PyTorch: косинус {trt_cosine:.4f} < {BF16_MIN_COSINE}")
+            raise RuntimeError(
+                f"bf16-граф через TensorRT расходится с PyTorch: косинус {trt_cosine:.4f} < {BF16_MIN_COSINE}"
+            )
     contract = {
         "input": "images: float32, RGB, NCHW, значения 0…255; нормировка ImageNet внутри графа",
         "output": "embeddings: float32 (batch, embed_dim), L2-нормированные",
@@ -181,7 +199,9 @@ def export_model(
         "onnx_bf16": ONNX_BF16_NAME if bf16 else None,
         "onnx_bf16_min_cosine_vs_torch_tensorrt": trt_cosine,
     }
-    (output / "preprocess.json").write_text(json.dumps(contract, ensure_ascii=False, indent=1), encoding="utf-8")
+    (output / "preprocess.json").write_text(
+        json.dumps(contract, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
 
 
 @click.command()
@@ -220,7 +240,12 @@ def export_model(
     show_default=True,
     help="Цвет полей, как background.color в normalize.toml",
 )
-@click.option("--bf16/--no-bf16", default=True, show_default=True, help="Вдобавок к float32-графу писать model.bf16.onnx для TensorRT; сверяется через TensorRT, если он установлен")
+@click.option(
+    "--bf16/--no-bf16",
+    default=True,
+    show_default=True,
+    help="Вдобавок к float32-графу писать model.bf16.onnx для TensorRT; сверяется через TensorRT, если он установлен",
+)
 def main(
     checkpoint: Path | None,
     model_dir: Path | None,
@@ -234,11 +259,19 @@ def main(
     Из директории удобно досоздать model.bf16.onnx к модели, экспортированной раньше: -m <run>/model -o <run>/model перепишет графы, веса останутся те же.
     """
     if (checkpoint is None) == (model_dir is None):
-        raise click.UsageError("нужен ровно один источник: -c <чекпоинт.ckpt> либо -m <директория save_pretrained>")
+        raise click.UsageError(
+            "нужен ровно один источник: -c <чекпоинт.ckpt> либо -m <директория save_pretrained>"
+        )
     if checkpoint is not None:
         model = load_best(checkpoint)
     else:
-        model = DinoV3ForWine.from_pretrained(model_dir, attn_implementation="sdpa", dtype=torch.float32).cpu().eval()
+        model = (
+            DinoV3ForWine.from_pretrained(
+                model_dir, attn_implementation="sdpa", dtype=torch.float32
+            )
+            .cpu()
+            .eval()
+        )
     export_model(model, output, input_size, fill, bf16=bf16)
 
 

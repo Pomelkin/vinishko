@@ -84,7 +84,9 @@ def rejection_metrics(positives: Retrieval, negatives: Retrieval) -> dict[str, f
     out: dict[str, float] = {}
     for signal in SIGNALS:
         pos, neg = getattr(positives, signal), getattr(negatives, signal)
-        out[f"auc_{signal}"] = float(roc_auc_score(np.r_[np.ones(len(pos)), np.zeros(len(neg))], np.r_[pos, neg]))
+        out[f"auc_{signal}"] = float(
+            roc_auc_score(np.r_[np.ones(len(pos)), np.zeros(len(neg))], np.r_[pos, neg])
+        )
         for fpr in FPRS:
             out[f"tpr_{signal}@{fpr}"] = float((pos > np.quantile(neg, 1 - fpr)).mean())
     return out

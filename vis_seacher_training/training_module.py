@@ -76,15 +76,27 @@ def build_model(cfg: ModelConfig, device: torch.device) -> DinoV3ForWine:
     DropPath создаётся в конструкторе слоя только при ненулевой доле. Модель возвращается в eval, как её отдаёт from_pretrained;
     режим обучения включает configure_optimizers.
     """
-    regularization = {"drop_path_rate": cfg.drop_path_rate, "attention_dropout": cfg.attention_dropout}
+    regularization = {
+        "drop_path_rate": cfg.drop_path_rate,
+        "attention_dropout": cfg.attention_dropout,
+    }
     if cfg.init_from is not None:
         config = DinoV3ForWineConfig.from_pretrained(cfg.init_from)
         for name, value in regularization.items():
             setattr(config.backbone, name, value)
-        model = DinoV3ForWine.from_pretrained(cfg.init_from, config=config, device_map=device, attn_implementation=cfg.attn_implementation)
+        model = DinoV3ForWine.from_pretrained(
+            cfg.init_from,
+            config=config,
+            device_map=device,
+            attn_implementation=cfg.attn_implementation,
+        )
         if model.config.embed_dim != cfg.embed_dim:
-            raise ValueError(f"model.embed_dim={cfg.embed_dim} в конфиге, а у модели из {cfg.init_from} — {model.config.embed_dim}")
-        model.backbone.embeddings.mask_token.requires_grad_(False)  # from_pretrained создаёт параметры заново и снимает заморозку из конструктора
+            raise ValueError(
+                f"model.embed_dim={cfg.embed_dim} в конфиге, а у модели из {cfg.init_from} — {model.config.embed_dim}"
+            )
+        model.backbone.embeddings.mask_token.requires_grad_(
+            False
+        )  # from_pretrained создаёт параметры заново и снимает заморозку из конструктора
         return model
     return DinoV3ForWine.from_backbone(
         cfg.backbone,
@@ -588,11 +600,15 @@ class WineTrainingModule(KostylLightningModule):
             )
             writer.add_figure("cos_top1/groups", figure, self.global_step)
             plt.close(figure)
-            self._log_misses(report.misses, gathered["val"][1], gathered["negatives"][1])
+            self._log_misses(
+                report.misses, gathered["val"][1], gathered["negatives"][1]
+            )
         if dist.is_initialized():
             dist.barrier()
 
-    def _log_misses(self, misses: Misses | None, val_rows: torch.Tensor, negative_rows: torch.Tensor) -> None:
+    def _log_misses(
+        self, misses: Misses | None, val_rows: torch.Tensor, negative_rows: torch.Tensor
+    ) -> None:
         """Несколько случайных промахов wine/oneshot_noisy картинкой: запрос, фото его класса из галереи и top-5 найденного с косинусами.
 
         Строки в misses — по собранным эмбеддингам, val_rows и negative_rows переводят их в номера картинок датасетов. Картинки читаются
@@ -604,25 +620,51 @@ class WineTrainingModule(KostylLightningModule):
             return
         if self.datamodule.val_datasets is None:
             raise RuntimeError("setup не вызывался")
-        val, negatives = (self.datamodule.val_datasets[VAL_LOADERS.index(name)] for name in ("val", "negatives"))
+        val, negatives = (
+            self.datamodule.val_datasets[VAL_LOADERS.index(name)]
+            for name in ("val", "negatives")
+        )
         labels = val.items.labels
         val_rows, negative_rows = val_rows.cpu(), negative_rows.cpu()
         generator = torch.Generator().manual_seed(self.current_epoch)
-        picked = torch.randperm(len(misses.queries), generator=generator)[:limit].tolist()
+        picked = torch.randperm(len(misses.queries), generator=generator)[
+            :limit
+        ].tolist()
         rows: list[list[Panel]] = []
         for i in picked:
-            query, expected = int(val_rows[misses.queries[i]]), int(val_rows[misses.expected[i]])
+            query, expected = (
+                int(val_rows[misses.queries[i]]),
+                int(val_rows[misses.expected[i]]),
+            )
             ranks = torch.nonzero(misses.hits[i]).flatten()
             rank = f"ранг {int(ranks[0]) + 1}" if len(ranks) else f"ранг >{TOP}"
-            panels = [Panel(val.image(query), f"запрос · {labels[query]}"), Panel(val.image(expected), f"в галерее · {rank}")]
+            panels = [
+                Panel(val.image(query), f"запрос · {labels[query]}"),
+                Panel(val.image(expected), f"в галерее · {rank}"),
+            ]
             for k in range(misses.found.shape[1]):
                 score = f"{float(misses.scores[i, k]):.3f}"
                 if bool(misses.found_is_noise[i, k]):
-                    panels.append(Panel(negatives.image(int(negative_rows[misses.found[i, k]])), f"{score} · не вино", NOISE_COLOR))
+                    panels.append(
+                        Panel(
+                            negatives.image(int(negative_rows[misses.found[i, k]])),
+                            f"{score} · не вино",
+                            NOISE_COLOR,
+                        )
+                    )
                 else:
                     row = int(val_rows[misses.found[i, k]])
-                    panels.append(Panel(val.image(row), f"{score} · {labels[row]}", HIT_COLOR if bool(misses.hits[i, k]) else MISS_COLOR))
+                    panels.append(
+                        Panel(
+                            val.image(row),
+                            f"{score} · {labels[row]}",
+                            HIT_COLOR if bool(misses.hits[i, k]) else MISS_COLOR,
+                        )
+                    )
             rows.append(panels)
-        figure = panels_figure(rows, f"Промахи wine/oneshot_noisy: {len(misses.queries)} из {misses.total} запросов · эпоха {self.current_epoch}")
+        figure = panels_figure(
+            rows,
+            f"Промахи wine/oneshot_noisy: {len(misses.queries)} из {misses.total} запросов · эпоха {self.current_epoch}",
+        )
         writer.add_figure("misses/oneshot_noisy", figure, self.global_step)
         plt.close(figure)

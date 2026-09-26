@@ -41,18 +41,39 @@ def create_param_groups(
     for raw_name, param in module.named_parameters():
         if not param.requires_grad:
             continue
-        name = raw_name.replace("_fsdp_wrapped_module.", "")  # FSDP1 вставляет это в имена, и префикс бэкбона иначе не совпал бы
-        decay = 0.0 if any(keyword in name for keyword in NO_DECAY_KEYWORDS) else weight_decay
+        name = raw_name.replace(
+            "_fsdp_wrapped_module.", ""
+        )  # FSDP1 вставляет это в имена, и префикс бэкбона иначе не совпал бы
+        decay = (
+            0.0
+            if any(keyword in name for keyword in NO_DECAY_KEYWORDS)
+            else weight_decay
+        )
         is_backbone = name.startswith(backbone_prefix)
-        multiplier = backbone_lr_multiplier if backbone_lr_multiplier is not None and is_backbone else 1.0
+        multiplier = (
+            backbone_lr_multiplier
+            if backbone_lr_multiplier is not None and is_backbone
+            else 1.0
+        )
         slowed += multiplier != 1.0
-        group = groups.setdefault((decay, is_backbone), {"params": [], "lr": 0.0 if backbone_frozen and is_backbone else lr * multiplier, "weight_decay": decay, "lr_multiplier": multiplier})
+        group = groups.setdefault(
+            (decay, is_backbone),
+            {
+                "params": [],
+                "lr": 0.0 if backbone_frozen and is_backbone else lr * multiplier,
+                "weight_decay": decay,
+                "lr_multiplier": multiplier,
+            },
+        )
         if is_backbone:
             group["is_backbone"] = True
         group["params"].append(param)
     logger.log_rank_zero(
         "INFO",
         f"Групп параметров: {len(groups)}; с множителем lr {backbone_lr_multiplier}: {slowed} тензоров бэкбона; "
-        + ", ".join(f"wd={decay} {'бэкбон' if is_backbone else 'голова'}: {len(group['params'])}" for (decay, is_backbone), group in groups.items()),
+        + ", ".join(
+            f"wd={decay} {'бэкбон' if is_backbone else 'голова'}: {len(group['params'])}"
+            for (decay, is_backbone), group in groups.items()
+        ),
     )
     return list(groups.values())

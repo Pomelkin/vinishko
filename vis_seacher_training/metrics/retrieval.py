@@ -62,13 +62,21 @@ class RetrievalReport:
 
 
 @torch.no_grad()
-def search(queries: torch.Tensor, gallery: torch.Tensor, exclude: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+def search(
+    queries: torch.Tensor, gallery: torch.Tensor, exclude: torch.Tensor | None = None
+) -> tuple[torch.Tensor, torch.Tensor]:
     """TOP ближайших по косинусу строк галереи для каждого запроса; векторы L2-нормированы.
 
     exclude — для каждого запроса номер строки галереи, которую нельзя находить, либо −1: так из выдачи убирается сам запрос.
     """
     scores, ids = [], []
-    chunk = max(1, min(len(queries), CHUNK_BYTES // max(1, gallery.shape[0] * queries.element_size())))
+    chunk = max(
+        1,
+        min(
+            len(queries),
+            CHUNK_BYTES // max(1, gallery.shape[0] * queries.element_size()),
+        ),
+    )
     for start in range(0, len(queries), chunk):
         sim = queries[start : start + chunk] @ gallery.T
         if exclude is not None:
@@ -81,7 +89,9 @@ def search(queries: torch.Tensor, gallery: torch.Tensor, exclude: torch.Tensor |
     return torch.cat(scores), torch.cat(ids)
 
 
-def protocol_rows(labels: torch.Tensor, protocol: str) -> tuple[torch.Tensor, torch.Tensor]:
+def protocol_rows(
+    labels: torch.Tensor, protocol: str
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Строки val для галереи и строки-запросы, те же протоколы, что в scripts/bench_common.
 
     loo — в галерее вся val, запросами идут картинки классов, где их две и больше; попаданием считается любое другое фото класса.
@@ -112,9 +122,13 @@ def rejection(accepted: torch.Tensor, rejected: torch.Tensor) -> dict[str, float
     """
     scores = torch.cat([accepted, rejected])
     target = torch.cat([torch.ones_like(accepted), torch.zeros_like(rejected)]).long()
-    out = {"auroc": float(binary_auroc(scores.sigmoid(), target))}  # сигмоида монотонна и ROC не меняет, а вход вне [0, 1] torchmetrics пропустил бы через неё сам, с предупреждением
+    out = {
+        "auroc": float(binary_auroc(scores.sigmoid(), target))
+    }  # сигмоида монотонна и ROC не меняет, а вход вне [0, 1] torchmetrics пропустил бы через неё сам, с предупреждением
     for fpr in FPRS:
-        out[f"tpr@fpr{round(fpr * 100)}"] = float((accepted > torch.quantile(rejected, 1 - fpr)).float().mean())
+        out[f"tpr@fpr{round(fpr * 100)}"] = float(
+            (accepted > torch.quantile(rejected, 1 - fpr)).float().mean()
+        )
     return out
 
 
@@ -135,7 +149,10 @@ def evaluate_retrieval(
     вместе с тем же шумом, запросы — аугментированные виды этих же фото: замена полевым снимкам, которых для каталога нет.
     """
     report = RetrievalReport()
-    noise, negative_queries = negatives[: len(negatives) // 2], negatives[len(negatives) // 2 :]
+    noise, negative_queries = (
+        negatives[: len(negatives) // 2],
+        negatives[len(negatives) // 2 :],
+    )
     for protocol in ("loo", "oneshot"):
         gallery_rows, rows = protocol_rows(labels, protocol)
         if not len(rows):
@@ -144,26 +161,58 @@ def evaluate_retrieval(
         position[gallery_rows] = torch.arange(len(gallery_rows), device=labels.device)
         scores, ids = search(val[rows], val[gallery_rows], position[rows])
         hits = labels[gallery_rows][ids] == labels[rows][:, None]
-        report.scalars.update({f"wine/{protocol}/{name}": value for name, value in recall(hits).items()})
+        report.scalars.update(
+            {f"wine/{protocol}/{name}": value for name, value in recall(hits).items()}
+        )
         if protocol == "loo":
             continue
         gallery = torch.cat([val[gallery_rows], noise])
-        gallery_labels = torch.cat([labels[gallery_rows], torch.full((len(noise),), -1, device=labels.device)])
+        gallery_labels = torch.cat(
+            [labels[gallery_rows], torch.full((len(noise),), -1, device=labels.device)]
+        )
         scores, ids = search(val[rows], gallery)
         hits = gallery_labels[ids] == labels[rows][:, None]
-        report.scalars.update({f"wine/oneshot_noisy/{name}": value for name, value in recall(hits).items()})
-        report.top1["val_correct"], report.top1["val_wrong"] = scores[hits[:, 0], 0], scores[~hits[:, 0], 0]
-        report.misses = collect_misses(rows, gallery_rows, labels, len(noise), ids, scores, hits)
-        for name, queries in (("distractors", distractors), ("products10k", negative_queries)):
+        report.scalars.update(
+            {
+                f"wine/oneshot_noisy/{name}": value
+                for name, value in recall(hits).items()
+            }
+        )
+        report.top1["val_correct"], report.top1["val_wrong"] = (
+            scores[hits[:, 0], 0],
+            scores[~hits[:, 0], 0],
+        )
+        report.misses = collect_misses(
+            rows, gallery_rows, labels, len(noise), ids, scores, hits
+        )
+        for name, queries in (
+            ("distractors", distractors),
+            ("products10k", negative_queries),
+        ):
             if len(queries):
                 report.top1[name] = search(queries, gallery)[0][:, 0]
-                report.scalars.update({f"reject/{name}/{key}": value for key, value in rejection(scores[:, 0], report.top1[name]).items()})
+                report.scalars.update(
+                    {
+                        f"reject/{name}/{key}": value
+                        for key, value in rejection(
+                            scores[:, 0], report.top1[name]
+                        ).items()
+                    }
+                )
     if len(catalog):
         gallery = torch.cat([catalog, noise])
         _, ids = search(catalog_queries, gallery)
         hits = ids == torch.arange(len(catalog_queries), device=ids.device)[:, None]
-        report.scalars.update({f"catalog/{name}": value for name, value in recall(hits).items()})
-    report.scalars.update({f"cos_top1_median/{name}": float(values.median()) for name, values in report.top1.items() if len(values)})
+        report.scalars.update(
+            {f"catalog/{name}": value for name, value in recall(hits).items()}
+        )
+    report.scalars.update(
+        {
+            f"cos_top1_median/{name}": float(values.median())
+            for name, values in report.top1.items()
+            if len(values)
+        }
+    )
     return report
 
 
@@ -195,7 +244,9 @@ def collect_misses(
 def panels_figure(rows: list[list[Panel]], title: str) -> Figure:
     """Сетка картинок с подписями: строка на пример, столбцы одинаковы у всех строк."""
     n_rows, n_cols = len(rows), max(len(row) for row in rows)
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(1.9 * n_cols, 2.15 * n_rows + 0.5), squeeze=False)
+    fig, axes = plt.subplots(
+        n_rows, n_cols, figsize=(1.9 * n_cols, 2.15 * n_rows + 0.5), squeeze=False
+    )
     for ax in axes.flat:
         ax.axis("off")
     for row, panels in zip(axes, rows, strict=True):
@@ -203,7 +254,17 @@ def panels_figure(rows: list[list[Panel]], title: str) -> Figure:
             ax.imshow(resize_panel(panel.image))
             ax.set_title(panel.caption, fontsize=7.5, pad=3)
             if panel.color is not None:
-                ax.add_patch(Rectangle((0, 0), 1, 1, transform=ax.transAxes, fill=False, edgecolor=panel.color, linewidth=3))
+                ax.add_patch(
+                    Rectangle(
+                        (0, 0),
+                        1,
+                        1,
+                        transform=ax.transAxes,
+                        fill=False,
+                        edgecolor=panel.color,
+                        linewidth=3,
+                    )
+                )
     fig.suptitle(title, x=0.01, ha="left", fontsize=10)
     fig.tight_layout(rect=(0, 0, 1, 0.97))
     return fig
@@ -214,18 +275,34 @@ def resize_panel(image: np.ndarray) -> np.ndarray:
     scale = PANEL_SIDE / max(image.shape[:2])
     if scale >= 1:
         return image
-    return cv2.resize(image, (max(1, round(image.shape[1] * scale)), max(1, round(image.shape[0] * scale))), interpolation=cv2.INTER_AREA)
+    return cv2.resize(
+        image,
+        (max(1, round(image.shape[1] * scale)), max(1, round(image.shape[0] * scale))),
+        interpolation=cv2.INTER_AREA,
+    )
 
 
 def scores_figure(top1: dict[str, torch.Tensor], title: str) -> Figure:
     """Распределения косинуса top-1 по группам запросов: строка на группу, общая ось, высота нормирована внутри группы."""
-    groups = {name: values.float().cpu().numpy() for name, values in top1.items() if len(values)}
+    groups = {
+        name: values.float().cpu().numpy()
+        for name, values in top1.items()
+        if len(values)
+    }
     lo = np.floor(min(v.min() for v in groups.values()) * 20) / 20
     hi = np.ceil(max(v.max() for v in groups.values()) * 20) / 20
-    fig, axes = plt.subplots(len(groups), 1, figsize=(8, 1.6 * len(groups) + 0.6), sharex=True, squeeze=False)
-    for ax, color, (name, values) in zip(axes[:, 0], SERIES_COLORS, groups.items(), strict=False):
+    fig, axes = plt.subplots(
+        len(groups), 1, figsize=(8, 1.6 * len(groups) + 0.6), sharex=True, squeeze=False
+    )
+    for ax, color, (name, values) in zip(
+        axes[:, 0], SERIES_COLORS, groups.items(), strict=False
+    ):
         ax.hist(values, bins=50, range=(lo, hi), color=color, rwidth=0.88)
-        ax.set_title(f"{name} · {len(values)} запросов · медиана {np.median(values):.3f}", loc="left", fontsize=10)
+        ax.set_title(
+            f"{name} · {len(values)} запросов · медиана {np.median(values):.3f}",
+            loc="left",
+            fontsize=10,
+        )
         ax.set_yticks([])
         for side in ("top", "right", "left"):
             ax.spines[side].set_visible(False)

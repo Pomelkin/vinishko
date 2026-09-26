@@ -31,29 +31,76 @@ from vinishko.pipeline.steps.normalization.normalize import load_config
 SPEC = ReportSpec(model=MODEL, score_name="косинус", score_short="cos")
 
 
-def run_mode(mode: str, protocols: list[str], raw: dict[str, Split], pool: DevicePool, tmp: Path) -> list[ModeResult]:
+def run_mode(
+    mode: str, protocols: list[str], raw: dict[str, Split], pool: DevicePool, tmp: Path
+) -> list[ModeResult]:
     """Замер одного режима: эмбеддинги всех ролей на устройствах пула, затем по каждому протоколу поиск по галерее и метрики."""
     splits, dropped = prepare_mode(mode, raw)
     vectors: dict[str, np.ndarray] = {}
     seconds = 0.0
     with count_progress() as progress:
         for role, split in splits.items():
-            paths, _, elapsed = embed_parts(pool, split, tmp / f"{mode}_{role}", progress)
+            paths, _, elapsed = embed_parts(
+                pool, split, tmp / f"{mode}_{role}", progress
+            )
             vectors[role] = np.concatenate([np.load(path) for path in paths])
             seconds += elapsed
         results = []
         for protocol in protocols:
             gallery_rows, rows = protocol_rows(splits["val"], protocol)
-            val = retrieve(splits["val"], vectors["val"], rows, vectors["val"], gallery_rows, True, progress)
-            rejects = {role: retrieve(splits[role], vectors[role], np.arange(len(splits[role])), vectors["val"], gallery_rows, False, progress) for role in splits if role != "val"}
-            results.append(make_result(mode, protocol, raw, splits, dropped, len(gallery_rows), val, rejects, seconds))
+            val = retrieve(
+                splits["val"],
+                vectors["val"],
+                rows,
+                vectors["val"],
+                gallery_rows,
+                True,
+                progress,
+            )
+            rejects = {
+                role: retrieve(
+                    splits[role],
+                    vectors[role],
+                    np.arange(len(splits[role])),
+                    vectors["val"],
+                    gallery_rows,
+                    False,
+                    progress,
+                )
+                for role in splits
+                if role != "val"
+            }
+            results.append(
+                make_result(
+                    mode,
+                    protocol,
+                    raw,
+                    splits,
+                    dropped,
+                    len(gallery_rows),
+                    val,
+                    rejects,
+                    seconds,
+                )
+            )
     return results
 
 
 @click.command()
 @common_options
-@click.option("--weights", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=ROOT / "weights" / "tulip-so400m-14-384.ckpt", show_default=True)
-@click.option("--resize-mode", type=click.Choice(RESIZE_MODES), default="squash", show_default=True, help="Как картинка приводится к 384×384: squash — родной режим TULIP, сжатие без сохранения пропорций; longest — с полями цвета фона нормализации; shortest — центральный кроп")
+@click.option(
+    "--weights",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=ROOT / "weights" / "tulip-so400m-14-384.ckpt",
+    show_default=True,
+)
+@click.option(
+    "--resize-mode",
+    type=click.Choice(RESIZE_MODES),
+    default="squash",
+    show_default=True,
+    help="Как картинка приводится к 384×384: squash — родной режим TULIP, сжатие без сохранения пропорций; longest — с полями цвета фона нормализации; shortest — центральный кроп",
+)
 @click.option("--batch-size", type=click.IntRange(min=1), default=64, show_default=True)
 def main(
     output: Path,
@@ -90,10 +137,20 @@ def main(
     raw = read_splits(winesensed, negatives, distractors, limit)
     with TemporaryDirectory(prefix="bench_tulip_") as tmp:
         with console.status(f"загрузка {MODEL} на {len(devices)} устр."):
-            pool = DevicePool(devices, TulipWorker, (weights, resize_mode, render_cfg, batch_size, workers))
+            pool = DevicePool(
+                devices,
+                TulipWorker,
+                (weights, resize_mode, render_cfg, batch_size, workers),
+            )
         with pool:
-            console.print(f"[green]model[/] {MODEL} на {', '.join(pool.names)}, {pool.dtype}")
-            results = [r for m in MODES[mode] for r in run_mode(m, PROTOCOLS[protocol], raw, pool, Path(tmp))]
+            console.print(
+                f"[green]model[/] {MODEL} на {', '.join(pool.names)}, {pool.dtype}"
+            )
+            results = [
+                r
+                for m in MODES[mode]
+                for r in run_mode(m, PROTOCOLS[protocol], raw, pool, Path(tmp))
+            ]
             info, dtype = pool.info[0], pool.dtype
     run_info = {
         "модель": f"{MODEL}, визуальная башня, {weights.name}",

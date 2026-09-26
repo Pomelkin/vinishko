@@ -33,7 +33,9 @@ def init_worker(_: int) -> None:
     """
     info = get_worker_info()
     if info is not None and isinstance(info.dataset, WineViewDataset):
-        info.dataset.reseed((info.seed + 1000003 * int(os.environ.get("RANK", "0"))) % (1 << 32))
+        info.dataset.reseed(
+            (info.seed + 1000003 * int(os.environ.get("RANK", "0"))) % (1 << 32)
+        )
 
 
 class WineDataModule(L.LightningDataModule):
@@ -48,9 +50,13 @@ class WineDataModule(L.LightningDataModule):
     def __init__(self, config: DataConfig, workdir: Path | None = None) -> None:
         super().__init__()
         self.config = config
-        self.render_cfg = load_config(config.normalize_config or NORM_DIR / "normalize.toml", [])
+        self.render_cfg = load_config(
+            config.normalize_config or NORM_DIR / "normalize.toml", []
+        )
         root = config.datasets_dir
-        train, val, distractors = read_items(root / "winesensed", ["train.json", "val.json", "val_distractors.json"])
+        train, val, distractors = read_items(
+            root / "winesensed", ["train.json", "val.json", "val_distractors.json"]
+        )
         (catalog,) = read_items(root / "off", ["catalog.json"])
         (negatives,) = read_items(root / "products10k", ["negatives.json"])
 
@@ -61,36 +67,65 @@ class WineDataModule(L.LightningDataModule):
 
         ev = config.eval
         self.val_items: dict[str, Items] = {
-            "val": val.with_bottle().sample_classes(ev.max_val_images, ev.max_images_per_class),
+            "val": val.with_bottle().sample_classes(
+                ev.max_val_images, ev.max_images_per_class
+            ),
             "distractors": distractors.with_bottle().subsample(ev.max_distractors),
             "negatives": negatives.subsample(ev.max_negatives),
             "catalog": catalog.with_bottle(),
         }
         self.val_items["catalog_queries"] = self.val_items["catalog"]
-        val_ids = {name: n for n, name in enumerate(sorted(set(self.val_items["val"].labels)))}
-        self.val_labels = torch.tensor([val_ids[label] for label in self.val_items["val"].labels])
+        val_ids = {
+            name: n for n, name in enumerate(sorted(set(self.val_items["val"].labels)))
+        }
+        self.val_labels = torch.tensor(
+            [val_ids[label] for label in self.val_items["val"].labels]
+        )
 
         self.train_dataset: WineViewDataset | None = None
         self.val_datasets: list[WineViewDataset] | None = None
         logger.log_rank_zero(
             "INFO",
-            f"train: {len(self.train_items)} картинок, {len(self.class_names)} классов; " + ", ".join(f"{name}: {len(items)}" for name, items in self.val_items.items()),
+            f"train: {len(self.train_items)} картинок, {len(self.class_names)} классов; "
+            + ", ".join(
+                f"{name}: {len(items)}" for name, items in self.val_items.items()
+            ),
         )
         if workdir is not None:
             workdir.mkdir(parents=True, exist_ok=True)
-            dump_to_file({name: n for n, name in enumerate(self.class_names)}, workdir / "label2id.json")
+            dump_to_file(
+                {name: n for n, name in enumerate(self.class_names)},
+                workdir / "label2id.json",
+            )
 
     @property
     def num_classes(self) -> int:
         """Число классов обучения."""
         return len(self.class_names)
 
-    def _dataset(self, items: Items, class_ids: list[int], augmenter: TrainAugmenter | None = None, deterministic_seed: int | None = None) -> WineViewDataset:
+    def _dataset(
+        self,
+        items: Items,
+        class_ids: list[int],
+        augmenter: TrainAugmenter | None = None,
+        deterministic_seed: int | None = None,
+    ) -> WineViewDataset:
         cfg = self.config
-        return WineViewDataset(items, class_ids, self.render_cfg, cfg.input_size, cfg.img_mean, cfg.img_std, augmenter, deterministic_seed)
+        return WineViewDataset(
+            items,
+            class_ids,
+            self.render_cfg,
+            cfg.input_size,
+            cfg.img_mean,
+            cfg.img_std,
+            augmenter,
+            deterministic_seed,
+        )
 
     def _augmenter(self) -> TrainAugmenter:
-        return TrainAugmenter(self.config.augmentations, self.render_cfg, self.config.input_size)
+        return TrainAugmenter(
+            self.config.augmentations, self.render_cfg, self.config.input_size
+        )
 
     @override
     def setup(self, stage: str | None = None) -> None:
@@ -98,13 +133,24 @@ class WineDataModule(L.LightningDataModule):
             return  # estimate_total_steps зовёт setup повторно
         label2id = {name: n for n, name in enumerate(self.class_names)}
         augmenter = self._augmenter() if self.config.augmentations.enabled else None
-        self.train_dataset = self._dataset(self.train_items, [label2id[label] for label in self.train_items.labels], augmenter)
+        self.train_dataset = self._dataset(
+            self.train_items,
+            [label2id[label] for label in self.train_items.labels],
+            augmenter,
+        )
         self.val_datasets = []
         for name in VAL_LOADERS:
             items = self.val_items[name]
             class_ids = self.val_labels.tolist() if name == "val" else [-1] * len(items)
             if name == "catalog_queries":
-                self.val_datasets.append(self._dataset(items, class_ids, self._augmenter(), self.config.eval.off_augment_seed))
+                self.val_datasets.append(
+                    self._dataset(
+                        items,
+                        class_ids,
+                        self._augmenter(),
+                        self.config.eval.off_augment_seed,
+                    )
+                )
             else:
                 self.val_datasets.append(self._dataset(items, class_ids))
 
@@ -130,6 +176,13 @@ class WineDataModule(L.LightningDataModule):
             raise RuntimeError("setup не вызывался")
         cfg = self.config
         return [
-            DataLoader(dataset, batch_size=cfg.eval_batch_size or cfg.batch_size, shuffle=False, num_workers=cfg.num_workers, pin_memory=True, worker_init_fn=init_worker)
+            DataLoader(
+                dataset,
+                batch_size=cfg.eval_batch_size or cfg.batch_size,
+                shuffle=False,
+                num_workers=cfg.num_workers,
+                pin_memory=True,
+                worker_init_fn=init_worker,
+            )
             for dataset in self.val_datasets
         ]

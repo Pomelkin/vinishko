@@ -548,7 +548,13 @@ class Normalizer:
         )
 
     def judge(
-        self, img: Image.Image, rgb: np.ndarray, cand: dict, score: float, scale: float, index: int
+        self,
+        img: Image.Image,
+        rgb: np.ndarray,
+        cand: dict,
+        score: float,
+        scale: float,
+        index: int,
     ) -> BottleCrop | RejectedBottle:
         """Целевая бутылка → годная с номером index и кропом или отказ: размер бутылки, затем этикетка, затем рендер."""
         ax = bottle_axis(cand["polys"], self.cfg["orientation"])
@@ -619,7 +625,9 @@ class Normalizer:
         """Разметка одной картинки по пути; см. annotate_image."""
         return self.annotate_image(open_image(path))
 
-    def __call__(self, img: Image.Image | Path | str) -> list[BottleCrop | RejectedBottle]:
+    def __call__(
+        self, img: Image.Image | Path | str
+    ) -> list[BottleCrop | RejectedBottle]:
         """Картинка → все найденные бутылки: годные с кропами и отказы с причинами. Если BottleCrop в списке нет, дальше по пайплайну идти нечему."""
         if not isinstance(img, Image.Image):
             img = open_image(img)
@@ -637,7 +645,11 @@ def remove_stale(out_dir: Path, stem: str) -> None:
 
 
 def write_outputs(
-    path: Path, out_dir: Path, rgb: np.ndarray, items: list[BottleCrop | RejectedBottle], cfg: dict
+    path: Path,
+    out_dir: Path,
+    rgb: np.ndarray,
+    items: list[BottleCrop | RejectedBottle],
+    cfg: dict,
 ) -> list[str]:
     """CLI: на каждую годную бутылку <имя>_bN.<формат>, <имя>_bN.json, маска этикетки _label.npz и вырезка _label.png."""
     fmt, quality = cfg["output"]["format"], cfg["output"]["quality"]

@@ -35,7 +35,9 @@ class PipelineResult:
         return [item for item in self.items if isinstance(item, BottleCrop)]
 
 
-def replace_rejected(items: list[BottleCrop | RejectedBottle], rejected: list[RejectedBottle]) -> list[BottleCrop | RejectedBottle]:
+def replace_rejected(
+    items: list[BottleCrop | RejectedBottle], rejected: list[RejectedBottle]
+) -> list[BottleCrop | RejectedBottle]:
     """Разметка, где бутылки с uuid из rejected заменены отказами: так шаг после нормализации бракует бутылку."""
     by_uuid = {item.uuid: item for item in rejected}
     return [by_uuid.get(item.uuid, item) for item in items]
@@ -47,7 +49,12 @@ class Pipeline:
     Шаги после нормализации подключаются по мере готовности: без поиска результат — одна разметка.
     """
 
-    def __init__(self, normalizer: Normalizer, searcher: Searcher | None = None, reranker: Reranker | None = None) -> None:
+    def __init__(
+        self,
+        normalizer: Normalizer,
+        searcher: Searcher | None = None,
+        reranker: Reranker | None = None,
+    ) -> None:
         self.normalizer, self.searcher, self.reranker = normalizer, searcher, reranker
 
     def __call__(self, img: Image.Image | Path | str) -> PipelineResult:

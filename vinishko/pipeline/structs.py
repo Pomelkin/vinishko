@@ -87,11 +87,20 @@ class BottleCrop:
 
     def reject(self, reason: Reason, detail: str) -> RejectedBottle:
         """Отказ по этой бутылке на более позднем шаге пайплайна: те же маски, скор и uuid."""
-        return RejectedBottle(reason, detail, self.score, self.bottle, self.label, self.uuid)
+        return RejectedBottle(
+            reason, detail, self.score, self.bottle, self.label, self.uuid
+        )
 
     def markup(self) -> dict:
         """Разметка без кропа для JSON: index, score, bottle, label, angle, uuid — формат строк normalization.jsonl."""
-        return {"index": self.index, "score": self.score, "bottle": self.bottle, "label": self.label, "angle": self.angle, "uuid": self.uuid}
+        return {
+            "index": self.index,
+            "score": self.score,
+            "bottle": self.bottle,
+            "label": self.label,
+            "angle": self.angle,
+            "uuid": self.uuid,
+        }
 
 
 @dataclass(frozen=True, eq=False)

@@ -21,7 +21,9 @@ def blend_color(image: np.ndarray, alpha: np.ndarray, color: np.ndarray) -> np.n
             a = alpha[y, x]
             b = F32(1.0) - a
             for c in range(3):
-                out[y, x, c] = np.uint8(round(a * F32(image[y, x, c]) + b * F32(color[c])))
+                out[y, x, c] = np.uint8(
+                    round(a * F32(image[y, x, c]) + b * F32(color[c]))
+                )
     return out
 
 
@@ -34,12 +36,16 @@ def blend_images(top: np.ndarray, bottom: np.ndarray, alpha: np.ndarray) -> np.n
             a = alpha[y, x]
             b = F32(1.0) - a
             for c in range(3):
-                out[y, x, c] = np.uint8(round(a * F32(top[y, x, c]) + b * F32(bottom[y, x, c])))
+                out[y, x, c] = np.uint8(
+                    round(a * F32(top[y, x, c]) + b * F32(bottom[y, x, c]))
+                )
     return out
 
 
 @njit(cache=True)
-def screen_gauss(image: np.ndarray, cx: int, cy: int, sx: float, sy: float, intensity: float) -> None:
+def screen_gauss(
+    image: np.ndarray, cx: int, cy: int, sx: float, sy: float, intensity: float
+) -> None:
     """image += blob·(255 − image), blob — гауссово пятно; image float32, пятно в float64, как считал numpy."""
     for y in range(image.shape[0]):
         dy = (y - cy) / sy
@@ -63,14 +69,19 @@ def screen_map(image: np.ndarray, blob: np.ndarray) -> None:
 
 
 @njit(cache=True)
-def gain_gradient(height: int, width: int, cos_a: float, sin_a: float, low: float, high: float) -> np.ndarray:
+def gain_gradient(
+    height: int, width: int, cos_a: float, sin_a: float, low: float, high: float
+) -> np.ndarray:
     """Коэффициент яркости от low до high вдоль направления (cos_a, sin_a); координаты нормируются в float32, дальше float64, как в numpy."""
     gain = np.empty((height, width), np.float64)
     corners = np.empty(4, np.float64)
     k = 0
     for y in (0, height - 1):
         for x in (0, width - 1):
-            corners[k] = np.float64(F32(x) / F32(width) - F32(0.5)) * cos_a + np.float64(F32(y) / F32(height) - F32(0.5)) * sin_a
+            corners[k] = (
+                np.float64(F32(x) / F32(width) - F32(0.5)) * cos_a
+                + np.float64(F32(y) / F32(height) - F32(0.5)) * sin_a
+            )
             k += 1
     lo, hi = corners.min(), corners.max()  # функция линейна, крайние значения в углах
     span = hi - lo
@@ -83,7 +94,9 @@ def gain_gradient(height: int, width: int, cos_a: float, sin_a: float, low: floa
 
 
 @njit(cache=True)
-def apply_gain(image: np.ndarray, gain: np.ndarray, lift: np.ndarray, denom: np.ndarray) -> np.ndarray:
+def apply_gain(
+    image: np.ndarray, gain: np.ndarray, lift: np.ndarray, denom: np.ndarray
+) -> np.ndarray:
     """clip(round(image·gain + lift·(gain − 1)/denom)); lift и denom — 0-мерные массивы типа gain, чтобы арифметика шла в его точности."""
     out = np.empty_like(image)
     one = gain.dtype.type(1)

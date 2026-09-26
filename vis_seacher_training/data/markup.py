@@ -35,13 +35,20 @@ class Items:
 
     def take(self, rows: list[int]) -> "Items":
         """Подмножество картинок."""
-        return Items(self.root, [self.names[i] for i in rows], [self.labels[i] for i in rows], [self.spans[i] for i in rows])
+        return Items(
+            self.root,
+            [self.names[i] for i in rows],
+            [self.labels[i] for i in rows],
+            [self.spans[i] for i in rows],
+        )
 
     def with_bottle(self) -> "Items":
         """Только картинки, где нормализация нашла годную бутылку: остальные пайплайн до энкодера не допускает."""
         return self.take([i for i, span in enumerate(self.spans) if span is not None])
 
-    def sample_classes(self, max_images: int | None, max_per_class: int | None = None) -> "Items":
+    def sample_classes(
+        self, max_images: int | None, max_per_class: int | None = None
+    ) -> "Items":
         """Случайная, но воспроизводимая выборка классов: не больше max_images картинок, от класса — первые max_per_class.
 
         Классы идут в порядке хэша метки и берутся целиком, чтобы у запросов остались позитивы. Брать классы в порядке файла нельзя:
@@ -51,7 +58,10 @@ class Items:
         for i, label in enumerate(self.labels):
             rows_by_label.setdefault(label, []).append(i)
         rows: list[int] = []
-        for label in sorted(rows_by_label, key=lambda name: hashlib.blake2b(name.encode(), digest_size=8).digest()):
+        for label in sorted(
+            rows_by_label,
+            key=lambda name: hashlib.blake2b(name.encode(), digest_size=8).digest(),
+        ):
             if max_images is not None and len(rows) >= max_images:
                 break
             rows.extend(rows_by_label[label][:max_per_class])
@@ -61,7 +71,9 @@ class Items:
         """Не больше max_images картинок равномерно по файлу; для ролей, где классы не важны."""
         if max_images is None or max_images >= len(self):
             return self
-        return self.take([int(i) for i in np.linspace(0, len(self) - 1, max_images).round()])
+        return self.take(
+            [int(i) for i in np.linspace(0, len(self) - 1, max_images).round()]
+        )
 
     def class_sizes(self) -> Counter[str]:
         """Сколько картинок в каждом классе."""
@@ -90,7 +102,9 @@ def index_markup(root: Path, wanted: set[str]) -> dict[str, Span]:
                     spans[rec["file"]] = (offset, len(line))
             offset += len(line)
     if left:
-        raise ValueError(f"в {path} нет разметки для {len(left)} картинок, например {sorted(left)[:3]}: доразметьте датасет через scripts.normalize_dataset")
+        raise ValueError(
+            f"в {path} нет разметки для {len(left)} картинок, например {sorted(left)[:3]}: доразметьте датасет через scripts.normalize_dataset"
+        )
     return spans
 
 
@@ -101,7 +115,15 @@ def read_items(root: Path, files: list[str]) -> list[Items]:
         with (root / file).open(encoding="utf-8") as f:
             labels_by_file.append(json.load(f))
     spans = index_markup(root, {name for labels in labels_by_file for name in labels})
-    return [Items(root, list(labels), list(labels.values()), [spans.get(name) for name in labels]) for labels in labels_by_file]
+    return [
+        Items(
+            root,
+            list(labels),
+            list(labels.values()),
+            [spans.get(name) for name in labels],
+        )
+        for labels in labels_by_file
+    ]
 
 
 def read_candidate(root: Path, span: Span) -> dict:

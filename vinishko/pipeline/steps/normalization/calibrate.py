@@ -11,8 +11,17 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import StandardScaler
 
-from vinishko.pipeline.steps.normalization.features import FEAT_SIDE, FEATURES, candidate_features, gray_small
-from vinishko.pipeline.steps.normalization.normalize import Normalizer, bottle_axis, load_config
+from vinishko.pipeline.steps.normalization.features import (
+    FEAT_SIDE,
+    FEATURES,
+    candidate_features,
+    gray_small,
+)
+from vinishko.pipeline.steps.normalization.normalize import (
+    Normalizer,
+    bottle_axis,
+    load_config,
+)
 from vinishko.pipeline.steps.normalization.seg import open_image
 from vinishko.pipeline.structs import RejectedBottle
 
@@ -29,10 +38,14 @@ def iou(a: Box, b: Box) -> float:
     ix = max(0, min(a[2], b[2]) - max(a[0], b[0]))
     iy = max(0, min(a[3], b[3]) - max(a[1], b[1]))
     inter = ix * iy
-    return inter / ((a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter + 1e-9)
+    return inter / (
+        (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter + 1e-9
+    )
 
 
-def image_rows(name: str, label: dict, seg: dict, gray: np.ndarray) -> tuple[str, list[Row], int, int, int]:
+def image_rows(
+    name: str, label: dict, seg: dict, gray: np.ndarray
+) -> tuple[str, list[Row], int, int, int]:
     """Строки признаков кандидатов одной картинки с целевой меткой: (имя, строки, целей, промахов SAM3, кандидатов).
 
     Кандидат положительный, если совпал по IoU с бутылкой, которую можно опознать по этикетке: целой или обрезанной
@@ -44,9 +57,21 @@ def image_rows(name: str, label: dict, seg: dict, gray: np.ndarray) -> tuple[str
     rows: list[Row] = []
     for c, f in zip(seg["cands"], feats, strict=True):
         best_good = max((iou(c["box"], b) for b in good), default=0)
-        rows.append({"name": name, "cand": c["id"], "box": c["box"], "y": int(best_good >= IOU_MATCH), **f})
+        rows.append(
+            {
+                "name": name,
+                "cand": c["id"],
+                "box": c["box"],
+                "y": int(best_good >= IOU_MATCH),
+                **f,
+            }
+        )
     # цели, которых нет среди кандидатов (SAM3 пропустил): ловить их нечем, но в метриках они считаются промахом
-    missed = sum(1 for b in good if max((iou(c["box"], b) for c in seg["cands"]), default=0) < IOU_MATCH)
+    missed = sum(
+        1
+        for b in good
+        if max((iou(c["box"], b) for c in seg["cands"]), default=0) < IOU_MATCH
+    )
     return name, rows, len(good), missed, len(seg["cands"])
 
 
@@ -110,8 +135,15 @@ def label_verdicts(norm: Normalizer, label: dict, seg: dict) -> list[tuple[bool,
         cand = max(seg["cands"], key=lambda c: iou(c["box"], t["box"]), default=None)
         if cand is None or iou(cand["box"], t["box"]) < IOU_MATCH:
             continue
-        res = norm.check_label(cand, bottle_axis(cand["polys"], norm.cfg["orientation"]), 0.0)
-        out.append((bool(t.get("label_hidden")), res.reason.value if isinstance(res, RejectedBottle) else "ok"))
+        res = norm.check_label(
+            cand, bottle_axis(cand["polys"], norm.cfg["orientation"]), 0.0
+        )
+        out.append(
+            (
+                bool(t.get("label_hidden")),
+                res.reason.value if isinstance(res, RejectedBottle) else "ok",
+            )
+        )
     return out
 
 
@@ -121,29 +153,64 @@ def label_report(verdicts: list[tuple[bool, str]]) -> None:
     visible = [v for h, v in verdicts if not h]
     click.echo("\nпроверка этикетки против разметки (флаг «этикетка скрыта»):")
     caught = sum(v != "ok" for v in hidden)
-    click.echo(f"  скрытых этикеток {len(hidden)}: проверка отказала {caught}, пропустила {len(hidden) - caught}")
+    click.echo(
+        f"  скрытых этикеток {len(hidden)}: проверка отказала {caught}, пропустила {len(hidden) - caught}"
+    )
     kept = sum(v == "ok" for v in visible)
-    click.echo(f"  видимых этикеток {len(visible)}: проверка пропустила {kept}, забраковала {len(visible) - kept}")
+    click.echo(
+        f"  видимых этикеток {len(visible)}: проверка пропустила {kept}, забраковала {len(visible) - kept}"
+    )
     for name, group in (("отказы на скрытых", hidden), ("отказы на видимых", visible)):
-        reasons = sorted(((v, group.count(v)) for v in set(group) if v != "ok"), key=lambda t: -t[1])
+        reasons = sorted(
+            ((v, group.count(v)) for v in set(group) if v != "ok"), key=lambda t: -t[1]
+        )
         if reasons:
             click.echo(f"  {name}: " + ", ".join(f"{v} {k}" for v, k in reasons))
 
 
 def best_threshold(
-    names: list[str], rows: list[Row], probs: np.ndarray, n_good: ImageStats, n_missed: ImageStats, beta: float = 1.0
+    names: list[str],
+    rows: list[Row],
+    probs: np.ndarray,
+    n_good: ImageStats,
+    n_missed: ImageStats,
+    beta: float = 1.0,
 ) -> float:
     """Порог, максимизирующий F-бета: beta > 1 ценит полноту выше точности."""
     grid = np.linspace(0.05, 0.95, 91)
-    scores = [fbeta(evaluate(names, rows, probs, t, n_good, n_missed), beta) for t in grid]
+    scores = [
+        fbeta(evaluate(names, rows, probs, t, n_good, n_missed), beta) for t in grid
+    ]
     return float(grid[int(np.argmax(scores))])
 
 
 @click.command()
-@click.option("--images", type=click.Path(file_okay=False, path_type=Path), default=HERE / "images", show_default=True)
-@click.option("--labels", type=click.Path(dir_okay=False, path_type=Path), default=HERE / "labels.json", show_default=True)
-@click.option("-c", "--config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=HERE / "normalize.toml", show_default=True)
-@click.option("--beta", type=float, default=1.5, show_default=True, help="Вес полноты при выборе порога: 1 = F1, 2 = полнота вдвое важнее")
+@click.option(
+    "--images",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=HERE / "images",
+    show_default=True,
+)
+@click.option(
+    "--labels",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=HERE / "labels.json",
+    show_default=True,
+)
+@click.option(
+    "-c",
+    "--config",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=HERE / "normalize.toml",
+    show_default=True,
+)
+@click.option(
+    "--beta",
+    type=float,
+    default=1.5,
+    show_default=True,
+    help="Вес полноты при выборе порога: 1 = F1, 2 = полнота вдвое важнее",
+)
 @click.option(
     "--exclude",
     default=r"generated[_ ]image|nano_banana|edited_image|vibehype",
@@ -157,11 +224,25 @@ def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) ->
     кандидатов. Признаки пишутся в features.jsonl, веса логрега и порог — в calibration.json. Отдельно, без подбора
     порогов, печатается отчёт проверки этикетки против флага label_hidden в разметке.
     """
-    marked = {n: v for n, v in json.loads(labels.read_text()).items() if v["decision"] != "ambiguous"}
+    marked = {
+        n: v
+        for n, v in json.loads(labels.read_text()).items()
+        if v["decision"] != "ambiguous"
+    }
     excl = re.compile(exclude, re.IGNORECASE) if exclude else None
-    todo = [(n, v) for n, v in marked.items() if (images / n).is_file() and not (excl and excl.search(n))]
-    click.echo(f"размеченных картинок: {len(marked)}, найдено в {images}: {len(todo)}"
-               + (f", исключено по --exclude: {sum(1 for n in marked if excl and excl.search(n))}" if excl else ""))
+    todo = [
+        (n, v)
+        for n, v in marked.items()
+        if (images / n).is_file() and not (excl and excl.search(n))
+    ]
+    click.echo(
+        f"размеченных картинок: {len(marked)}, найдено в {images}: {len(todo)}"
+        + (
+            f", исключено по --exclude: {sum(1 for n in marked if excl and excl.search(n))}"
+            if excl
+            else ""
+        )
+    )
     norm = Normalizer(load_config(config, []), config.resolve().parent)
     segmenter = norm.seg
     results, verdicts, skipped_hard = [], [], 0
@@ -169,7 +250,9 @@ def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) ->
         img = open_image(images / n)
         seg = segmenter(img)
         row = image_rows(n, v, seg, gray_small(img))
-        if row[4] >= 2:  # тяжёлые случаи — сцены с несколькими кандидатами SAM3 — не должны быть в выборке вообще
+        if (
+            row[4] >= 2
+        ):  # тяжёлые случаи — сцены с несколькими кандидатами SAM3 — не должны быть в выборке вообще
             skipped_hard += 1
         else:
             results.append(row)
@@ -186,7 +269,9 @@ def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) ->
     X = np.array([[r[k] for k in FEATURES] for r in rows])
     y = np.array([r["y"] for r in rows])
     # серии кадров с одним исходным именем не должны попадать и в обучение, и в проверку
-    groups = [re.sub(r"_[0-9a-f]{10}$", "", str(r["name"]).rsplit(".", 1)[0]) for r in rows]
+    groups = [
+        re.sub(r"_[0-9a-f]{10}$", "", str(r["name"]).rsplit(".", 1)[0]) for r in rows
+    ]
     click.echo(
         f"кандидатов: {len(rows)}, положительных: {y.sum()}, целей без кандидата (промах SAM3): {sum(n_missed.values())}"
     )
@@ -194,9 +279,13 @@ def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) ->
     oof = {"lr": np.zeros(len(y)), "gb": np.zeros(len(y))}
     for tr, te in GroupKFold(n_splits=5).split(X, y, groups):
         scaler = StandardScaler().fit(X[tr])
-        lr_fold = LogisticRegression(C=1.0, max_iter=2000).fit(scaler.transform(X[tr]), y[tr])
+        lr_fold = LogisticRegression(C=1.0, max_iter=2000).fit(
+            scaler.transform(X[tr]), y[tr]
+        )
         oof["lr"][te] = lr_fold.predict_proba(scaler.transform(X[te]))[:, 1]
-        gb_fold = HistGradientBoostingClassifier(max_iter=200, learning_rate=0.05).fit(X[tr], y[tr])
+        gb_fold = HistGradientBoostingClassifier(max_iter=200, learning_rate=0.05).fit(
+            X[tr], y[tr]
+        )
         oof["gb"][te] = gb_fold.predict_proba(X[te])[:, 1]
 
     conf = X[:, FEATURES.index("conf")]
@@ -225,13 +314,17 @@ def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) ->
     for b in (1.0, 1.25, 1.5, 2.0):
         t = best_threshold(names, rows, oof["lr"], n_good, n_missed, b)
         m = evaluate(names, rows, oof["lr"], t, n_good, n_missed)
-        click.echo(f"  beta={b:<4} порог={t:.2f}  P={m['precision']:.3f} R={m['recall']:.3f}  точн.карт={m['exact_images']:.3f}")
+        click.echo(
+            f"  beta={b:<4} порог={t:.2f}  P={m['precision']:.3f} R={m['recall']:.3f}  точн.карт={m['exact_images']:.3f}"
+        )
 
     scaler = StandardScaler().fit(X)
     lr = LogisticRegression(C=1.0, max_iter=2000).fit(scaler.transform(X), y)
     thr = report["логистическая регрессия"]["threshold"]
     click.echo("\nвеса признаков (на стандартизованных значениях):")
-    for k, wgt in sorted(zip(FEATURES, lr.coef_[0], strict=True), key=lambda t: -abs(t[1])):
+    for k, wgt in sorted(
+        zip(FEATURES, lr.coef_[0], strict=True), key=lambda t: -abs(t[1])
+    ):
         click.echo(f"  {k:16s} {wgt:+.2f}")
     calib = {
         "features": FEATURES,
@@ -247,7 +340,9 @@ def main(images: Path, labels: Path, config: Path, beta: float, exclude: str) ->
         "n_candidates": len(rows),
         "cv_report": report,
     }
-    (HERE / "calibration.json").write_text(json.dumps(calib, ensure_ascii=False, indent=1))
+    (HERE / "calibration.json").write_text(
+        json.dumps(calib, ensure_ascii=False, indent=1)
+    )
     click.echo("\nсохранено: calibration.json, features.jsonl")
     label_report(verdicts)
 

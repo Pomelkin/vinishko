@@ -29,7 +29,9 @@ class SubCenterArcFace(nn.Module):
         nn.init.xavier_uniform_(self.weight)
         if centers is not None:
             if centers.shape != (n_classes, dim):
-                raise ValueError(f"центры формы {tuple(centers.shape)}, ожидается ({n_classes}, {dim})")
+                raise ValueError(
+                    f"центры формы {tuple(centers.shape)}, ожидается ({n_classes}, {dim})"
+                )
             with torch.no_grad():
                 spread = F.normalize(centers.float(), dim=1).repeat_interleave(k, dim=0)
                 self.weight.copy_(spread + CENTER_NOISE * torch.randn_like(spread))

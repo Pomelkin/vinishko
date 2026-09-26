@@ -83,7 +83,14 @@ class GeM(nn.Module):
 
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
         p = self.p
-        return tokens.float().clamp(min=self.eps).pow(p).mean(dim=1).pow(1.0 / p).to(tokens.dtype)
+        return (
+            tokens.float()
+            .clamp(min=self.eps)
+            .pow(p)
+            .mean(dim=1)
+            .pow(1.0 / p)
+            .to(tokens.dtype)
+        )
 
 
 class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
@@ -146,7 +153,9 @@ class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
         )
         model = cls(config)
         model.backbone.load_state_dict(backbone.state_dict(), strict=True)
-        return model.to(backbone.device)  # новая модель собирается на CPU, device_map переносил только временный бэкбон  # ty: ignore[invalid-argument-type]
+        return model.to(
+            backbone.device
+        )  # новая модель собирается на CPU, device_map переносил только временный бэкбон  # ty: ignore[invalid-argument-type]
 
     @torch.no_grad()
     def _init_weights(self, module: nn.Module) -> None:

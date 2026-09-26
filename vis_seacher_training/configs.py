@@ -15,7 +15,12 @@ from pydantic import model_validator
 DATASETS = ("winesensed", "off", "products10k")
 """Что обязано лежать в data.datasets_dir: раскладка scripts/prepare_datasets.py плюс разметка scripts/normalize_dataset.py."""
 REQUIRED_FILES = {
-    "winesensed": ("train.json", "val.json", "val_distractors.json", "normalization.jsonl"),
+    "winesensed": (
+        "train.json",
+        "val.json",
+        "val_distractors.json",
+        "normalization.jsonl",
+    ),
     "off": ("catalog.json", "normalization.jsonl"),
     "products10k": ("negatives.json", "normalization.jsonl"),
 }
@@ -165,7 +170,13 @@ class AugmentationsConfig(StrictModel):
     exposure: ExposureAugConfig = ExposureAugConfig()
     photometric: PhotometricAugConfig = PhotometricAugConfig()
     degrade: DegradeAugConfig = DegradeAugConfig()
-    resize_interpolations: list[Interpolation] = ["nearest", "linear", "cubic", "area", "lanczos"]
+    resize_interpolations: list[Interpolation] = [
+        "nearest",
+        "linear",
+        "cubic",
+        "area",
+        "lanczos",
+    ]
     """Чем кроп приводится к размеру входа; в обучении выбирается случайно, на валидации area при уменьшении и cubic при увеличении."""
     random_pad_position: bool = True
     """Случайно сдвигать картинку внутри полей входа, а не держать по центру."""
@@ -212,10 +223,14 @@ class DataConfig(StrictModel):
         for name in DATASETS:
             root = self.datasets_dir / name
             if not (root / "images").is_dir():
-                raise ValueError(f"в {self.datasets_dir} нет датасета {name}: ожидается директория {root / 'images'}, раскладка scripts/prepare_datasets.py")
+                raise ValueError(
+                    f"в {self.datasets_dir} нет датасета {name}: ожидается директория {root / 'images'}, раскладка scripts/prepare_datasets.py"
+                )
             missing = [f for f in REQUIRED_FILES[name] if not (root / f).is_file()]
             if missing:
-                raise ValueError(f"в {root} нет {missing}; normalization.jsonl пишет scripts/normalize_dataset.py")
+                raise ValueError(
+                    f"в {root} нет {missing}; normalization.jsonl пишет scripts/normalize_dataset.py"
+                )
         return self
 
 
@@ -229,7 +244,9 @@ class ModelConfig(StrictModel):
     """Патч бэкбона; по нему data.input_size проверяется при чтении конфига, а при сборке модели сверяется с её настоящим патчем."""
     embed_dim: int = Field(default=512, gt=0)
     gem_p: float = Field(default=3.0, ge=1)
-    attn_implementation: Literal["sdpa", "flash_attention_2", "flex_attention", "eager"] | None = None
+    attn_implementation: (
+        Literal["sdpa", "flash_attention_2", "flex_attention", "eager"] | None
+    ) = None
     """Реализация внимания бэкбона; без значения transformers берёт sdpa. flash_attention_2 работает только в половинной точности, то есть с precision bf16-mixed либо 16-mixed."""
     freeze_backbone: bool = False
     gradient_checkpointing: bool = False
@@ -280,7 +297,9 @@ class TrainingConfig(BaseModel, ConfigLoadingMixin):
         height, width = self.data.input_size
         patch = self.model.patch_size
         if height % patch or width % patch:
-            raise ValueError(f"data.input_size={height}×{width} не делится нацело на model.patch_size={patch}")
+            raise ValueError(
+                f"data.input_size={height}×{width} не делится нацело на model.patch_size={patch}"
+            )
         return self
 
     def dump_to_file(self, path: Path) -> None:
