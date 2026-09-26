@@ -1,3 +1,5 @@
+import hashlib
+import urllib.request
 from functools import partial
 from pathlib import Path
 from typing import Any, cast
@@ -18,6 +20,25 @@ MIN_CONTOUR_AREA = 10  # контуры меньше этого в пиксел�
 SHARPNESS_HEIGHT = 160  # к этой высоте приводится вырезка этикетки перед оценкой резкости
 
 Masks = tuple[np.ndarray, np.ndarray, np.ndarray]  # уверенности, боксы xyxy, bool-маски (N, H, W)
+
+# оригинал facebook/sam3 на HuggingFace закрыт подтверждением доступа, тот же файл открыто лежит на ModelScope
+SAM3_URL = "https://modelscope.cn/models/facebook/sam3/resolve/master/sam3.pt"
+SAM3_SHA256 = "9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e"
+
+
+def download_sam3(path: Path) -> None:
+    """Скачивает веса SAM3 в path и сверяет SHA256; при несовпадении файл не остаётся на диске."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part, digest = path.with_name(path.name + ".part"), hashlib.sha256()
+    print(f"скачиваю веса SAM3 (3,4 ГБ) в {path}", flush=True)
+    with urllib.request.urlopen(SAM3_URL) as resp, part.open("wb") as f:  # noqa: S310 — https-адрес зафиксирован константой
+        while chunk := resp.read(1 << 20):
+            f.write(chunk)
+            digest.update(chunk)
+    if digest.hexdigest() != SAM3_SHA256:
+        part.unlink()
+        raise RuntimeError(f"SHA256 скачанных весов не совпал с {SAM3_SHA256}, файл удалён")
+    part.replace(path)
 
 
 def to_numpy(x: Tensor | np.ndarray) -> np.ndarray:
@@ -205,7 +226,9 @@ class Segmenter:
         self.model = str(model)
         self.is_sam3 = "sam3" in Path(model).name
         if self.is_sam3 and not Path(model).is_file():
-            raise FileNotFoundError(f"нет весов {model}, как скачать: см. README.md")
+            if Path(model).name != "sam3.pt":  # скачивается только официальный файл, чужие веса под другим именем — ошибка пути
+                raise FileNotFoundError(f"нет весов {model}")
+            download_sam3(Path(model))
         self.prompt = prompt if self.is_sam3 else "class bottle"
         self.imgsz = imgsz or (1008 if self.is_sam3 else 640)
         # SAM3 даёт бокалам 0.1–0.37, бутылкам 0.8+
