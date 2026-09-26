@@ -23,7 +23,7 @@ from vinishko.pipeline.steps.normalization.normalize import (
     load_config,
 )
 from vinishko.pipeline.steps.normalization.seg import open_image
-from vinishko.pipeline.structs import Rejection
+from vinishko.pipeline.structs import RejectedBottle
 
 HERE = Path(__file__).resolve().parent
 IOU_MATCH = 0.7  # кандидат считается попаданием в цель от этого IoU
@@ -141,7 +141,7 @@ def label_verdicts(norm: Normalizer, label: dict, seg: dict) -> list[tuple[bool,
         out.append(
             (
                 bool(t.get("label_hidden")),
-                res.reason.value if isinstance(res, Rejection) else "ok",
+                res.reason.value if isinstance(res, RejectedBottle) else "ok",
             )
         )
     return out
