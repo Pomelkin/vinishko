@@ -1,5 +1,6 @@
 """Коллекция векторов каталога в qdrant: схема точки, подключение, создание, поиск и проверки."""
 
+import os
 import uuid
 from dataclasses import dataclass
 
@@ -30,7 +31,13 @@ def connect(cfg: QdrantConfig) -> QdrantClient:
     """Клиент qdrant: встроенный по пути либо сервер."""
     if cfg.path is not None:
         return QdrantClient(path=str(cfg.path))
-    return QdrantClient(host=cfg.host, port=cfg.port, timeout=int(cfg.timeout))
+    return QdrantClient(
+        host=cfg.host,
+        port=cfg.port,
+        https=cfg.https,
+        api_key=os.environ.get("QDRANT_API_KEY"),
+        timeout=int(cfg.timeout),
+    )
 
 
 def create_collection(client: QdrantClient, name: str, size: int) -> None:

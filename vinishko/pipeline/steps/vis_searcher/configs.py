@@ -20,6 +20,8 @@ class QdrantConfig(StrictModel):
     collection: str
     host: str = "localhost"
     port: int = Field(default=6333, gt=0)
+    https: bool = False
+    """Сервер за TLS; ключ API, если сервер его требует, читается из окружения QDRANT_API_KEY."""
     path: Path | None = None
     """Встроенный qdrant в этой директории вместо сервера, для локальной отладки; host и port тогда не читаются."""
     timeout: float = Field(default=10.0, gt=0)

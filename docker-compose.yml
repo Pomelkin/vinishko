@@ -2,5 +2,20 @@ services:
   qdrant:
     image: qdrant/qdrant:v1.17
     container_name: qdrant
+    restart: unless-stopped
     ports:
-      - '127.0.0.1:6333:6333'
+      - '443:6333'
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?QDRANT_API_KEY не задан, положите его в .env}
+      QDRANT__SERVICE__ENABLE_TLS: 'true'
+      QDRANT__TLS__CERT: /etc/letsencrypt/live/pomelka.pro/fullchain.pem
+      QDRANT__TLS__KEY: /etc/letsencrypt/live/pomelka.pro/privkey.pem
+      # certbot продлевает серт на месте, qdrant перечитывает его раз в час без рестарта
+      QDRANT__TLS__CERT_TTL: 3600
+    volumes:
+      # целиком: файлы в live/ — симлинки на ../../archive/
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - qdrant_storage:/qdrant/storage
+
+volumes:
+  qdrant_storage:

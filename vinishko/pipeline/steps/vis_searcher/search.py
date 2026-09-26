@@ -31,7 +31,7 @@ from vinishko.pipeline.steps.vis_searcher.configs import (
 from vinishko.pipeline.steps.vis_searcher.device import Device, resolve_device
 from vinishko.pipeline.steps.vis_searcher.model import Encoder, fetch_model
 from vinishko.pipeline.steps.vis_searcher.storage import ImageStore, make_store
-from vinishko.pipeline.structs import BottleCrop, Candidate, Reason, SearchResult
+from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate, Reason, UnmatchedBottle
 
 logger = setup_logger(fmt="detailed")
 
@@ -50,7 +50,7 @@ class SearchReason(Reason):
 
 
 class VisSearcher:
-    """Кропы бутылок → SearchResult на каждый кроп, в том же порядке: кандидаты каталога либо отказ с причиной.
+    """Кропы бутылок → ответ на каждый кроп, в том же порядке: BottleCandidates с кандидатами каталога либо UnmatchedBottle с отказом и причиной.
 
     При создании сначала дешёвые проверки: контракт модели с Hugging Face, коллекция существует и не пуста, построена той же моделью
     и ревизией, размерность векторов и размер входа совпадают. Потом скачивается граф и поднимается энкодер, последней читается картинка
@@ -103,7 +103,7 @@ class VisSearcher:
             )
         self.store.get(name)
 
-    def __call__(self, crops: list[BottleCrop]) -> list[SearchResult]:
+    def __call__(self, crops: list[BottleCrop]) -> list[BottleCandidates | UnmatchedBottle]:
         """Ответ по каждому кропу, в порядке кропов: результатов ровно столько, сколько кропов."""
         if not crops:
             return []
@@ -113,10 +113,10 @@ class VisSearcher:
             for crop, vector in zip(crops, vectors, strict=True)
         ]
         if self.cfg.debug_path is not None:
-            self._dump(self.cfg.debug_path, results)
+            self.dump(results, self.cfg.debug_path / datetime.now(tz=UTC).astimezone().strftime("%Y-%m-%d_%H-%M-%S_%f"))
         return results
 
-    def _search(self, crop: BottleCrop, vector: np.ndarray) -> SearchResult:
+    def _search(self, crop: BottleCrop, vector: np.ndarray) -> BottleCandidates | UnmatchedBottle:
         hits = [
             (float(p.score), p.payload)
             for p in search(self.client, self.collection, vector, self.cfg.top_k)
@@ -129,22 +129,22 @@ class VisSearcher:
 
     def _rejected(
         self, crop: BottleCrop, best: float | None, threshold: float, what: str
-    ) -> SearchResult:
+    ) -> UnmatchedBottle:
         detail = (
             f"косинус лучшей {what} {best:.3f}, порог {threshold:g}"
             if best is not None
             else "выдача коллекции пуста"
         )
-        return SearchResult(crop, [], crop.reject(SearchReason.NO_MATCH, detail))
+        return UnmatchedBottle(crop, crop.reject(SearchReason.NO_MATCH, detail))
 
     def _top_n(
         self, crop: BottleCrop, hits: list[Hit], mode: TopNSearch
-    ) -> SearchResult:
+    ) -> BottleCandidates | UnmatchedBottle:
         if not hits or hits[0][0] < mode.cosine_threshold:
             return self._rejected(
                 crop, hits[0][0] if hits else None, mode.cosine_threshold, "позиции"
             )
-        return SearchResult(
+        return BottleCandidates(
             crop,
             [
                 self._candidate(crop, payload, score, retrieved=True)
@@ -154,7 +154,7 @@ class VisSearcher:
 
     def _by_groups(
         self, crop: BottleCrop, hits: list[Hit], mode: GroupSearch
-    ) -> SearchResult:
+    ) -> BottleCandidates | UnmatchedBottle:
         """Группы по лучшему косинусу своих векторов; кандидаты — все позиции прошедших групп: пришедшие со своим косинусом, остальные с косинусом группы."""
         group_score: dict[str, float] = {}
         members: dict[str, list[str]] = {}
@@ -197,7 +197,7 @@ class VisSearcher:
                 for slug in members[group]
                 if slug in payloads
             ]
-        return SearchResult(crop, out)
+        return BottleCandidates(crop, out)
 
     def _candidate(
         self, crop: BottleCrop, payload: dict, score: float, retrieved: bool
@@ -212,18 +212,18 @@ class VisSearcher:
             payload=payload,
         )
 
-    def _dump(self, root: Path, results: list[SearchResult]) -> None:
-        """Директория с меткой времени: кроп каждого запроса и картинки его кандидатов с косинусом, а в режиме групп и с группой, в имени файла."""
-        out = root / datetime.now(tz=UTC).astimezone().strftime("%Y-%m-%d_%H-%M-%S_%f")
+    def dump(self, results: list[BottleCandidates | UnmatchedBottle], out: Path) -> None:
+        """Разбор глазами в директорию out: кроп каждого запроса, картинки его кандидатов с косинусом, а в режиме групп и с группой, в имени файла, и results.json с причинами отказов."""
         out.mkdir(parents=True, exist_ok=True)
         grouped = isinstance(self.cfg.search, GroupSearch)
         report = []
         for n, result in enumerate(results, 1):
             crop = result.crop
+            candidates = result.candidates if isinstance(result, BottleCandidates) else []
             Image.fromarray(crop.crop).save(
                 out / f"q{n}_query_{crop.uuid[:8]}.jpg", quality=95
             )
-            for rank, c in enumerate(result.candidates, 1):
+            for rank, c in enumerate(candidates, 1):
                 parts = [
                     f"q{n}",
                     f"{rank:02d}",
@@ -239,12 +239,7 @@ class VisSearcher:
                 {
                     "query": crop.uuid,
                     "bottle_score": crop.score,
-                    "rejected": None
-                    if result.rejected is None
-                    else {
-                        "reason": result.rejected.reason,
-                        "detail": result.rejected.detail,
-                    },
+                    "rejected": {"reason": result.rejected.reason, "detail": result.rejected.detail} if isinstance(result, UnmatchedBottle) else None,
                     "candidates": [
                         {
                             "slug": c.slug,
@@ -252,7 +247,7 @@ class VisSearcher:
                             "score": c.score,
                             "retrieved": c.retrieved,
                         }
-                        for c in result.candidates
+                        for c in candidates
                     ],
                 }
             )

@@ -104,7 +104,7 @@ def read_rows(
     limit: int | None,
 ) -> tuple[list[Row], int, bool]:
     """Строки с фото, сколько строк без фото пропущено и была ли колонка групп; без неё каждая позиция — своя группа."""
-    with path.open(encoding="utf-8", newline="") as f:
+    with path.open(encoding="utf-8-sig", newline="") as f:  # utf-8-sig: у выгрузок бывает BOM, иначе он прилипает к имени первой колонки
         reader = csv.DictReader(f)
         columns = reader.fieldnames or []
         for column in (slug_column, photo_column):
@@ -381,6 +381,11 @@ def report(
 @click.option("--qdrant-host", default="localhost", show_default=True)
 @click.option("--qdrant-port", type=int, default=6333, show_default=True)
 @click.option(
+    "--qdrant-https",
+    is_flag=True,
+    help="Сервер за TLS; ключ API берётся из окружения QDRANT_API_KEY",
+)
+@click.option(
     "--qdrant-path",
     type=click.Path(file_okay=False, path_type=Path),
     default=None,
@@ -478,6 +483,7 @@ def main(
     collection: str,
     qdrant_host: str,
     qdrant_port: int,
+    qdrant_https: bool,
     qdrant_path: Path | None,
     store_dir: Path | None,
     s3_endpoint: str | None,
@@ -514,7 +520,11 @@ def main(
     files = fetch_model(model, device.precision, revision)
     client = connect(
         QdrantConfig(
-            collection=collection, host=qdrant_host, port=qdrant_port, path=qdrant_path
+            collection=collection,
+            host=qdrant_host,
+            port=qdrant_port,
+            https=qdrant_https,
+            path=qdrant_path,
         )
     )
     ensure_absent(client, collection)

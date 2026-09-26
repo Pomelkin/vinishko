@@ -1,8 +1,8 @@
 # Визуальный поиск
 
-Шаг пайплайна после нормализации: кроп бутылки → вектор DinoV3ForWine → ближайшие векторы каталога в qdrant → `SearchResult` на каждый кроп
-(`vinishko/pipeline/structs.py`): кандидаты `Candidate` с картинкой позиции из коллекции для второго уровня либо отказ `RejectedBottle`
-с причиной `SearchReason`, когда ничего похожего нет. Результатов ровно столько, сколько кропов, и в том же порядке. Всё запускается из корня репозитория.
+Шаг пайплайна после нормализации: кроп бутылки → вектор DinoV3ForWine → ближайшие векторы каталога в qdrant → ответ на каждый кроп
+(`vinishko/pipeline/structs.py`): `BottleCandidates` с кандидатами `Candidate`, у каждого картинка позиции из коллекции для второго уровня, либо `UnmatchedBottle`
+с отказом `RejectedBottle` и причиной `SearchReason`, когда ничего похожего нет. Ответов ровно столько, сколько кропов, и в том же порядке. Всё запускается из корня репозитория.
 
 ```python
 from vinishko.pipeline.steps.vis_searcher import VisSearcher
@@ -10,7 +10,7 @@ from vinishko.pipeline.steps.vis_searcher import VisSearcher
 searcher = VisSearcher()  # config.yaml рядом с модулем, устройство по VIS_SEARCHER_DEV; свой конфиг: VisSearcher(load_config(Path(...)))
 results = searcher(
     crops
-)  # crops: list[BottleCrop] от нормализации → list[SearchResult], у каждого .candidates либо .rejected
+)  # crops: list[BottleCrop] от нормализации → list[BottleCandidates | UnmatchedBottle], у каждого .candidates либо .rejected
 ```
 
 `Pipeline(searcher=VisSearcher())` из `vinishko/pipeline/pipeline.py` связывает шаги сам; нормализатор он поднимает как `Normalizer()`,

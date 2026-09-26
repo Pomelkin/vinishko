@@ -225,3 +225,4 @@ vis_seacher_training/experiments/*/*/
 /weights
 # встроенный qdrant для локальной отладки vis_searcher
 /.qdrant
+/datasets/hack-vine

@@ -1,29 +1,30 @@
 # Визуальный поиск: настройки по умолчанию. Относительные пути считаются от этого файла, ../../../../ — корень репозитория.
-model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-512   # репозиторий Hugging Face с экспортом DinoV3ForWine
-revision: null                                          # ревизия репозитория; коллекция помнит свою и с другой не работает
-batch_size: 16                                          # потолок батча энкодера, для TensorRT — профиль engine
-top_k: 10                                               # сколько ближайших векторов брать из коллекции
+model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-512 # репозиторий Hugging Face с экспортом DinoV3ForWine
+revision: null # ревизия репозитория; коллекция помнит свою и с другой не работает
+batch_size: 16 # потолок батча энкодера, для TensorRT — профиль engine
+top_k: 10 # сколько ближайших векторов брать из коллекции
 
 qdrant:
   collection: catalog_vitl16_512
-  host: localhost
-  port: 6333
+  host: pomelka.pro
+  port: 443
+  https: true # true для сервера за TLS, ключ API — в окружении QDRANT_API_KEY
   # path: ../../../../.qdrant                           # встроенный qdrant без сервера, для локальной отладки
 
 search:
-  mode: groups                                          # группы одинакового дизайна: скор группы — лучший косинус её позиций из top_k
+  mode: groups # группы одинакового дизайна: скор группы — лучший косинус её позиций из top_k
   top_groups: 3
-  group_threshold: 0.5                                  # порог по косинусу группы; калибровать по гистограммам cos_top1 отчёта bench_dino
+  group_threshold: 0.5 # порог по косинусу группы; калибровать по гистограммам cos_top1 отчёта bench_dino
   # mode: top_n                                         # либо просто top_k позиций
   # cosine_threshold: 0.5                               # если лучший косинус ниже, кандидатов нет
 
 images:
-  kind: local                                           # кропы коллекции, которые положил build_catalog
+  kind: local # кропы коллекции, которые положил build_catalog
   dir: ../../../../datasets/hack/catalog_crops
   # kind: s3
   # endpoint: https://s3.ru-6.storage.selcloud.ru
   # bucket: vino
   # prefix: catalog/vitl16_512
 
-cache_dir: ~/.cache/vino                                # engine TensorRT и картинки из S3
-debug_path: null                                        # директория для разбора глазами: на каждый вызов поддиректория с меткой времени
+cache_dir: ~/.cache/vino # engine TensorRT и картинки из S3
+debug_path: null # директория для разбора глазами: на каждый вызов поддиректория с меткой времени

@@ -127,23 +127,27 @@ class Candidate:
 
 
 @dataclass(frozen=True, eq=False, slots=True)
-class SearchResult:
-    """Ответ визуального поиска по одной бутылке: кандидаты либо отказ с причиной. Ровно один на каждый BottleCrop, в том же порядке.
+class BottleCandidates:
+    """Ответ визуального поиска по бутылке, для которой нашлись позиции каталога; список кандидатов не пуст.
 
-    Кандидатов нет ровно тогда, когда есть rejected: та же бутылка с тем же uuid и причиной из перечисления шага поиска.
+    Ответов поиска, BottleCandidates либо UnmatchedBottle, ровно столько, сколько BottleCrop на входе, и в том же порядке.
     """
 
     crop: BottleCrop
     candidates: list[Candidate]
-    rejected: RejectedBottle | None = None
 
     def __post_init__(self) -> None:
-        if bool(self.candidates) == (self.rejected is not None):
-            raise ValueError("у SearchResult либо кандидаты, либо отказ")
-        if self.rejected is not None and self.rejected.uuid != self.crop.uuid:
-            raise ValueError("отказ относится к другой бутылке")
+        if not self.candidates:
+            raise ValueError("BottleCandidates без кандидатов; для бутылки без ответа — UnmatchedBottle")
 
-    @property
-    def found(self) -> bool:
-        """Есть ли кандидаты."""
-        return self.rejected is None
+
+@dataclass(frozen=True, eq=False, slots=True)
+class UnmatchedBottle:
+    """Ответ визуального поиска по бутылке, для которой ничего похожего в каталоге нет: та же бутылка отказом с причиной шага поиска."""
+
+    crop: BottleCrop
+    rejected: RejectedBottle
+
+    def __post_init__(self) -> None:
+        if self.rejected.uuid != self.crop.uuid:
+            raise ValueError("отказ относится к другой бутылке")
