@@ -438,7 +438,7 @@ def main(
             for n, v in json.loads(holdout_labels.read_text()).items()
             if (holdout_images / n).is_file()
         ]
-        holdout_report(collect(norm, cache, hl, holdout_images)[0], lr, scaler, thr)
+        holdout_report(collect(norm, cache, hl, holdout_images)[0], lr, scaler, thr)  # ty: ignore[invalid-argument-type]
     label_report(verdicts)
 
 

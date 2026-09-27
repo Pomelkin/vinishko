@@ -27,8 +27,8 @@ python -m vinishko.pipeline.debug photo.jpg -o runs/            # --no-search: �
 
 | Путь                         | Что внутри                                                                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `normalization/`             | кропы `photo_bN.jpg`, маски и json на каждую годную бутылку, как у CLI нормализации; `markup.json` — все бутылки, отказы с причиной |
-| `search/`                    | разбор поиска как при `debug_path`: `q<N>_query_<uuid>.jpg`, `q<N>_<ранг>_<группа>_<slug>_<cos>[_bygroup].jpg`, `results.json` |
+| `normalization/`             | на каждую годную бутылку `photo_bN.jpg` (кроп поиска), `photo_bN_box.jpg` (вся бутылка для второго уровня), маски и json, как у CLI нормализации; `markup.json` — все бутылки, отказы с причиной |
+| `search/`                    | разбор поиска как при `debug_path`: `q<N>_query_<uuid>.jpg` и `_box.jpg` (кроп поиска и вся бутылка), `q<N>_<ранг>_<группа>_<slug>_<cos>[_bygroup].jpg`, `results.json` |
 | `result.json`                | итог по каждой бутылке: кандидаты либо отказ с шагом и причиной, время шагов                                  |
 
 Конфиг поиска — `--search-config`, по умолчанию `steps/vis_searcher/config.yaml`; его `debug_path` здесь не используется.

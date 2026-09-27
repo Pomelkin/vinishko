@@ -213,7 +213,7 @@ class VisSearcher:
         )
 
     def dump(self, results: list[BottleCandidates | UnmatchedBottle], out: Path) -> None:
-        """Разбор глазами в директорию out: кроп каждого запроса, картинки его кандидатов с косинусом, а в режиме групп и с группой, в имени файла, и results.json с причинами отказов."""
+        """Разбор глазами в директорию out: оба кропа каждого запроса (поиска и вся бутылка _box), картинки его кандидатов с косинусом, а в режиме групп и с группой, в имени файла, и results.json с причинами отказов."""
         out.mkdir(parents=True, exist_ok=True)
         grouped = isinstance(self.cfg.search, GroupSearch)
         report = []
@@ -223,6 +223,7 @@ class VisSearcher:
             Image.fromarray(crop.crop).save(
                 out / f"q{n}_query_{crop.uuid[:8]}.jpg", quality=95
             )
+            Image.fromarray(crop.box_crop).save(out / f"q{n}_query_{crop.uuid[:8]}_box.jpg", quality=95)
             for rank, c in enumerate(candidates, 1):
                 parts = [
                     f"q{n}",

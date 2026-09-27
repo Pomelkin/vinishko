@@ -30,7 +30,7 @@ def normalization_markup(items: list[BottleCrop | RejectedBottle], stem: str, fm
     out = []
     for item in items:
         if isinstance(item, BottleCrop):
-            out.append({"status": "ok", **item.markup(), "crop_file": f"{stem}_b{item.index}.{fmt}"})
+            out.append({"status": "ok", **item.markup(), "crop_file": f"{stem}_b{item.index}.{fmt}", "box_file": f"{stem}_b{item.index}_box.{fmt}"})
         else:
             out.append({"status": "rejected", **asdict(item), "title": item.reason.title, "message": item.message})
     return out

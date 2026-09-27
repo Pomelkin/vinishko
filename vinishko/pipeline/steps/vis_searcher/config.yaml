@@ -13,15 +13,15 @@ qdrant:
   # path: ../../../../.qdrant                           # встроенный qdrant без сервера, для локальной отладки
 
 search:
-  # mode: groups # группы одинакового дизайна: скор группы — лучший косинус её позиций из top_k
-  # top_groups: 3
-  # group_threshold: 0.5 # порог по косинусу группы; калибровать по гистограммам cos_top1 отчёта bench_dino
-  mode: top_n # либо просто top_k позиций
-  cosine_threshold: 0.5 # если лучший косинус ниже, кандидатов нет
+  mode: groups # группы одинакового дизайна: скор группы — лучший косинус её позиций из top_k
+  top_groups: 3
+  group_threshold: 0.5 # порог по косинусу группы; калибровать по гистограммам cos_top1 отчёта bench_dino
+  # mode: top_n # либо просто top_k позиций
+  # cosine_threshold: 0.5 # если лучший косинус ниже, кандидатов нет
 
 images:
   # kind: local # кропы коллекции, которые положил build_catalog
-  # dir: ../../../../datasets/catalog_so400m_1152
+  # dir: ../../../../datasets/catalog
   kind: s3
   endpoint: https://s3.ru-6.storage.selcloud.ru
   bucket: vino

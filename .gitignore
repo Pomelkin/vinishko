@@ -226,5 +226,6 @@ vis_seacher_training/experiments/*/*/
 # встроенный qdrant для локальной отладки vis_searcher
 /.qdrant
 /datasets/hack-vine
+/datasets/catalog
 /catalog
 /reports/vis_searcher
