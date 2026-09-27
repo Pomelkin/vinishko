@@ -3,6 +3,9 @@
 import csv
 import json
 import shutil
+import time
+from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
@@ -21,11 +24,13 @@ from vinishko.pipeline.steps.normalization.normalize import NormalizationReason,
 from vinishko.pipeline.steps.normalization.normalize import load_config as load_norm_config
 from vinishko.pipeline.steps.normalization.seg import open_image
 from vinishko.pipeline.steps.near_duplicates import NearDuplicateReranker
-from vinishko.pipeline.steps.near_duplicates.rerank import NearDuplicateReason
+from vinishko.pipeline.steps.near_duplicates.rerank import NDR_CONCURRENCY, NearDuplicateReason
 from vinishko.pipeline.steps.vis_searcher import VisSearcher
 from vinishko.pipeline.steps.vis_searcher import load_config as load_search_config
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS
 from vinishko.pipeline.steps.vis_searcher.configs import DEFAULT_CONFIG
-from vinishko.pipeline.structs import BottleCandidates, BottleCrop, RejectedBottle, UnmatchedBottle
+from vinishko.pipeline.steps.vis_searcher.search import SearchReason
+from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate, RejectedBottle, UnmatchedBottle
 
 console = Console()
 logger = setup_logger(fmt="detailed")
@@ -147,7 +152,7 @@ def prepare_output(output_dir: Path, image: Path, *, mode: InputMode = "sam3") -
     return out
 
 
-def cached_crop(row: dict, folder: Path, image: Path) -> BottleCrop:
+def cached_crop(row: dict, folder: Path, image: Path, original: np.ndarray | None = None) -> BottleCrop:
     """Один кроп из lossless-кэша нового запуска или JPEG прежнего запуска."""
     crop_file = folder / row["crop_file"]
     if not crop_file.resolve().is_relative_to(folder.resolve()):
@@ -181,10 +186,10 @@ def cached_crop(row: dict, folder: Path, image: Path) -> BottleCrop:
         box = crop  # старый кэш содержал только кроп для поиска
     if box.dtype != np.uint8 or box.ndim != 3 or box.shape[2] != 3:
         raise ValueError(f"кроп {box_name} должен быть uint8 RGB")
-    return BottleCrop(row["index"], row["score"], row["bottle"], row["label"], row["angle"], crop, info, box, row.get("box_info") or {}, row["uuid"])
+    return BottleCrop(row["index"], row["score"], row["bottle"], row["label"], row["angle"], crop, info, box, row.get("box_info") or {}, row["uuid"], original)
 
 
-def load_normalization(image: Path, output_dir: Path) -> list[BottleCrop | RejectedBottle]:
+def load_normalization(image: Path, output_dir: Path, *, include_original: bool = False) -> list[BottleCrop | RejectedBottle]:
     """Восстанавливает разметку и точные кропы из предыдущего запуска debug.py."""
     folder = output_path(output_dir, image) / "normalization"
     marker = folder / "markup.json"
@@ -194,12 +199,17 @@ def load_normalization(image: Path, output_dir: Path) -> list[BottleCrop | Rejec
         rows = json.loads(marker.read_text(encoding="utf-8"))
         if not isinstance(rows, list):
             raise ValueError("markup.json должен содержать список")
+        original = None
+        if include_original:
+            original_image = open_image(image)
+            original_image.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+            original = np.asarray(original_image).copy()
         items: list[BottleCrop | RejectedBottle] = []
         for row in rows:
             if row["status"] == "rejected":
                 items.append(RejectedBottle(NormalizationReason(row["reason"]), row["detail"], row["score"], row["bottle"], row["label"], row["uuid"]))
             elif row["status"] == "ok":
-                items.append(cached_crop(row, folder, image))
+                items.append(cached_crop(row, folder, image, original))
             else:
                 raise ValueError(f"неизвестный статус {row['status']!r}")
         return items
@@ -210,11 +220,12 @@ def load_normalization(image: Path, output_dir: Path) -> list[BottleCrop | Rejec
 class CachedNormalizer:
     """Замена SAM3 при повторном поиске: читает результат debug.py по пути фото."""
 
-    def __init__(self, output_dir: Path) -> None:
+    def __init__(self, output_dir: Path, *, include_original: bool = False) -> None:
         self.output_dir = output_dir
+        self.include_original = include_original
 
     def __call__(self, image: Path) -> list[BottleCrop | RejectedBottle]:
-        return load_normalization(image, self.output_dir)
+        return load_normalization(image, self.output_dir, include_original=self.include_original)
 
 
 class RawImageNormalizer:
@@ -224,7 +235,7 @@ class RawImageNormalizer:
         rgb = np.asarray(image.convert("RGB")).copy()
         width, height = image.size
         whole = [[[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]]]
-        return [BottleCrop(1, 0.0, whole, [], 0.0, rgb, {"mode": "raw", "width": width, "height": height}, rgb, {"mode": "raw"})]
+        return [BottleCrop(1, 0.0, whole, [], 0.0, rgb, {"mode": "raw", "width": width, "height": height}, rgb, {"mode": "raw"}, original=rgb)]
 
 
 def precomputed_file(image: Path, folder: Path) -> Path | None:
@@ -246,24 +257,20 @@ def select_precomputed_images(images: list[Path], folder: Path) -> tuple[list[Pa
 class PrecomputedNormalizer:
     """Готовый кроп поиска из S3 и исходное фото для VLM; SAM3 не загружается."""
 
-    def __init__(self, folder: Path, *, include_box: bool = True) -> None:
+    def __init__(self, folder: Path) -> None:
         self.folder = folder
-        self.include_box = include_box
 
     def __call__(self, image: Path) -> list[BottleCrop]:
         path = precomputed_file(image, self.folder)
         if path is None:
             raise FileNotFoundError(f"нет готового кропа для {image} в {self.folder}")
         crop = np.asarray(open_image(path)).copy()
-        if self.include_box:
-            original = open_image(image)
-            original.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
-            box = np.asarray(original).copy()
-        else:
-            box = crop
+        original = open_image(image)
+        original.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+        box = np.asarray(original).copy()
         height, width = box.shape[:2]
         whole = [[[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]]]
-        return [BottleCrop(1, 0.0, whole, [], 0.0, crop, {"mode": "precomputed", "source": str(path)}, box, {"mode": "original_fallback" if self.include_box else "search_only"})]
+        return [BottleCrop(1, 0.0, whole, [], 0.0, crop, {"mode": "precomputed", "source": str(path)}, box, {"mode": "original_fallback"}, original=box)]
 
 
 def write_debug_result(
@@ -315,26 +322,45 @@ def run_debug_batches(
     batch_size: int,
 ) -> None:
     """Обрабатывает фото ограниченными пачками и записывает каждый готовый ответ."""
-    for start in range(0, len(images), batch_size):
-        batch_paths = images[start : start + batch_size]
-        outputs = [prepare_output(output_dir, image, mode=mode) for image in batch_paths]
-        batch_images = batch_paths if mode in ("cached", "precomputed") else [open_image(image) for image in batch_paths]
+    pending: deque[tuple[Future, PipelineResult, Path, Path, Image.Image | Path]] = deque()
 
-        def before_rerank(index: int, dirs: list[Path] = outputs) -> None:
-            if reranker is not None:
-                reranker.trace_dir = dirs[index] / "rerank"
+    def finish_one() -> None:
+        future, result, image, out, img = pending.popleft()
+        result.search, elapsed = future.result()
+        result.timings["rerank"] = elapsed
+        write_debug_result(image, out, img, result, norm_cfg, searcher, mode)
 
-        def write_result(
-            index: int,
-            result: PipelineResult,
-            paths: list[Path] = batch_paths,
-            dirs: list[Path] = outputs,
-            opened: list[Image.Image | Path] = batch_images,
-        ) -> None:
-            image, out, img = paths[index], dirs[index], opened[index]
-            write_debug_result(image, out, img, result, norm_cfg, searcher, mode)
+    def rerank(worker: NearDuplicateReranker, found: list[BottleCandidates | UnmatchedBottle]) -> tuple[list[BottleCandidates | UnmatchedBottle], float]:
+        started = time.perf_counter()
+        return worker(found), time.perf_counter() - started
 
-        pipeline.run_many(batch_images, before_rerank=before_rerank, on_result=write_result)
+    with ThreadPoolExecutor(max_workers=NDR_CONCURRENCY) as executor:
+        for start in range(0, len(images), batch_size):
+            batch_paths = images[start : start + batch_size]
+            outputs = [prepare_output(output_dir, image, mode=mode) for image in batch_paths]
+            batch_images = batch_paths if mode in ("cached", "precomputed") else [open_image(image) for image in batch_paths]
+
+            def write_result(
+                index: int,
+                result: PipelineResult,
+                paths: list[Path] = batch_paths,
+                dirs: list[Path] = outputs,
+                opened: list[Image.Image | Path] = batch_images,
+            ) -> None:
+                image, out, img = paths[index], dirs[index], opened[index]
+                if reranker is None or not result.search:
+                    write_debug_result(image, out, img, result, norm_cfg, searcher, mode)
+                    return
+                worker = reranker.with_trace_dir(out / "rerank") if isinstance(reranker, NearDuplicateReranker) else reranker
+                if worker is reranker:
+                    worker.trace_dir = out / "rerank"
+                pending.append((executor.submit(rerank, worker, result.search), result, image, out, img))
+                if len(pending) >= NDR_CONCURRENCY:
+                    finish_one()
+
+            pipeline.run_many(batch_images, on_result=write_result, run_rerank=False)
+        while pending:
+            finish_one()
 
 
 def expected_slugs(input_path: Path, labels: Path | None) -> dict[str, str]:
@@ -420,6 +446,91 @@ def write_metrics(images: list[Path], output_dir: Path, stage: str, truth: dict[
     return metrics
 
 
+def load_saved_search(image: Path, output_dir: Path) -> tuple[dict, list[BottleCandidates | UnmatchedBottle]]:
+    """Восстанавливает выдачу поиска из его JSON и сохранённых JPEG, не подключаясь к Qdrant."""
+    out = output_path(output_dir, image)
+    search_dir = out / "search"
+    try:
+        report = json.loads((out / "result.json").read_text(encoding="utf-8"))
+        saved = json.loads((search_dir / "results.json").read_text(encoding="utf-8"))
+        if Path(report["image"]).resolve() != image.resolve():
+            raise ValueError(f"result.json относится к другому фото: {report['image']}")
+        if not isinstance(saved["queries"], list):
+            raise ValueError("search/results.json не содержит список queries")
+        bottles = {row["uuid"]: row for row in report["bottles"]}
+
+        def rgb(path: Path) -> np.ndarray:
+            with Image.open(path) as stored:
+                return np.asarray(stored.convert("RGB")).copy()
+
+        original_image = open_image(image)
+        original_image.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+        original = np.asarray(original_image).copy()
+        results: list[BottleCandidates | UnmatchedBottle] = []
+        for number, query in enumerate(saved["queries"], 1):
+            uuid = query["query"]
+            if uuid not in bottles:
+                raise ValueError(f"нет бутылки {uuid} в result.json")
+            prefix = f"q{number}_query_{uuid[:8]}"
+            crop = BottleCrop(
+                number, query["bottle_score"], [], [], 0.0,
+                rgb(search_dir / f"{prefix}.jpg"), {},
+                rgb(search_dir / f"{prefix}_box.jpg"), {}, uuid, original,
+            )
+            rows = query["candidates"]
+            if query["rejected"] is not None:
+                if rows:
+                    raise ValueError(f"у отказа {uuid} есть кандидаты")
+                rejection = query["rejected"]
+                results.append(UnmatchedBottle(crop, crop.reject(SearchReason(rejection["reason"]), rejection["detail"]), query.get("selection")))
+                continue
+            if not rows:
+                raise ValueError(f"у запроса {uuid} нет ни кандидатов, ни отказа")
+            members = {row["group"]: [item["slug"] for item in rows if item["group"] == row["group"]] for row in rows}
+            candidates = []
+            for rank, row in enumerate(rows, 1):
+                matches = list(search_dir.glob(f"q{number}_{rank:02d}_*.jpg"))
+                if len(matches) != 1:
+                    raise ValueError(f"ожидался один JPEG кандидата q{number}, ранг {rank}; найдено {len(matches)}")
+                # JPEG уже содержит изображение, выбранное поиском; NDR читает его напрямую.
+                payload = {FIELD_GROUP_SLUGS: members[row["group"]], "image_crop": "bottle_box"}
+                candidates.append(Candidate(row["slug"], row["score"], rgb(matches[0]), crop, row["group"], row["retrieved"], payload))
+            results.append(BottleCandidates(crop, candidates, query.get("selection")))
+        return report, results
+    except (OSError, KeyError, TypeError, ValueError) as exc:
+        raise click.ClickException(f"не удалось прочитать сохранённый поиск для {image}: {exc}") from exc
+
+
+def run_saved_ndr(images: list[Path], output_dir: Path, reranker: NearDuplicateReranker) -> None:
+    """Запускает только NDR и обновляет итог, не изменяя каталог search/."""
+    def process(image: Path) -> dict:
+        out = output_path(output_dir, image)
+        report, found = load_saved_search(image, output_dir)
+        trace_dir = out / "rerank"
+        if trace_dir.exists():
+            if not trace_dir.resolve().is_relative_to(out):
+                raise click.UsageError(f"недопустимая директория результата: {trace_dir}")
+            shutil.rmtree(trace_dir)
+        worker = reranker.with_trace_dir(trace_dir) if isinstance(reranker, NearDuplicateReranker) else reranker
+        if worker is reranker:
+            worker.trace_dir = trace_dir
+        started = time.perf_counter()
+        resolved = worker(found)
+        if len(resolved) != len(found) or any(before.crop.uuid != after.crop.uuid for before, after in zip(found, resolved, strict=True)):
+            raise click.ClickException(f"NDR вернул неверное число или порядок бутылок для {image}")
+        report["timings_s"]["rerank"] = round(time.perf_counter() - started, 3)
+        updated = summary(image, PipelineResult([result.crop for result in resolved], resolved))
+        by_uuid = {row["uuid"]: row for row in updated["bottles"]}
+        report["bottles"] = [by_uuid.get(row["uuid"], row) for row in report["bottles"]]
+        (out / "result.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
+        return report
+
+    with ThreadPoolExecutor(max_workers=NDR_CONCURRENCY) as executor:
+        for image, report in zip(images, executor.map(process, images), strict=True):
+            print_summary(report)
+            logger.info(f"NDR: результаты {output_path(output_dir, image)}")
+
+
 def input_mode(stage: str, skip_normalization: bool, no_normalization: bool, normalized_dir: Path | None, overrides: tuple[str, ...]) -> InputMode:
     """Два разных обхода SAM3: сохранённые кропы или исходное фото целиком."""
     if sum((skip_normalization, no_normalization, normalized_dir is not None)) > 1:
@@ -433,20 +544,20 @@ def input_mode(stage: str, skip_normalization: bool, no_normalization: bool, nor
 
 @click.command()
 @click.argument("input_path", type=click.Path(exists=True, path_type=Path))
-@click.option("-o", "--output-dir", type=click.Path(file_okay=False, path_type=Path), required=True, help="Сюда ляжет директория с именем файла; старая с тем же именем удаляется")
-@click.option("--stage", type=click.Choice(["normalization", "search", "full"]), default="full", show_default=True, help="Последний выполняемый этап: нормализация, векторный поиск или NDR")
+@click.option("-o", "--output-dir", type=click.Path(file_okay=False, path_type=Path), required=True, help="Каталог результатов; --stage ndr читает из него сохранённый поиск")
+@click.option("--stage", type=click.Choice(["normalization", "search", "ndr", "full"]), default="full", show_default=True, help="Этап: нормализация, поиск, NDR по сохранённому поиску или полный прогон")
 @click.option("--limit", type=click.IntRange(min=1), default=None, help="Первые N фото датасета или директории; без лимита — все")
 @click.option("--batch-size", type=click.IntRange(min=1), default=2, show_default=True, help="Число фото в пачке поиска; нормализация SAM3 всегда по одному фото")
 @click.option("--skip-normalization", is_flag=True, help="Для search/full использовать <output-dir>/<имя>/normalization из прежнего запуска, не загружая SAM3")
 @click.option("--no-normalization", is_flag=True, help="Для search/full искать прямо по каждому исходному фото целиком, без SAM3 и сохранённых кропов")
-@click.option("--normalized-dir", type=click.Path(exists=True, file_okay=False, path_type=Path), default=None, help="Готовые кропы DINO по stem фото (например datasets/local/normalized/test/images); VLM получает исходное фото")
+@click.option("--normalized-dir", type=click.Path(exists=True, file_okay=False, path_type=Path), default=None, help="Готовые кропы DINO по stem фото; при --stage ndr определяет фото, прошедшие прежний поиск")
 @click.option("--labels", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=None, help="CSV с image_filename и slug для итоговых метрик; по умолчанию <input_path>/test.csv")
 @click.option("--no-search", is_flag=True, help="Синоним --stage normalization")
 @click.option("--search-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=DEFAULT_CONFIG, show_default=True, help="Конфиг визуального поиска; его debug_path не используется, разбор пишется в <output-dir>/<имя>/search")
 @click.option("-c", "--norm-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True, help="Конфиг нормализации")
 @click.option("--set", "overrides", multiple=True, metavar="секция.ключ=значение", help="Переопределить параметр конфига нормализации")
 def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batch_size: int, skip_normalization: bool, no_normalization: bool, normalized_dir: Path | None, labels: Path | None, no_search: bool, search_config: Path, norm_config: Path, overrides: tuple[str, ...]) -> None:
-    """Прогнать выбранные фото до указанного этапа и записать выходы по директориям.
+    """Прогнать выбранные фото до этапа или выполнить NDR по сохранённой выдаче поиска.
 
     <output-dir>/<имя файла>/normalization — кропы годных бутылок, маски и json как у CLI нормализации, плюс markup.json со всеми
     бутылками и причинами отказов; search — разбор поиска в формате debug_path: кроп запроса, картинки кандидатов с косинусом
@@ -455,16 +566,25 @@ def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batc
     load_dotenv(ROOT / ".env", override=False)
     if no_search:
         stage = "normalization"
+    if stage == "ndr" and (skip_normalization or no_normalization or overrides):
+        raise click.UsageError("--stage ndr читает сохранённый поиск; --skip-normalization, --no-normalization и --set здесь не нужны")
     mode = input_mode(stage, skip_normalization, no_normalization, normalized_dir, overrides)
     selected_images = select_images(input_path, limit)
     images, missing_normalization = select_precomputed_images(selected_images, normalized_dir) if normalized_dir is not None else (selected_images, [])
+    if stage == "ndr":
+        cfg = load_search_config(search_config)
+        reranker = NearDuplicateReranker.from_search_config(cfg)
+        logger.info(f"этап ndr; изображений {len(images)}; поиск читается из {output_dir}")
+        run_saved_ndr(images, output_dir, reranker)
+        write_metrics(selected_images, output_dir, stage, expected_slugs(input_path, labels), cfg.catalog_csv, missing_normalization)
+        return
     if mode == "cached":
         for image in images:
             marker = output_path(output_dir, image) / "normalization" / "markup.json"
             if not marker.is_file():
                 raise click.UsageError(f"нет сохранённой нормализации для {image}: {marker}")
     norm_cfg = load_norm_config(norm_config, list(overrides)) if mode == "sam3" else None
-    normalizer = Normalizer(norm_cfg, norm_config.resolve().parent) if mode == "sam3" else CachedNormalizer(output_dir) if mode == "cached" else PrecomputedNormalizer(normalized_dir, include_box=stage == "full") if mode == "precomputed" else RawImageNormalizer()
+    normalizer = Normalizer(norm_cfg, norm_config.resolve().parent) if mode == "sam3" else CachedNormalizer(output_dir, include_original=stage == "full") if mode == "cached" else PrecomputedNormalizer(normalized_dir) if mode == "precomputed" else RawImageNormalizer()
     searcher = None
     reranker = None
     catalog_csv = None

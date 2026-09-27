@@ -3,6 +3,7 @@
 import os
 from io import BytesIO
 from pathlib import Path
+from threading import Lock
 from typing import Any, Protocol
 
 import boto3
@@ -97,6 +98,7 @@ class S3Store:
             cache_dir / bucket / self.prefix if self.prefix else cache_dir / bucket
         )
         self.client = client or boto3.client("s3", endpoint_url=endpoint)
+        self._cache_lock = Lock()
         self.description = f"s3 {endpoint} {bucket}/{self.prefix}, кэш {self.cache_dir}"
 
     def key(self, name: str) -> str:
@@ -122,13 +124,15 @@ class S3Store:
     def get_bytes(self, name: str) -> bytes:
         """Исходные байты из кэша, иначе из бакета с записью в кэш."""
         cached = self.cache_dir / name
-        if not cached.is_file():
-            data = self.client.get_object(Bucket=self.bucket, Key=self.key(name))[
-                "Body"
-            ].read()
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
-            cached.write_bytes(data)
-        return cached.read_bytes()
+        with self._cache_lock:
+            if cached.is_file():
+                return cached.read_bytes()
+        data = self.client.get_object(Bucket=self.bucket, Key=self.key(name))["Body"].read()
+        with self._cache_lock:
+            if not cached.is_file():
+                self.cache_dir.mkdir(parents=True, exist_ok=True)
+                cached.write_bytes(data)
+            return cached.read_bytes()
 
     def exists(self, name: str) -> bool:
         """Есть ли объект в бакете."""

@@ -1,6 +1,8 @@
 """Оркестратор пайплайна: нормализация → визуальный поиск → реранкер. Шаги не знают друг о друге, их выходы связывает этот модуль."""
 
 import time
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 from collections.abc import Callable, Sequence
@@ -10,6 +12,7 @@ from PIL import Image
 
 from vinishko.pipeline.steps.normalization.normalize import Normalizer
 from vinishko.pipeline.steps.near_duplicates import NearDuplicateReranker
+from vinishko.pipeline.steps.near_duplicates.rerank import NDR_CONCURRENCY
 from vinishko.pipeline.structs import BottleCandidates, BottleCrop, RejectedBottle, UnmatchedBottle
 
 
@@ -77,6 +80,7 @@ class Pipeline:
         *,
         before_rerank: Callable[[int], None] | None = None,
         on_result: Callable[[int, PipelineResult], None] | None = None,
+        run_rerank: bool = True,
     ) -> list[PipelineResult]:
         """Нормализует фото по одному, ищет все их кропы одним батчем, затем уточняет ответы по фото.
 
@@ -104,20 +108,37 @@ class Pipeline:
         search_time = time.perf_counter() - started
         if len(found) != len(crops):
             raise ValueError(f"поиск вернул {len(found)} ответов на {len(crops)} кропов")
-        offset = 0
-        for index, (result, group) in enumerate(zip(results, crops_by_image, strict=True)):
-            count = len(group)
-            if not count:
-                emit(index, result)
-                continue
-            result.search = found[offset : offset + count]
-            result.timings["search"] = search_time * count / len(crops)
-            offset += count
-            if self.reranker is not None:
-                if before_rerank is not None:
-                    before_rerank(index)
-                started = time.perf_counter()
-                result.search = self.reranker(result.search)
-                result.timings["rerank"] = time.perf_counter() - started
-            emit(index, result)
+        def timed_rerank(worker: Reranker, rows: list[BottleCandidates | UnmatchedBottle]) -> tuple[list[BottleCandidates | UnmatchedBottle], float]:
+            started = time.perf_counter()
+            return worker(rows), time.perf_counter() - started
+
+        parallel = run_rerank and isinstance(self.reranker, NearDuplicateReranker)
+        context = ThreadPoolExecutor(max_workers=NDR_CONCURRENCY) if parallel else nullcontext(None)
+        with context as executor:
+            jobs = {}
+            offset = 0
+            for index, (result, group) in enumerate(zip(results, crops_by_image, strict=True)):
+                count = len(group)
+                if not count:
+                    if executor is None:
+                        emit(index, result)
+                    continue
+                result.search = found[offset : offset + count]
+                result.timings["search"] = search_time * count / len(crops)
+                offset += count
+                if run_rerank and self.reranker is not None:
+                    if before_rerank is not None:
+                        before_rerank(index)
+                    if executor is not None:
+                        worker = self.reranker.with_trace_dir(self.reranker.trace_dir)
+                        jobs[index] = executor.submit(timed_rerank, worker, result.search)
+                    else:
+                        result.search, result.timings["rerank"] = timed_rerank(self.reranker, result.search)
+                if executor is None:
+                    emit(index, result)
+            if executor is not None:
+                for index, result in enumerate(results):
+                    if index in jobs:
+                        result.search, result.timings["rerank"] = jobs[index].result()
+                    emit(index, result)
         return results

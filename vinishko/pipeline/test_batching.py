@@ -7,11 +7,14 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import torch
+from PIL import Image
 
 from vinishko.pipeline.pipeline import Pipeline
+from vinishko.pipeline.steps.normalization.normalize import Normalizer
 from vinishko.pipeline.steps.vis_searcher.catalog import search_many
 from vinishko.pipeline.steps.vis_searcher.device import Device
 from vinishko.pipeline.steps.vis_searcher.model import Encoder, Preprocess
+from vinishko.pipeline.steps.vis_searcher.search import VisSearcher
 from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate
 
 
@@ -21,6 +24,41 @@ def crop(index: int) -> BottleCrop:
 
 
 class BatchTests(unittest.TestCase):
+    def test_normalizer_keeps_original_separate_from_encoder_crop(self) -> None:
+        normalizer = object.__new__(Normalizer)
+        normalizer.cfg = {"orientation": {}, "fallback": {"min_aspect": 2}, "selection": {"min_bottle_px": 1}}
+        normalizer.check_label = Mock(return_value=[[1, 1]])
+        normalizer.refine_label = Mock(return_value=[[1, 1]])
+        original = np.full((8, 9, 3), 222, np.uint8)
+        normalized = np.full((3, 4, 3), 11, np.uint8)
+        box = np.full((5, 6, 3), 55, np.uint8)
+        with (
+            patch("vinishko.pipeline.steps.normalization.normalize.bottle_axis", return_value={"length": 10, "body_width": 2, "angle": 0, "center": (0, 0)}),
+            patch("vinishko.pipeline.steps.normalization.normalize.rotated_extent", return_value=(None, (0, 0, 2, 10))),
+            patch("vinishko.pipeline.steps.normalization.normalize.render_bottle", return_value=(normalized, {})),
+            patch("vinishko.pipeline.steps.normalization.normalize.render_bottle_box", return_value=(box, {})),
+        ):
+            result = normalizer.judge(Image.fromarray(original), original, original, {"polys": []}, 0.9, 1, 1)
+        self.assertIs(result.crop, normalized)
+        self.assertIs(result.box_crop, box)
+        self.assertIs(result.original, original)
+
+    def test_dino_receives_normalized_crop_not_original_query(self) -> None:
+        normalized = np.full((3, 4, 3), 11, np.uint8)
+        original = np.full((8, 9, 3), 222, np.uint8)
+        bottle = BottleCrop(1, 0.9, [], [], 0.0, normalized, {}, original, {}, original=original)
+        searcher = object.__new__(VisSearcher)
+        searcher.encoder = Mock(return_value=np.ones((1, 2), np.float32))
+        searcher.client = object()
+        searcher.collection = "catalog"
+        searcher.cfg = SimpleNamespace(top_k=5, debug_path=None)
+        searcher._search = Mock(return_value="found")
+        with patch("vinishko.pipeline.steps.vis_searcher.search.search_many", return_value=[[]]):
+            self.assertEqual(searcher([bottle]), ["found"])
+        sent = searcher.encoder.call_args.args[0][0]
+        self.assertIs(sent, bottle.crop)
+        self.assertIsNot(sent, bottle.original)
+
     def test_encoder_preprocess_respects_model_resize_contract(self) -> None:
         image = np.full((2, 4, 3), (200, 0, 0), np.uint8)
         padded = Preprocess((4, 4), (1, 2, 3), "pad")(image)

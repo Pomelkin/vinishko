@@ -337,8 +337,8 @@ def render_bottle_box(
 ) -> tuple[np.ndarray, dict]:
     """Вся бутылка как на обычном фото: поворот горлышком вверх, bbox повёрнутой маски с запасом, фон как есть.
 
-    Это вход второго уровня и картинка позиции в каталоге: VLM, выбирающая ответ среди кандидатов, лучше работает по привычному фото,
-    чем по окну этикетки с залитым фоном. Поворот и центр те же, что у render_bottle, поэтому оба кропа одной бутылки согласованы.
+    Это картинка позиции в каталоге для VLM; для запроса VLM берётся исходное фото. Поворот и центр те же, что у
+    render_bottle, поэтому оба кропа одной бутылки согласованы.
     padding — запас по x и y в долях ширины и высоты маски, по умолчанию bottle_crop.padding_x и padding_y конфига; за габариты кадра
     запас не выходит.
     """
@@ -627,6 +627,7 @@ class Normalizer:
         self,
         img: Image.Image,
         rgb: np.ndarray,
+        original: np.ndarray,
         cand: dict,
         score: float,
         scale: float,
@@ -656,7 +657,7 @@ class Normalizer:
         angle = round(angle, 2)
         crop, info = render_bottle(rgb, cand["polys"], label, self.cfg, angle=angle)
         box, box_info = render_bottle_box(rgb, cand["polys"], self.cfg, angle=angle)
-        return BottleCrop(index, score, cand["polys"], label, angle, crop, info, box, box_info)
+        return BottleCrop(index, score, cand["polys"], label, angle, crop, info, box, box_info, original=original)
 
     def annotate_image(self, img: Image.Image) -> list[BottleCrop | RejectedBottle]:
         """Все бутылки, найденные SAM3, по убыванию скора отбора; каждая — BottleCrop с готовым кропом или RejectedBottle.
@@ -671,6 +672,7 @@ class Normalizer:
         max_bottles = self.cfg["selection"]["max_bottles"]
         items: list[BottleCrop | RejectedBottle] = []
         n_valid = 0
+        original: np.ndarray | None = None
         for i in sorted(range(len(scores)), key=lambda i: -scores[i]):
             c = seg["cands"][i]
             if not any(len(p) >= 3 for p in c["polys"]):
@@ -693,7 +695,11 @@ class Normalizer:
                     None,
                 )
             else:
-                item = self.judge(img, rgb, c, score, seg["scale"], n_valid + 1)
+                if original is None:
+                    original_image = img.copy()
+                    original_image.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+                    original = np.asarray(original_image).copy()
+                item = self.judge(img, rgb, original, c, score, seg["scale"], n_valid + 1)
             n_valid += isinstance(item, BottleCrop)
             items.append(item)
         if self.cfg["selection"]["bypass"] and not n_valid:
@@ -703,7 +709,11 @@ class Normalizer:
             frame = [[[0, 0], [w, 0], [w, h], [0, h]]]
             crop, info = render_bottle(rgb, frame, frame, self.cfg, angle=0.0)
             box, box_info = render_bottle_box(rgb, frame, self.cfg, angle=0.0, padding=(0.0, 0.0))
-            items.append(BottleCrop(1, 0.0, frame, frame, 0.0, crop, info, box, box_info))
+            if original is None:
+                original_image = img.copy()
+                original_image.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+                original = np.asarray(original_image).copy()
+            items.append(BottleCrop(1, 0.0, frame, frame, 0.0, crop, info, box, box_info, original=original))
         return items
 
     def annotate(self, path: Path | str) -> list[BottleCrop | RejectedBottle]:

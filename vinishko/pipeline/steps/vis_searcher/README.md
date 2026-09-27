@@ -28,7 +28,7 @@ OpenVINO во float32 (пакет `openvino`, группа `cpu-inference`). Н�
 
 ## Готовая коллекция и текущий поиск
 
-Текущий `config.yaml` настроен на модель `vitl16-1024` и коллекцию `catalog_vitl16_1024` на `pomelka.pro`. При обычном запуске нормализатор создаёт два кропа: `crop` этикетки для энкодера и `box_crop` всей бутылки для NDR. При `--normalized-dir` энкодер получает готовые JPEG из `datasets/local/normalized/test/images`, а NDR — исходное фото как запасной вариант, поскольку S3-поставка теста содержит только кропы этикетки. `images` указывает на локальную копию `vino/catalog/` в `datasets/local/normalized/catalog/images`; по ней поиск читает кандидатов. Для старых точек без `image_crop=bottle_box` NDR использует исходные Эталоны из `reference_images`. Карточки берутся из `datasets/local/catalog/catalog.csv`.
+Текущий `config.yaml` настроен на модель `vitl16-1024` и коллекцию `catalog_vitl16_1024` на `pomelka.pro`. При обычном запуске нормализатор создаёт `crop` этикетки для энкодера и `box_crop` всей бутылки для сохранения и каталога; NDR получает исходное фото запроса. При `--normalized-dir` энкодер получает готовые JPEG из `datasets/local/normalized/test/images`, а NDR — исходное фото, поскольку S3-поставка теста содержит только кропы этикетки. `images` указывает на локальную копию `vino/catalog/` в `datasets/local/normalized/catalog/images`; по ней поиск читает кандидатов. Для старых точек без `image_crop=bottle_box` NDR использует исходные Эталоны из `reference_images`. Карточки берутся из `datasets/local/catalog/catalog.csv`.
 
 Из S3 скачаны 172 JPEG теста (префикс `normalized/test/images/`) и 1981 JPEG каталога (префикс `catalog/`). Четырёх тестовых кропов нет. Поиск требует `QDRANT_API_KEY`; без ключа удалённый сервер отвечает 401, поэтому наличие и содержимое новой коллекции локально пока не проверены.
 
@@ -79,4 +79,4 @@ python -m vinishko.pipeline.steps.vis_searcher.build_catalog \
 и размер входа совпадают, картинка первой точки читается из выбранного источника (`images` либо `reference_images`). При чтении картинок из S3 они оседают в `cache_dir/images/`.
 
 `debug_path` — директория для разбора глазами: на каждый вызов поддиректория с меткой времени, в ней `q<N>_query_<uuid>.jpg` — кроп
-запроса для поиска, `q<N>_query_<uuid>_box.jpg` — кроп для VLM, `q<N>_<ранг>_<slug>_<cos>.jpg` — кандидаты, в режиме групп `q<N>_<ранг>_<группа>_<slug>_<cos>[_bygroup].jpg`, и `results.json`.
+запроса для поиска, `q<N>_query_<uuid>_box.jpg` — кроп бутылки для просмотра (VLM получает исходное фото), `q<N>_<ранг>_<slug>_<cos>.jpg` — кандидаты, в режиме групп `q<N>_<ранг>_<группа>_<slug>_<cos>[_bygroup].jpg`, и `results.json`.

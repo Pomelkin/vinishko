@@ -1,9 +1,15 @@
 """Адаптер NDR v5: группа из Qdrant и кропы в памяти → точный slug или отказ."""
 
 import csv
+import copy
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import BoundedSemaphore
+
+import numpy as np
+from PIL import Image
 
 from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS
 from vinishko.pipeline.steps.vis_searcher.configs import VisSearcherConfig
@@ -15,6 +21,9 @@ from .models import NOT_FOUND
 from .predictor import predict
 
 HERE = Path(__file__).resolve().parent
+NDR_CONCURRENCY = 32
+NDR_SEMAPHORE = BoundedSemaphore(NDR_CONCURRENCY)
+NDR_EXECUTOR = ThreadPoolExecutor(max_workers=NDR_CONCURRENCY)
 PROMPT_FILES = (
     "resolve_multiple_same",
     "compare_year_matters",
@@ -122,7 +131,18 @@ class NearDuplicateReranker:
 
     def __call__(self, results: list[BottleCandidates | UnmatchedBottle]) -> list[BottleCandidates | UnmatchedBottle]:
         """Сохраняет порядок бутылок; каждый ответ содержит один SKU либо отказ."""
-        return [self._select(result) if isinstance(result, BottleCandidates) else result for result in results]
+        if len(results) < 2:
+            return [self._select(result) if isinstance(result, BottleCandidates) else result for result in results]
+        return list(NDR_EXECUTOR.map(
+            lambda result: self._select(result) if isinstance(result, BottleCandidates) else result,
+            results,
+        ))
+
+    def with_trace_dir(self, trace_dir: Path | None) -> "NearDuplicateReranker":
+        """Отдельный путь trace для параллельного прогона разных фото."""
+        worker = copy.copy(self)
+        worker.trace_dir = trace_dir
+        return worker
 
     def _select(self, result: BottleCandidates) -> BottleCandidates | UnmatchedBottle:
         top = result.candidates[0]
@@ -151,13 +171,19 @@ class NearDuplicateReranker:
             "provider": provider.routing.request_payload(),
             "timeout": settings.execution.timeout_seconds,
         }
+        query_image = result.crop.original if result.crop.original is not None else result.crop.box_crop
+        if max(query_image.shape[:2]) > 1600:
+            resized = Image.fromarray(query_image)
+            resized.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+            query_image = np.asarray(resized)
         request = {
-            "query": {"image_bytes": encode_image(result.crop.box_crop, "png", 95)},
+            "query": {"image_bytes": encode_image(query_image, "png", 95)},
             "group": {"candidates": [candidate_card(candidate, self.reference_store, self.cards) for candidate in candidates]},
             "prompts": self.prompts,
             "runtime": runtime,
         }
-        response = predict(request)
+        with NDR_SEMAPHORE:
+            response = predict(request)
         self._write_trace(result.crop.uuid, response)
         if response["_status"] != "ok":
             raise NearDuplicateError(f"NDR {response['_status']} для группы {top.group}: {response['_error']}")

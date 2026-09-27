@@ -3,6 +3,8 @@
 import csv
 import json
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -18,6 +20,39 @@ from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate, U
 
 
 class DebugCliTests(unittest.TestCase):
+    def test_full_batches_overlap_ndr_across_search_batches(self) -> None:
+        lock = threading.Lock()
+        active = peak = 0
+
+        class SlowReranker:
+            trace_dir = None
+
+            def __call__(self, rows: list[BottleCandidates]) -> list[BottleCandidates]:
+                nonlocal active, peak
+                with lock:
+                    active += 1
+                    peak = max(peak, active)
+                time.sleep(0.05)
+                with lock:
+                    active -= 1
+                return rows
+
+        def normalize(_image: Path) -> list[BottleCrop]:
+            rgb = np.zeros((2, 2, 3), np.uint8)
+            return [BottleCrop(1, 0.9, [], [], 0.0, rgb, {}, rgb, {})]
+
+        def search(crops: list[BottleCrop]) -> list[BottleCandidates]:
+            return [BottleCandidates(crop, [Candidate("wine", 0.9, crop.box_crop, crop, "wine", True, {})]) for crop in crops]
+
+        with tempfile.TemporaryDirectory() as temp, patch.object(debug, "write_debug_result") as written:
+            root = Path(temp)
+            images = [root / f"{index}.jpg" for index in range(3)]
+            reranker = SlowReranker()
+            pipeline = debug.Pipeline(Mock(side_effect=normalize), Mock(side_effect=search), reranker)
+            debug.run_debug_batches(images, root / "runs", pipeline, None, reranker, None, "precomputed", 1)
+        self.assertEqual(written.call_count, 3)
+        self.assertGreater(peak, 1)
+
     def test_slug_absent_from_catalog_is_scored_as_not_found(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -173,7 +208,8 @@ class DebugCliTests(unittest.TestCase):
             sam3.assert_not_called()
             self.assertEqual(len(seen), 2)
             self.assertEqual(seen[0].crop.shape, (2, 3, 3))
-            self.assertEqual(seen[0].box_crop.shape, (2, 3, 3))
+            self.assertEqual(seen[0].box_crop.shape, (8, 12, 3))
+            np.testing.assert_array_equal(seen[0].box_crop, np.asarray(debug.open_image(originals / "first.webp")))
             self.assertEqual(debug.PrecomputedNormalizer(normalized)(originals / "first.webp")[0].box_crop.shape, (8, 12, 3))
             self.assertFalse((output / "missing").exists())
             metrics = json.loads((output / "metrics.json").read_text(encoding="utf-8"))
@@ -196,6 +232,65 @@ class DebugCliTests(unittest.TestCase):
             self.assertEqual(complete_metrics["searched_images"], 2)
             self.assertEqual(complete_metrics["missing_normalization"], 1)
             self.assertEqual(complete_metrics["all"]["accuracy_at_1"], 0.6667)
+
+    def test_ndr_uses_saved_search_without_repeating_search(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dataset = root / "test"
+            pictures = dataset / "images"
+            pictures.mkdir(parents=True)
+            normalized = root / "normalized"
+            normalized.mkdir()
+            image = pictures / "first.jpg"
+            missing = pictures / "missing.jpg"
+            for path in (image, missing):
+                Image.new("RGB", (12, 8), (20, 30, 40)).save(path)
+            Image.new("RGB", (3, 2)).save(normalized / "first.jpg")
+            with (dataset / "test.csv").open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.DictWriter(stream, fieldnames=["image_filename", "slug"])
+                writer.writeheader()
+                writer.writerows([{"image_filename": image.name, "slug": "second"}, {"image_filename": missing.name, "slug": ""}])
+            catalog = root / "catalog.csv"
+            catalog.write_text("Slug\nfirst\nsecond\n", encoding="utf-8")
+            output = root / "runs"
+            out = output / image.stem
+            out.mkdir(parents=True)
+            rgb = np.full((4, 5, 3), 90, dtype=np.uint8)
+            box = np.full((8, 12, 3), 180, dtype=np.uint8)
+            crop = BottleCrop(1, 0.8, [], [], 0.0, rgb, {}, box, {})
+            candidates = [Candidate(slug, 0.9, rgb, crop, "group", rank == 0, {}) for rank, slug in enumerate(("first", "second"))]
+            found = BottleCandidates(crop, candidates)
+            debug.VisSearcher.dump(SimpleNamespace(cfg=SimpleNamespace(search=SimpleNamespace(mode="groups"), top_k=1)), [found], out / "search")
+            report = debug.summary(image, debug.PipelineResult([crop], [found], {"search": 1.25}))
+            report["input_mode"] = "precomputed"
+            (out / "result.json").write_text(json.dumps(report), encoding="utf-8")
+            saved_search = (out / "search" / "results.json").read_bytes()
+            reranker = Mock(side_effect=lambda rows: [BottleCandidates(rows[0].crop, [rows[0].candidates[1]], {"source": "ndr_v5", "slug": "second"})])
+            with (
+                patch.object(debug, "load_search_config", return_value=SimpleNamespace(catalog_csv=catalog)),
+                patch.object(debug.NearDuplicateReranker, "from_search_config", return_value=reranker),
+                patch.object(debug, "VisSearcher") as searcher,
+                patch.object(debug, "Normalizer") as normalizer,
+            ):
+                result = CliRunner().invoke(debug.main, [str(dataset), "-o", str(output), "--stage", "ndr", "--normalized-dir", str(normalized)])
+            self.assertEqual(result.exit_code, 0, str(result.exception))
+            searcher.assert_not_called()
+            normalizer.assert_not_called()
+            self.assertEqual((out / "search" / "results.json").read_bytes(), saved_search)
+            passed = reranker.call_args.args[0][0]
+            self.assertEqual(passed.crop.uuid, crop.uuid)
+            self.assertEqual(passed.crop.box_crop.shape, box.shape)
+            self.assertEqual(passed.crop.original.shape, (8, 12, 3))
+            np.testing.assert_array_equal(passed.crop.original[0, 0], [20, 30, 40])
+            self.assertEqual(passed.candidates[0].payload["group_slugs"], ["first", "second"])
+            final = json.loads((out / "result.json").read_text(encoding="utf-8"))
+            self.assertEqual(final["bottles"][0]["candidates"][0]["slug"], "second")
+            self.assertEqual(final["input_mode"], "precomputed")
+            self.assertIn("rerank", final["timings_s"])
+            metrics = json.loads((output / "metrics.json").read_text(encoding="utf-8"))
+            self.assertEqual(metrics["stage"], "ndr")
+            self.assertEqual(metrics["missing_normalization"], 1)
+            self.assertEqual(metrics["all"]["accuracy_at_1"], 1.0)
 
     def test_raw_mode_searches_whole_image_without_cached_normalization(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

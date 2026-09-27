@@ -3,6 +3,9 @@
 import csv
 import os
 import tempfile
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 import unittest
 from io import BytesIO
 from pathlib import Path
@@ -13,7 +16,7 @@ import numpy as np
 from PIL import Image
 
 from vinishko.pipeline.steps.near_duplicates import predictor
-from vinishko.pipeline.steps.near_duplicates.rerank import CSV_FIELDS, NearDuplicateError, NearDuplicateReranker, candidate_card, load_cards
+from vinishko.pipeline.steps.near_duplicates.rerank import CSV_FIELDS, NDR_CONCURRENCY, NearDuplicateError, NearDuplicateReranker, candidate_card, load_cards
 from vinishko.pipeline.steps.vis_searcher.storage import S3Store
 from vinishko.pipeline.steps.vis_searcher.catalog import CollectionInfo
 from vinishko.pipeline.steps.vis_searcher.configs import load_config
@@ -178,8 +181,9 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         model.assert_not_called()
 
     def test_group_uses_all_members_and_returns_selected_slug(self) -> None:
-        bottle = crop()
-        bottle.box_crop[:] = 177
+        base = crop()
+        base.box_crop[:] = 177
+        bottle = BottleCrop(base.index, base.score, base.bottle, base.label, base.angle, base.crop, base.crop_info, base.box_crop, base.box_info, original=np.full((6, 7, 3), 222, np.uint8))
         top = candidate(bottle, "first", "group", ["first", "second"])
         second = candidate(bottle, "second", "group", ["first", "second"])
         outsider = candidate(bottle, "outsider", "other", ["outsider"])
@@ -195,7 +199,61 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         self.assertTrue(request["group"]["candidates"][0]["reference_image_bytes"].startswith(b"RIFF"))
         self.assertTrue(request["query"]["image_bytes"].startswith(b"\x89PNG"))
         with Image.open(BytesIO(request["query"]["image_bytes"])) as query:
-            self.assertEqual(query.getpixel((0, 0)), (177, 177, 177))
+            self.assertEqual(query.size, (7, 6))
+            self.assertEqual(query.getpixel((0, 0)), (222, 222, 222))
+
+    def test_ndr_requests_run_concurrently_with_limit_32_and_keep_order(self) -> None:
+        lock = threading.Lock()
+        active = peak = 0
+
+        def model(_request: dict) -> dict:
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+            time.sleep(0.02)
+            with lock:
+                active -= 1
+            return model_response("first")
+
+        found = []
+        for index in range(NDR_CONCURRENCY + 8):
+            bottle = crop()
+            bottle = BottleCrop(index, bottle.score, bottle.bottle, bottle.label, bottle.angle, bottle.crop, bottle.crop_info, bottle.box_crop, bottle.box_info)
+            found.append(BottleCandidates(bottle, [
+                candidate(bottle, slug, "group", ["first", "second"])
+                for slug in ("first", "second")
+            ]))
+        with patch("vinishko.pipeline.steps.near_duplicates.rerank.predict", side_effect=model):
+            resolved = NearDuplicateReranker()(found)
+        self.assertEqual([result.crop.index for result in resolved], list(range(len(found))))
+        self.assertEqual([result.candidates[0].slug for result in resolved], ["first"] * len(found))
+        self.assertGreater(peak, 1)
+        self.assertLessEqual(peak, 32)
+
+    def test_semaphore_limits_separate_single_bottle_calls(self) -> None:
+        lock = threading.Lock()
+        active = peak = 0
+
+        def model(_request: dict) -> dict:
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+            time.sleep(0.08)
+            with lock:
+                active -= 1
+            return model_response("first")
+
+        reranker = NearDuplicateReranker()
+        bottle = crop()
+        row = BottleCandidates(bottle, [candidate(bottle, slug, "group", ["first", "second"]) for slug in ("first", "second")])
+        with patch("vinishko.pipeline.steps.near_duplicates.rerank.predict", side_effect=model):
+            with ThreadPoolExecutor(max_workers=NDR_CONCURRENCY + 8) as executor:
+                resolved = list(executor.map(reranker, [[row]] * (NDR_CONCURRENCY + 8)))
+        self.assertEqual(len(resolved), NDR_CONCURRENCY + 8)
+        self.assertGreater(peak, 1)
+        self.assertLessEqual(peak, 32)
 
     def test_not_found_becomes_rejected_bottle(self) -> None:
         bottle = crop()
