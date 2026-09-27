@@ -13,18 +13,18 @@ def new_uuid() -> str:
 class Reason(StrEnum):
     """Основа для причин отказа. Каждый шаг пайплайна заводит свой наследник со своими причинами.
 
-    Член задаётся тройкой: значение для логов и JSON, title — короткий текст для интерфейса,
+    Член задаётся тройкой: значение для логов и JSON, label — короткий текст для интерфейса (не title: у str это метод),
     description — что случилось и почему это мешает распознаванию.
     """
 
-    title: str
+    label: str
     description: str
 
-    def __new__(cls, value: str, title: str, description: str) -> "Reason":
+    def __new__(cls, value: str, label: str, description: str) -> "Reason":
         """Член перечисления: строковое значение, заголовок для интерфейса и описание."""
         member = str.__new__(cls, value)
         member._value_ = value
-        member.title = title
+        member.label = label
         member.description = description
         return member
 
@@ -38,7 +38,7 @@ class RejectedBottle:
     """
 
     reason: Reason
-    """Причина отказа из перечисления шага, который отказал; тексты для интерфейса — reason.title и reason.description."""
+    """Причина отказа из перечисления шага, который отказал; тексты для интерфейса — reason.label и reason.description."""
     detail: str
     """Что именно не прошло на этой бутылке: измеренное значение и порог."""
     score: float
@@ -53,7 +53,7 @@ class RejectedBottle:
     @property
     def message(self) -> str:
         """Готовая строка для интерфейса: заголовок причины и что именно не прошло."""
-        return f"{self.reason.title}: {self.detail}"
+        return f"{self.reason.label}: {self.detail}"
 
 
 @dataclass(frozen=True, eq=False, slots=True)
@@ -131,6 +131,8 @@ class Candidate:
     """Вектор позиции был в выдаче поиска, а не добавлен как член группы."""
     payload: dict
     """Метаданные точки коллекции: название, винодельня, винтаж и прочее из каталога — для второго уровня."""
+    scores: dict[str, float]
+    """Косинус по каждому входу энкодера, например {"crop": 0.91, "box_crop": 0.83}; score — их среднее. Пусто у позиции, добавленной как член группы."""
 
 
 @dataclass(frozen=True, eq=False, slots=True)
@@ -145,7 +147,9 @@ class BottleCandidates:
 
     def __post_init__(self) -> None:
         if not self.candidates:
-            raise ValueError("BottleCandidates без кандидатов; для бутылки без ответа — UnmatchedBottle")
+            raise ValueError(
+                "BottleCandidates без кандидатов; для бутылки без ответа — UnmatchedBottle"
+            )
 
 
 @dataclass(frozen=True, eq=False, slots=True)

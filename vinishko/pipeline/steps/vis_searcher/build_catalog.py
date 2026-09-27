@@ -1,7 +1,9 @@
-"""Сборка коллекции каталога: CSV → нормализация каждого фото → кроп в хранилище → вектор в qdrant.
+"""Сборка коллекции каталога: CSV → нормализация каждого фото → кроп в хранилище → вектор в qdrant, по именованному вектору на каждый вход encoder_input.
 
 Модель, qdrant с именем коллекции и хранилище кропов берутся из того же config.yaml, с которым потом ищет VisSearcher: собрать одним, а искать
-другим нельзя по построению. Запуск из корня: python -m vinishko.pipeline.steps.vis_searcher.build_catalog --csv ... --images ...
+другим нельзя по построению. Часть конфига нормализации, определяющая кропы (Normalizer.crop_config), записывается в manifest.json рядом
+с картинками, её отпечаток — в каждую точку: поиск при старте сверяет с ними нормализатор запроса.
+Запуск из корня: python -m vinishko.pipeline.steps.vis_searcher.build_catalog --csv ... --images ...
 """
 
 import csv
@@ -30,7 +32,7 @@ from rich.progress import (
 from rich.table import Table
 
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
-from vinishko.pipeline.steps.normalization.normalize import Normalizer
+from vinishko.pipeline.steps.normalization.normalize import Normalizer, crop_config
 from vinishko.pipeline.steps.normalization.normalize import (
     load_config as load_norm_config,
 )
@@ -42,10 +44,12 @@ from vinishko.pipeline.steps.vis_searcher.catalog import (
     FIELD_ENCODER_INPUT,
     FIELD_INPUT_SIZE,
     FIELD_MODEL,
+    FIELD_NORMALIZATION,
     FIELD_REVISION,
     FIELD_SLUG,
     connect,
     create_collection,
+    normalization_fingerprint,
     point_id,
     upsert,
 )
@@ -54,6 +58,7 @@ from vinishko.pipeline.steps.vis_searcher.device import Device, resolve_device
 from vinishko.pipeline.steps.vis_searcher.model import Encoder, ModelFiles, fetch_model
 from vinishko.pipeline.steps.vis_searcher.storage import (
     CONTENT_TYPES,
+    MANIFEST,
     ImageStore,
     make_store,
 )
@@ -103,7 +108,9 @@ def read_rows(
     limit: int | None,
 ) -> tuple[list[Row], list[str], bool]:
     """Строки с фото, slug строк без фото (они в коллекцию не идут) и была ли колонка групп; без неё каждая позиция — своя группа."""
-    with path.open(encoding="utf-8-sig", newline="") as f:  # utf-8-sig: у выгрузок бывает BOM, иначе он прилипает к имени первой колонки
+    with (
+        path.open(encoding="utf-8-sig", newline="") as f
+    ):  # utf-8-sig: у выгрузок бывает BOM, иначе он прилипает к имени первой колонки
         reader = csv.DictReader(f)
         columns = reader.fieldnames or []
         for column in (slug_column, photo_column):
@@ -139,7 +146,9 @@ def check_photos(rows: list[Row], images: Path) -> None:
     """Все фото из CSV лежат в images; иначе ошибка до старта, а не через час работы."""
     missing = [row.photo for row in rows if not (images / row.photo).is_file()]
     if missing:
-        raise click.UsageError(f"в {images} нет {len(missing)} фото из CSV, например {missing[:3]}")
+        raise click.UsageError(
+            f"в {images} нет {len(missing)} фото из CSV, например {missing[:3]}"
+        )
 
 
 def ensure_absent(client: QdrantClient, name: str) -> None:
@@ -162,13 +171,26 @@ def single_crop(norm: Normalizer, images: Path, row: Row) -> BottleCrop:
     items = norm(open_image(images / row.photo))
     crops = [item for item in items if isinstance(item, BottleCrop)]
     if len(crops) != 1:
-        reasons = ", ".join(item.reason for item in items if not isinstance(item, BottleCrop))
-        raise ValueError(f"{row.photo} ({row.slug}): годных бутылок {len(crops)}, нужна ровно одна" + (f"; отказы: {reasons}" if reasons else ""))
+        reasons = ", ".join(
+            item.reason for item in items if not isinstance(item, BottleCrop)
+        )
+        raise ValueError(
+            f"{row.photo} ({row.slug}): годных бутылок {len(crops)}, нужна ровно одна"
+            + (f"; отказы: {reasons}" if reasons else "")
+        )
     return crops[0]
 
 
-def make_payload(row: Row, crop: BottleCrop, image: str, files: ModelFiles, device: Device, encoder_input: str) -> dict:
-    """Метаданные точки; список позиций группы дописывается, когда известно, кто из группы попал в коллекцию."""
+def make_payload(
+    row: Row,
+    crop: BottleCrop,
+    image: str,
+    files: ModelFiles,
+    device: Device,
+    encoder_input: Sequence[str],
+    normalization: str,
+) -> dict:
+    """Метаданные точки; список позиций группы дописывается, когда известно, кто из группы попал в коллекцию. normalization — отпечаток crop_config."""
     return {
         FIELD_SLUG: row.slug,
         FIELD_GROUP: row.group,
@@ -182,7 +204,8 @@ def make_payload(row: Row, crop: BottleCrop, image: str, files: ModelFiles, devi
         FIELD_MODEL: files.repo,
         FIELD_REVISION: files.revision,
         FIELD_INPUT_SIZE: list(files.input_size),
-        FIELD_ENCODER_INPUT: encoder_input,
+        FIELD_ENCODER_INPUT: list(encoder_input),
+        FIELD_NORMALIZATION: normalization,
         "precision": device.precision,
         "built_at": datetime.now(tz=UTC).isoformat(timespec="seconds"),
     }
@@ -209,9 +232,9 @@ def progress() -> Progress:
 
 @dataclass(slots=True)
 class Build:
-    """Ход сборки: векторы и метаданные по slug, неудачи."""
+    """Ход сборки: векторы по slug и входу энкодера, метаданные по slug, неудачи."""
 
-    vectors: dict[str, np.ndarray]
+    vectors: dict[str, dict[str, np.ndarray]]
     payloads: dict[str, dict]
     failures: list[Failure]
 
@@ -225,7 +248,9 @@ class Build:
         return [
             PointStruct(
                 id=point_id(slug),
-                vector=self.vectors[slug].tolist(),
+                vector={
+                    inp: vector.tolist() for inp, vector in self.vectors[slug].items()
+                },
                 payload=self.payloads[slug],
             )
             for slug in self.payloads
@@ -241,9 +266,10 @@ def build(
     fmt: str,
     quality: int,
     skip_failures: bool,
-    encoder_input: str,
+    encoder_input: Sequence[str],
+    normalization: str,
 ) -> Build:
-    """Фото → кроп → хранилище и вектор, пачками по батчу энкодера.
+    """Фото → кропы → хранилище и вектор на каждый вход энкодера, пачками по батчу энкодера. normalization — отпечаток crop_config, уходит в каждую точку.
 
     Без skip_failures первая же ошибка останавливает сборку с именем фото и slug в тексте; с ним фото пропускается, а причина
     попадает в предупреждение и в отчёт.
@@ -262,13 +288,32 @@ def build(
                 except ValueError as error:  # своя проверка: в тексте уже фото и slug
                     state.failures.append(Failure(row.slug, row.photo, str(error)))
                 except Exception as error:  # битая картинка не должна ронять сборку на час, отчёт о ней будет в конце
-                    state.failures.append(Failure(row.slug, row.photo, f"{row.photo} ({row.slug}): {error!r}"))
-            vectors = encoder([getattr(crop, encoder_input) for _, crop in crops])
-            for (row, crop), vector in zip(crops, vectors, strict=True):
+                    state.failures.append(
+                        Failure(
+                            row.slug, row.photo, f"{row.photo} ({row.slug}): {error!r}"
+                        )
+                    )
+            vectors = {
+                inp: encoder([getattr(crop, inp) for _, crop in crops])
+                for inp in encoder_input
+            }
+            for i, (row, crop) in enumerate(crops):
                 name = f"{row.slug}.{fmt}"
-                store.put(name, crop.box_crop, fmt, quality)  # вектор — с кропа поиска, а в каталог идёт вся бутылка для второго уровня
-                state.vectors[row.slug] = vector
-                state.payloads[row.slug] = make_payload(row, crop, name, encoder.files, encoder.device, encoder_input)
+                store.put(
+                    name, crop.box_crop, fmt, quality
+                )  # векторы — с кропов по encoder_input, а в каталог идёт вся бутылка для второго уровня
+                state.vectors[row.slug] = {
+                    inp: vectors[inp][i] for inp in encoder_input
+                }
+                state.payloads[row.slug] = make_payload(
+                    row,
+                    crop,
+                    name,
+                    encoder.files,
+                    encoder.device,
+                    encoder_input,
+                    normalization,
+                )
             bar.update(task, advance=len(batch))
     return state
 
@@ -301,7 +346,9 @@ def report(
     for failure in state.failures[:20]:
         logger.warning(f"не попало: {failure.reason}")
     if len(state.failures) > 20:
-        logger.warning(f"… и ещё {len(state.failures) - 20} неудач, полный список в --report")
+        logger.warning(
+            f"… и ещё {len(state.failures) - 20} неудач, полный список в --report"
+        )
     if path is not None:
         path.write_text(
             json.dumps(
@@ -320,19 +367,79 @@ def report(
 
 
 @click.command()
-@click.option("--csv", "csv_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=True, help="Каталог: CSV с колонками slug, имени фото и группы")
-@click.option("--images", type=click.Path(exists=True, file_okay=False, path_type=Path), required=True, help="Директория с фото из CSV")
-@click.option("--config", "config_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=DEFAULT_CONFIG, show_default=True, help="Конфиг визуального поиска: модель и ревизия, qdrant и имя коллекции, хранилище кропов, batch_size, cache_dir")
+@click.option(
+    "--csv",
+    "csv_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    required=True,
+    help="Каталог: CSV с колонками slug, имени фото и группы",
+)
+@click.option(
+    "--images",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    required=True,
+    help="Директория с фото из CSV",
+)
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=DEFAULT_CONFIG,
+    show_default=True,
+    help="Конфиг визуального поиска: модель и ревизия, qdrant и имя коллекции, хранилище кропов, batch_size, cache_dir",
+)
 @click.option("--slug-column", default="Slug", show_default=True)
 @click.option("--photo-column", default="Название фото", show_default=True)
-@click.option("--group-column", default="group", show_default=True, help="Колонка группы одинакового дизайна; если её нет, каждая позиция — своя группа")
-@click.option("--format", "fmt", type=click.Choice(sorted(CONTENT_TYPES)), default="jpg", show_default=True, help="Формат кропов в хранилище")
+@click.option(
+    "--group-column",
+    default="group",
+    show_default=True,
+    help="Колонка группы одинакового дизайна; если её нет, каждая позиция — своя группа",
+)
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(sorted(CONTENT_TYPES)),
+    default="jpg",
+    show_default=True,
+    help="Формат кропов в хранилище",
+)
 @click.option("--quality", type=click.IntRange(1, 100), default=95, show_default=True)
-@click.option("--on-failure", type=click.Choice(["stop", "skip"]), default="stop", show_default=True, help="Фото без ровно одной годной бутылки: остановить сборку либо пропустить и перечислить в конце")
-@click.option("--limit", type=click.IntRange(min=1), default=None, help="Первые N строк с фото: для пробы")
-@click.option("--report", "report_path", type=click.Path(dir_okay=False, path_type=Path), default=None, help="JSON с итогом и списком неудач")
-@click.option("-c", "--norm-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True, help="Конфиг нормализации")
-@click.option("--set", "overrides", multiple=True, metavar="секция.ключ=значение", help="Переопределить параметр конфига нормализации")
+@click.option(
+    "--on-failure",
+    type=click.Choice(["stop", "skip"]),
+    default="stop",
+    show_default=True,
+    help="Фото без ровно одной годной бутылки: остановить сборку либо пропустить и перечислить в конце",
+)
+@click.option(
+    "--limit",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Первые N строк с фото: для пробы",
+)
+@click.option(
+    "--report",
+    "report_path",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="JSON с итогом и списком неудач",
+)
+@click.option(
+    "-c",
+    "--norm-config",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=NORM_DIR / "normalize.toml",
+    show_default=True,
+    help="Конфиг нормализации",
+)
+@click.option(
+    "--set",
+    "overrides",
+    multiple=True,
+    metavar="секция.ключ=значение",
+    help="Переопределить параметр конфига нормализации",
+)
 def main(
     csv_path: Path,
     images: Path,
@@ -350,13 +457,21 @@ def main(
 ) -> None:
     """Собрать коллекцию каталога для визуального поиска по config.yaml.
 
-    Каждое фото проходит нормализацию, на нём должна найтись ровно одна годная бутылка; вектор считается с кропа поиска, а в хранилище картинок
+    Каждое фото проходит нормализацию, на нём должна найтись ровно одна годная бутылка; по вектору на каждый вход encoder_input (crop, box_crop либо оба
+    для гибридного поиска), в коллекции у каждого входа своё именованное пространство, а в хранилище картинок
     из конфига уходит вся бутылка по bbox маски, как box_crop у запроса, — её смотрит второй уровень; вектор — в коллекцию qdrant из конфига вместе с метаданными: slug, группа и все slug группы, попавшие в коллекцию, имя кропа,
-    поля каталога, модель и её ревизия. Устройства — device в конфигах, переменные VIS_SEARCHER_DEV и NORMALIZER_DEV их перекрывают.
+    поля каталога, модель и её ревизия, отпечаток нормализации. Рядом с картинками пишется manifest.json: часть конфига нормализации,
+    определяющая кропы, её отпечаток, коллекция и модель; поиск при старте сверяет с ним свой нормализатор.
+    Устройства — device в конфигах, переменные VIS_SEARCHER_DEV и NORMALIZER_DEV их перекрывают.
     Дешёвые проверки идут до загрузки моделей: CSV и наличие всех фото, qdrant и отсутствие коллекции, доступность хранилища.
     """
     cfg = load_config(config_path)
-    rows, without_photo, has_group = read_rows(csv_path, slug_column, photo_column, group_column, limit)
+    norm_cfg = load_norm_config(norm_config, list(overrides))
+    normalization = crop_config(norm_cfg)
+    fingerprint = normalization_fingerprint(normalization)
+    rows, without_photo, has_group = read_rows(
+        csv_path, slug_column, photo_column, group_column, limit
+    )
     logger.info(
         f"{csv_path.name}: {len(rows)} строк с фото пойдут в коллекцию, {len(without_photo)} без фото пропускаются"
         + (f", например {without_photo[:3]}" if without_photo else "")
@@ -369,15 +484,46 @@ def main(
     ensure_absent(client, collection)
     store = make_store(cfg.images, cfg.cache_dir)
     store.ensure_available()
-    norm = Normalizer(load_norm_config(norm_config, list(overrides)), norm_config.resolve().parent)
+    if store.exists(MANIFEST):
+        previous = store.get_json(MANIFEST)
+        if previous["fingerprint"] != fingerprint:
+            logger.warning(
+                f"в хранилище ({store.description}) лежат картинки коллекции {previous['collection']} с другой нормализацией ({previous['fingerprint']}): "
+                f"они перепишутся, и та коллекция перестанет проходить проверку при старте"
+            )
+    norm = Normalizer(norm_cfg, norm_config.resolve().parent)
     logger.info(
-        f"конфиг {config_path}: модель {cfg.model}, вход энкодера {cfg.encoder_input}, коллекция {collection}; каталог: {len(rows)} строк с фото; "
+        f"конфиг {config_path}: модель {cfg.model}, входы энкодера {'+'.join(cfg.encoder_input)}, коллекция {collection}; каталог: {len(rows)} строк с фото; "
         f"группы: {'колонка ' + group_column if has_group else 'нет, позиция = группа'}; кропы: {store.description}; нормализация на {norm.device}"
     )
     encoder = Encoder(files, device, cfg.batch_size, cfg.cache_dir)
     logger.info(f"энкодер: {encoder.description}")
-    create_collection(client, collection, encoder.embed_dim)
-    state = build(rows, images, norm, encoder, store, fmt, quality, skip_failures=on_failure == "skip", encoder_input=cfg.encoder_input)
+    create_collection(client, collection, encoder.embed_dim, cfg.encoder_input)
+    state = build(
+        rows,
+        images,
+        norm,
+        encoder,
+        store,
+        fmt,
+        quality,
+        skip_failures=on_failure == "skip",
+        encoder_input=cfg.encoder_input,
+        normalization=fingerprint,
+    )
+    store.put_json(
+        MANIFEST,
+        {
+            "normalization": normalization,
+            "fingerprint": fingerprint,
+            "collection": collection,
+            FIELD_MODEL: files.repo,
+            FIELD_REVISION: files.revision,
+            FIELD_ENCODER_INPUT: list(cfg.encoder_input),
+            "images": {"crop": "bottle_box", "format": fmt, "quality": quality},
+            "built_at": datetime.now(tz=UTC).isoformat(timespec="seconds"),
+        },
+    )
     upsert(client, collection, state.points())
     report(state, rows, len(without_photo), has_group, collection, report_path)
 

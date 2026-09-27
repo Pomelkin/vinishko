@@ -21,7 +21,9 @@ def resolve_torch_device(env: str, configured: str | None = None) -> torch.devic
     from_env = os.environ.get(env)
     if from_env:
         source, spec = env, from_env
-        logger.info(f"{env}={from_env} перекрывает device в конфиге ({configured or AUTO})")
+        logger.info(
+            f"{env}={from_env} перекрывает device в конфиге ({configured or AUTO})"
+        )
     else:
         source, spec = "device в конфиге", configured
     if spec is None or spec.strip() in ("", AUTO):
@@ -39,5 +41,7 @@ def resolve_torch_device(env: str, configured: str | None = None) -> torch.devic
         raise RuntimeError(f"{source}={spec}: CUDA недоступна")
     index = int(match.group(1) or 0)
     if index >= torch.cuda.device_count():
-        raise RuntimeError(f"{source}={spec}: видеокарт всего {torch.cuda.device_count()}")
+        raise RuntimeError(
+            f"{source}={spec}: видеокарт всего {torch.cuda.device_count()}"
+        )
     return torch.device("cuda", index)

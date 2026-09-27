@@ -34,18 +34,63 @@ def load_visual(model: str, checkpoint: Path) -> nn.Module:
     """Визуальная башня без базовых весов SigLIP с HF: чекпоинт содержит все ключи, грузятся ключи visual.* строго."""
     visual = open_clip.create_model(model, pretrained=None).visual
     state = torch.load(checkpoint, map_location="cpu", weights_only=True, mmap=True)
-    visual.load_state_dict({k.removeprefix("visual."): v for k, v in state.items() if k.startswith("visual.")}, strict=True)
+    visual.load_state_dict(
+        {
+            k.removeprefix("visual."): v
+            for k, v in state.items()
+            if k.startswith("visual.")
+        },
+        strict=True,
+    )
     return visual.float().eval().requires_grad_(False)
 
 
 @click.command()
-@click.option("-o", "--output", type=click.Path(file_okay=False, path_type=Path), required=True, help="Директория результата: model.onnx, model.bf16.onnx, config.json, preprocess.json")
-@click.option("--checkpoint", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=DEFAULT_CHECKPOINT, show_default=True, help="Чекпоинт TULIP форка open_clip")
-@click.option("--model", default=MODEL, show_default=True, help="Имя модели в форке open_clip")
-@click.option("--resize", type=click.Choice(RESIZES), default="squash", show_default=True, help="Как поиск готовит вход: squash — растянуть до размера входа, как в замерах TULIP; pad — вписать с полями, как у DINO")
-@click.option("--fill", type=(int, int, int), default=(124, 116, 104), show_default=True, help="Цвет полей для resize=pad, как background.color в normalize.toml")
-@click.option("--bf16/--no-bf16", default=True, show_default=True, help="Вдобавок к float32-графу писать model.bf16.onnx для TensorRT")
-def main(output: Path, checkpoint: Path, model: str, resize: str, fill: tuple[int, int, int], bf16: bool) -> None:
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(file_okay=False, path_type=Path),
+    required=True,
+    help="Директория результата: model.onnx, model.bf16.onnx, config.json, preprocess.json",
+)
+@click.option(
+    "--checkpoint",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=DEFAULT_CHECKPOINT,
+    show_default=True,
+    help="Чекпоинт TULIP форка open_clip",
+)
+@click.option(
+    "--model", default=MODEL, show_default=True, help="Имя модели в форке open_clip"
+)
+@click.option(
+    "--resize",
+    type=click.Choice(RESIZES),
+    default="squash",
+    show_default=True,
+    help="Как поиск готовит вход: squash — растянуть до размера входа, как в замерах TULIP; pad — вписать с полями, как у DINO",
+)
+@click.option(
+    "--fill",
+    type=(int, int, int),
+    default=(124, 116, 104),
+    show_default=True,
+    help="Цвет полей для resize=pad, как background.color в normalize.toml",
+)
+@click.option(
+    "--bf16/--no-bf16",
+    default=True,
+    show_default=True,
+    help="Вдобавок к float32-графу писать model.bf16.onnx для TensorRT",
+)
+def main(
+    output: Path,
+    checkpoint: Path,
+    model: str,
+    resize: str,
+    fill: tuple[int, int, int],
+    bf16: bool,
+) -> None:
     """Экспорт визуальной башни TULIP под контракт визуального поиска; результат выкладывается на Hugging Face и подставляется в config.yaml."""
     visual = load_visual(model, checkpoint)
     cfg = open_clip.get_pretrained_cfg(model, PRETRAINED_TAG)
@@ -55,7 +100,9 @@ def main(output: Path, checkpoint: Path, model: str, resize: str, fill: tuple[in
     vision_cfg = model_cfg["vision_cfg"]
     size = vision_cfg["image_size"]
     contract = Contract(
-        input_size=(int(size[0]), int(size[1])) if isinstance(size, list | tuple) else (int(size), int(size)),
+        input_size=(int(size[0]), int(size[1]))
+        if isinstance(size, list | tuple)
+        else (int(size), int(size)),
         patch_size=patch_size_of(vision_cfg),
         mean=tuple(float(v) for v in cfg["mean"]),
         std=tuple(float(v) for v in cfg["std"]),
@@ -63,7 +110,12 @@ def main(output: Path, checkpoint: Path, model: str, resize: str, fill: tuple[in
         pad_color=fill,
         interpolation=str(cfg["interpolation"]),  # bicubic: так делает трансформ форка
     )
-    config = {"model_type": "tulip_visual", "architecture": model, "open_clip_pretrained_tag": PRETRAINED_TAG, "source_checkpoint": checkpoint.name}
+    config = {
+        "model_type": "tulip_visual",
+        "architecture": model,
+        "open_clip_pretrained_tag": PRETRAINED_TAG,
+        "source_checkpoint": checkpoint.name,
+    }
     export_bundle(visual, output, contract, config, bf16)
 
 

@@ -2,10 +2,12 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_CONFIG = HERE / "config.yaml"
+EncoderInput = Literal["crop", "box_crop"]
+"""Атрибут BottleCrop на входе энкодера: crop — окно этикетки с залитым фоном, вход обучения DinoV3ForWine; box_crop — вся бутылка как на фото."""
 
 
 class StrictModel(BaseModel):
@@ -71,9 +73,11 @@ class VisSearcherConfig(StrictModel):
     """Ревизия репозитория; без неё последняя. Коллекция помнит, какой ревизией построена, и с другой не работает."""
     device: str = "auto"
     """auto, cpu либо cuda:<индекс>; переменная окружения VIS_SEARCHER_DEV перекрывает это значение. auto — cuda:0 при доступной CUDA, иначе cpu."""
-    encoder_input: Literal["crop", "box_crop"] = "crop"
-    """Какой кроп бутылки кодируется: crop — окно этикетки с залитым фоном, вход обучения DinoV3ForWine; box_crop — вся бутылка как на фото,
-    для моделей вроде TULIP, которые учились на обычных снимках. Коллекция помнит выбор, поиск с другим значением её не примет."""
+    encoder_input: list[EncoderInput] = ["crop"]
+    """Какие кропы бутылки кодируются, по вектору и пространству в коллекции на каждый; строка в YAML равна списку из одного.
+    Один вход — обычный поиск. Два — гибрид: поиск в каждом пространстве, объединение по slug, скор позиции — среднее косинусов
+    (на тесте 2026-09-27 crop+box_crop у SigLIP2: recall@1 89.6% против 88.0% и 84.8% по одному, при 65% верных отказов ложных
+    вдвое меньше). Коллекция помнит набор входов, поиск с другим её не примет."""
     batch_size: int = Field(default=16, gt=0)
     """Потолок батча энкодера; для TensorRT — размер профиля engine."""
     top_k: int = Field(default=10, gt=0)
@@ -85,6 +89,20 @@ class VisSearcherConfig(StrictModel):
     """Кэш engine TensorRT и картинок из S3."""
     debug_path: Path | None = None
     """Директория для разбора глазами: на каждый вызов поддиректория с меткой времени, внутри кропы запросов и картинки кандидатов."""
+
+    @field_validator("encoder_input", mode="before")
+    @classmethod
+    def _one_input_as_list(cls, value: object) -> object:
+        return [value] if isinstance(value, str) else value
+
+    @field_validator("encoder_input")
+    @classmethod
+    def _inputs_distinct(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("encoder_input пуст, нужен хотя бы один кроп")
+        if len(set(value)) != len(value):
+            raise ValueError(f"encoder_input повторяет кроп: {value}")
+        return value
 
 
 def load_config(path: Path | None = None) -> VisSearcherConfig:
@@ -101,7 +119,9 @@ def load_config(path: Path | None = None) -> VisSearcherConfig:
         cfg.qdrant.path = resolve_path(cfg.qdrant.path, base)
     if isinstance(cfg.images, LocalImagesConfig):
         cfg.images.dir = resolve_path(cfg.images.dir, base)
-    if resolve_path(Path(cfg.model), base).is_dir():  # локальная директория экспорта вместо репозитория HF: путь от файла конфига
+    if (
+        resolve_path(Path(cfg.model), base).is_dir()
+    ):  # локальная директория экспорта вместо репозитория HF: путь от файла конфига
         cfg.model = str(resolve_path(Path(cfg.model), base))
     return cfg
 

@@ -1,5 +1,8 @@
-"""Хранилище кропов коллекции: директория либо S3-совместимый бакет с кэшем на диске. Имя файла — из метаданных вектора."""
+"""Хранилище кропов коллекции: директория либо S3-совместимый бакет с кэшем на диске. Имя файла — из метаданных вектора.
 
+Рядом с картинками лежит manifest.json последней сборки: чем нормализованы кропы и какая коллекция их писала."""
+
+import json
 import os
 from io import BytesIO
 from pathlib import Path
@@ -17,6 +20,9 @@ from vinishko.pipeline.steps.vis_searcher.configs import (
 
 CONTENT_TYPES = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
 PIL_FORMATS = {"jpg": "JPEG", "png": "PNG", "webp": "WEBP"}
+MANIFEST = "manifest.json"
+"""Паспорт хранилища: `normalization` — crop_config нормализатора при сборке, `fingerprint` — его отпечаток, тот же лежит в метаданных точек коллекции,
+`collection`, модель, `encoder_input`, формат картинок, `built_at`. Поиск при старте сверяет с ним и коллекцию, и нормализатор запроса."""
 
 
 def encode_image(image: np.ndarray, fmt: str, quality: int) -> bytes:
@@ -40,9 +46,22 @@ class ImageStore(Protocol):
 
     def get(self, name: str) -> np.ndarray: ...
 
+    def put_json(self, name: str, data: dict) -> None: ...
+
+    def get_json(self, name: str) -> dict: ...
+
     def exists(self, name: str) -> bool: ...
 
     def ensure_available(self) -> None: ...
+
+
+def read_manifest(store: ImageStore) -> dict:
+    """Манифест хранилища; без него не проверить, чем нормализованы картинки, и это ошибка."""
+    if not store.exists(MANIFEST):
+        raise RuntimeError(
+            f"в хранилище картинок ({store.description}) нет {MANIFEST}: картинки собраны до его появления, пересоберите коллекцию build_catalog"
+        )
+    return store.get_json(MANIFEST)
 
 
 class LocalStore:
@@ -60,6 +79,17 @@ class LocalStore:
     def get(self, name: str) -> np.ndarray:
         """Прочитать кроп."""
         return decode_image((self.root / name).read_bytes())
+
+    def put_json(self, name: str, data: dict) -> None:
+        """Записать JSON."""
+        self.root.mkdir(parents=True, exist_ok=True)
+        (self.root / name).write_text(
+            json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
+
+    def get_json(self, name: str) -> dict:
+        """Прочитать JSON."""
+        return json.loads((self.root / name).read_text(encoding="utf-8"))
 
     def exists(self, name: str) -> bool:
         """Есть ли файл."""
@@ -119,6 +149,22 @@ class S3Store:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             cached.write_bytes(data)
         return decode_image(cached.read_bytes())
+
+    def put_json(self, name: str, data: dict) -> None:
+        """Загрузить JSON в бакет; в кэш не кладётся."""
+        self.client.put_object(
+            Bucket=self.bucket,
+            Key=self.key(name),
+            Body=json.dumps(data, ensure_ascii=False, indent=1).encode("utf-8"),
+            ContentType="application/json; charset=utf-8",
+        )
+
+    def get_json(self, name: str) -> dict:
+        """JSON из бакета мимо кэша: манифест нужен свежий, другая сборка могла его переписать."""
+        body = self.client.get_object(Bucket=self.bucket, Key=self.key(name))[
+            "Body"
+        ].read()
+        return json.loads(body.decode("utf-8"))
 
     def exists(self, name: str) -> bool:
         """Есть ли объект в бакете."""

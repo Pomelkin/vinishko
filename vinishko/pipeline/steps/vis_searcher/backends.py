@@ -123,7 +123,13 @@ class TensorRTRunner:
         self.description = f"TensorRT {trt.__version__}, {cache.name}"
 
     def __call__(self, images: np.ndarray | torch.Tensor) -> np.ndarray:
-        """Эмбеддинги батча float32 на CPU."""
+        """Эмбеддинги батча float32 на CPU.
+
+        Батч копируется на карту в текущем стриме torch, свой стрим engine ждёт эту копию (wait_stream) и синхронизируется с хостом
+        до чтения выхода. Без ожидания engine стартовал, пока default-стрим был занят (SAM3 в этом же процессе, соседний процесс на карте),
+        читал буфер до прихода данных, и целые батчи выходили правдоподобным мусором без единой ошибки: найдено 2026-09-27 по коллекциям
+        с битыми батчами по 16 векторов. Default-стрим для самого engine не годится: TensorRT вставляет в него лишние синхронизации.
+        """
         batch = torch.as_tensor(images).to(self.device, non_blocking=True).contiguous()
         if (
             tuple(batch.shape[1:]) != (3, *self.input_size)
@@ -135,12 +141,12 @@ class TensorRTRunner:
         out = torch.empty(
             batch.shape[0], self.embed_dim, device=self.device, dtype=torch.float32
         )
-        with torch.cuda.stream(self.stream):
-            self.context.set_input_shape(INPUT_NAME, tuple(batch.shape))
-            self.context.set_tensor_address(INPUT_NAME, batch.data_ptr())
-            self.context.set_tensor_address(OUTPUT_NAME, out.data_ptr())
-            if not self.context.execute_async_v3(self.stream.cuda_stream):
-                raise RuntimeError("TensorRT: execute_async_v3 вернул ошибку")
+        self.stream.wait_stream(torch.cuda.current_stream(self.device))
+        self.context.set_input_shape(INPUT_NAME, tuple(batch.shape))
+        self.context.set_tensor_address(INPUT_NAME, batch.data_ptr())
+        self.context.set_tensor_address(OUTPUT_NAME, out.data_ptr())
+        if not self.context.execute_async_v3(self.stream.cuda_stream):
+            raise RuntimeError("TensorRT: execute_async_v3 вернул ошибку")
         self.stream.synchronize()
         return out.cpu().numpy()
 

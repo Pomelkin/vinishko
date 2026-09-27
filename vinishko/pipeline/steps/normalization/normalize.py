@@ -65,6 +65,35 @@ def resolve(p: str, base: Path) -> Path:
     return Path(p) if Path(p).is_absolute() else base / p
 
 
+CROP_INDEPENDENT: dict[str, set[str]] = {
+    "segmentation": {"device"},
+    "label": {
+        "min_cover",
+        "min_fill",
+        "min_sharpness",
+        "min_length_ratio",
+        "min_position",
+        "min_label_px",
+    },
+    "selection": {"calibration", "threshold", "max_bottles", "min_bottle_px"},
+    "output": {"dir", "format", "quality"},
+}
+"""Параметры, от которых пиксели кропов не зависят: устройство, пороги отбора (они решают, годна ли бутылка, а не как она вырезана) и запись файлов.
+Всё остальное, включая output.height, меняет кроп: по нему запрос и каталог поиска должны совпадать."""
+
+
+def crop_config(cfg: dict) -> dict:
+    """Часть конфига, определяющая пиксели кропов: ею build_catalog подписывает коллекцию и хранилище картинок, а поиск при старте сверяет с ней нормализатор запроса."""
+    return {
+        section: {
+            key: value
+            for key, value in values.items()
+            if key not in CROP_INDEPENDENT.get(section, set())
+        }
+        for section, values in cfg.items()
+    }
+
+
 # ---------- отбор бутылок ----------
 
 
@@ -346,11 +375,15 @@ def render_bottle_box(
     if angle is None:
         angle = ax["angle"]
     bc = cfg["bottle_crop"]
-    pad_x, pad_y = padding if padding is not None else (bc["padding_x"], bc["padding_y"])
+    pad_x, pad_y = (
+        padding if padding is not None else (bc["padding_x"], bc["padding_y"])
+    )
     M, (rx1, ry1, bw, bh) = rotated_extent(polys, ax["center"], angle)
     px, py = pad_x * bw, pad_y * bh
     h, w = rgb.shape[:2]
-    frame = affine(M, np.array([[0, 0], [w, 0], [w, h], [0, h]], float))  # габариты самого кадра после поворота
+    frame = affine(
+        M, np.array([[0, 0], [w, 0], [w, h], [0, h]], float)
+    )  # габариты самого кадра после поворота
     (fx1, fy1), (fx2, fy2) = frame.min(0), frame.max(0)
     # запас не выходит за кадр: у каталожных вырезок бутылка часто упирается в край, и replicate размножил бы его полосой
     wx1, wy1 = max(rx1 - px, fx1), max(ry1 - py, fy1)
@@ -359,12 +392,19 @@ def render_bottle_box(
     A = M.copy()
     A[:, 2] -= [wx1, wy1]
     crop = cv2.warpAffine(
-        rgb, A, (W, H), flags=cv2.INTER_LINEAR, borderMode=BORDERS[bc["border"]], borderValue=(0, 0, 0)
+        rgb,
+        A,
+        (W, H),
+        flags=cv2.INTER_LINEAR,
+        borderMode=BORDERS[bc["border"]],
+        borderValue=(0, 0, 0),
     )
     max_h = bc["max_height"]
     if max_h and max_h < H:
         k = max_h / H
-        crop = cv2.resize(crop, (max(1, round(W * k)), max_h), interpolation=cv2.INTER_AREA)
+        crop = cv2.resize(
+            crop, (max(1, round(W * k)), max_h), interpolation=cv2.INTER_AREA
+        )
         A = A * k
     info = {
         "angle_deg": round(angle, 2),
@@ -526,6 +566,11 @@ class Normalizer:
                 f"калибровка сделана для сегментации {self.calib.get('segmentation')}, сейчас {self.seg.tag}"
             )
 
+    @property
+    def crop_config(self) -> dict:
+        """Часть конфига, определяющая пиксели кропов, см. crop_config: поиск сверяет её с манифестом своего каталога."""
+        return crop_config(self.cfg)
+
     def largest_label(self, labels: list[dict], ax: dict) -> list | None:
         """Полигоны самой крупной этикетки корпуса; полоски уже min_width_frac ширины бутылки, то есть акцизные марки, не считаются.
 
@@ -656,7 +701,9 @@ class Normalizer:
         angle = round(angle, 2)
         crop, info = render_bottle(rgb, cand["polys"], label, self.cfg, angle=angle)
         box, box_info = render_bottle_box(rgb, cand["polys"], self.cfg, angle=angle)
-        return BottleCrop(index, score, cand["polys"], label, angle, crop, info, box, box_info)
+        return BottleCrop(
+            index, score, cand["polys"], label, angle, crop, info, box, box_info
+        )
 
     def annotate_image(self, img: Image.Image) -> list[BottleCrop | RejectedBottle]:
         """Все бутылки, найденные SAM3, по убыванию скора отбора; каждая — BottleCrop с готовым кропом или RejectedBottle.
@@ -702,8 +749,12 @@ class Normalizer:
             )  # весь кадр как бутылка и этикетка, score 0: по нему дальше видно, что это обход, а отказы остаются в списке
             frame = [[[0, 0], [w, 0], [w, h], [0, h]]]
             crop, info = render_bottle(rgb, frame, frame, self.cfg, angle=0.0)
-            box, box_info = render_bottle_box(rgb, frame, self.cfg, angle=0.0, padding=(0.0, 0.0))
-            items.append(BottleCrop(1, 0.0, frame, frame, 0.0, crop, info, box, box_info))
+            box, box_info = render_bottle_box(
+                rgb, frame, self.cfg, angle=0.0, padding=(0.0, 0.0)
+            )
+            items.append(
+                BottleCrop(1, 0.0, frame, frame, 0.0, crop, info, box, box_info)
+            )
         return items
 
     def annotate(self, path: Path | str) -> list[BottleCrop | RejectedBottle]:
@@ -722,7 +773,8 @@ class Normalizer:
 def remove_stale(out_dir: Path, stem: str) -> None:
     """Удаляет результаты прошлого прогона этой же картинки: бутылок могло стать меньше."""
     stale = re.compile(
-        re.escape(stem) + r"_b\d+(\.(jpg|png|webp|json)|_label\.(npz|png)|_box\.(jpg|png|webp))"
+        re.escape(stem)
+        + r"_b\d+(\.(jpg|png|webp|json)|_label\.(npz|png)|_box\.(jpg|png|webp))"
     )
     for f in out_dir.iterdir():
         if stale.fullmatch(f.name):
@@ -840,13 +892,28 @@ def selftest() -> None:
             115 <= bh <= 185 and 35 <= bw <= 45, deg, bw, bh
         )  # вертикальная бутылка 40x180
         box, binfo = render_bottle_box(rgb, [poly], cfg, angle=info["angle_deg"])
-        px, py = cfg["bottle_crop"]["padding_x"] * bw, cfg["bottle_crop"]["padding_y"] * bh
+        px, py = (
+            cfg["bottle_crop"]["padding_x"] * bw,
+            cfg["bottle_crop"]["padding_y"] * bh,
+        )
         check(
-            abs(box.shape[1] - (bw + 2 * px)) <= 2 and abs(box.shape[0] - (bh + 2 * py)) <= 2, deg, box.shape, bw, bh
+            abs(box.shape[1] - (bw + 2 * px)) <= 2
+            and abs(box.shape[0] - (bh + 2 * py)) <= 2,
+            deg,
+            box.shape,
+            bw,
+            bh,
         )  # вся бутылка с запасом, а не окно этикетки
         verts = affine(np.array(binfo["matrix_src_to_dst"]), np.asarray(poly, float))
         check(
-            bool(verts.min() >= -1.5 and verts[:, 0].max() <= box.shape[1] + 1.5 and verts[:, 1].max() <= box.shape[0] + 1.5), deg, verts.min(0), verts.max(0)
+            bool(
+                verts.min() >= -1.5
+                and verts[:, 0].max() <= box.shape[1] + 1.5
+                and verts[:, 1].max() <= box.shape[0] + 1.5
+            ),
+            deg,
+            verts.min(0),
+            verts.max(0),
         )  # маска целиком внутри кропа
     cfg["orientation"]["upright_within_deg"] = 30.0
     for deg, method in (

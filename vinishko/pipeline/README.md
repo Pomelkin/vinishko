@@ -8,14 +8,20 @@
 from vinishko.pipeline.pipeline import Pipeline
 from vinishko.pipeline.steps.vis_searcher import VisSearcher
 
-result = Pipeline(searcher=VisSearcher())(photo)   # нормализатор поднимается сам: Normalizer()
-result.normalization    # разметка нормализации как есть
-result.search           # BottleCandidates | UnmatchedBottle на каждую годную бутылку, в том же порядке
-result.items            # итоговая разметка: бутылка без ответа поиска — RejectedBottle с причиной
-result.timings          # секунды на шаг
+result = Pipeline(searcher=VisSearcher())(
+    photo
+)  # нормализатор поднимается сам: Normalizer()
+result.normalization  # разметка нормализации как есть
+result.search  # BottleCandidates | UnmatchedBottle на каждую годную бутылку, в том же порядке
+result.items  # итоговая разметка: бутылка без ответа поиска — RejectedBottle с причиной
+result.timings  # секунды на шаг
 ```
 
 Устройства — `segmentation.device` в normalize.toml и `device` в config.yaml (`auto`, `cpu` либо `cuda:<индекс>`); переменные окружения `NORMALIZER_DEV` и `VIS_SEARCHER_DEV` их перекрывают.
+
+С поиском `Pipeline` при создании сверяет нормализатор с каталогом: часть normalize.toml, определяющая пиксели кропов (`Normalizer.crop_config`,
+без устройства, порогов отбора и записи файлов), должна совпадать с `manifest.json`, который `build_catalog` кладёт рядом с картинками коллекции.
+Иначе ошибка перечисляет расхождения: пересобрать коллекцию либо вернуть конфиг.
 
 ## Прогон одной картинки
 

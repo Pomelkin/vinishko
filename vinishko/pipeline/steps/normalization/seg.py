@@ -43,7 +43,9 @@ def open_image(path: Path | str) -> Image.Image:
     image = ImageOps.exif_transpose(Image.open(path))
     if image.mode in ("RGBA", "LA", "PA") or "transparency" in image.info:
         image = image.convert("RGBA")
-        image = Image.alpha_composite(Image.new("RGBA", image.size, (255, 255, 255, 255)), image)
+        image = Image.alpha_composite(
+            Image.new("RGBA", image.size, (255, 255, 255, 255)), image
+        )
     return image.convert("RGB")
 
 

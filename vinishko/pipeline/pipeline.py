@@ -8,22 +8,37 @@ from typing import Protocol
 from PIL import Image
 
 from vinishko.pipeline.steps.normalization.normalize import Normalizer
-from vinishko.pipeline.structs import BottleCandidates, BottleCrop, RejectedBottle, UnmatchedBottle
+from vinishko.pipeline.structs import (
+    BottleCandidates,
+    BottleCrop,
+    RejectedBottle,
+    UnmatchedBottle,
+)
 
 
 class Searcher(Protocol):
     """Визуальный поиск: кропы бутылок → ответ на каждый, в том же порядке: BottleCandidates с кандидатами каталога либо UnmatchedBottle с отказом и причиной."""
 
-    def __call__(self, crops: list[BottleCrop]) -> list[BottleCandidates | UnmatchedBottle]: ...
+    def __call__(
+        self, crops: list[BottleCrop]
+    ) -> list[BottleCandidates | UnmatchedBottle]: ...
+
+    def check_normalization(self, normalization: dict) -> None:
+        """Ошибка, если нормализатор с таким crop_config вырезает кропы не так, как при сборке каталога поиска."""
+        ...
 
 
 class Reranker(Protocol):
     """Уточнение внутри группы: те же ответы с переставленными и пересчитанными кандидатами."""
 
-    def __call__(self, results: list[BottleCandidates | UnmatchedBottle]) -> list[BottleCandidates | UnmatchedBottle]: ...
+    def __call__(
+        self, results: list[BottleCandidates | UnmatchedBottle]
+    ) -> list[BottleCandidates | UnmatchedBottle]: ...
 
 
-def replace_rejected(items: list[BottleCrop | RejectedBottle], rejected: list[RejectedBottle]) -> list[BottleCrop | RejectedBottle]:
+def replace_rejected(
+    items: list[BottleCrop | RejectedBottle], rejected: list[RejectedBottle]
+) -> list[BottleCrop | RejectedBottle]:
     """Разметка, где бутылки с uuid из rejected заменены отказами: так шаг после нормализации бракует бутылку."""
     by_uuid = {item.uuid: item for item in rejected}
     return [by_uuid.get(item.uuid, item) for item in items]
@@ -43,7 +58,10 @@ class PipelineResult:
     @property
     def items(self) -> list[BottleCrop | RejectedBottle]:
         """Итоговая разметка: бутылка без ответа поиска стоит здесь RejectedBottle с тем же uuid и причиной шага поиска."""
-        return replace_rejected(self.normalization, [r.rejected for r in self.search if isinstance(r, UnmatchedBottle)])
+        return replace_rejected(
+            self.normalization,
+            [r.rejected for r in self.search if isinstance(r, UnmatchedBottle)],
+        )
 
     @property
     def crops(self) -> list[BottleCrop]:
@@ -55,18 +73,28 @@ class Pipeline:
     """Оркестратор: нормализация → визуальный поиск → реранкер.
 
     Без normalizer поднимается Normalizer() с конфигом и устройством по умолчанию. Шаги после нормализации подключаются по мере
-    готовности: без поиска результат — одна разметка.
+    готовности: без поиска результат — одна разметка. С поиском при создании сверяется нормализатор: часть его конфига, определяющая
+    пиксели кропов (Normalizer.crop_config), должна совпадать с той, что собирала каталог поиска, иначе ошибка с перечнем расхождений.
     """
 
-    def __init__(self, normalizer: Normalizer | None = None, searcher: Searcher | None = None, reranker: Reranker | None = None) -> None:
+    def __init__(
+        self,
+        normalizer: Normalizer | None = None,
+        searcher: Searcher | None = None,
+        reranker: Reranker | None = None,
+    ) -> None:
         self.normalizer = normalizer or Normalizer()
         self.searcher, self.reranker = searcher, reranker
+        if searcher is not None:
+            searcher.check_normalization(self.normalizer.crop_config)
 
     def __call__(self, img: Image.Image | Path | str) -> PipelineResult:
         """Картинка → выходы шагов: разметка нормализации, ответы поиска по годным бутылкам, время каждого шага."""
         started = time.perf_counter()
         normalization = self.normalizer(img)
-        result = PipelineResult(normalization, timings={"normalization": time.perf_counter() - started})
+        result = PipelineResult(
+            normalization, timings={"normalization": time.perf_counter() - started}
+        )
         crops = [item for item in normalization if isinstance(item, BottleCrop)]
         if not crops or self.searcher is None:
             return result

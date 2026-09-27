@@ -1,24 +1,24 @@
 # Визуальный поиск: настройки по умолчанию. Относительные пути считаются от этого файла, ../../../../ — корень репозитория.
-model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-1024 # репозиторий Hugging Face с экспортом DinoV3ForWine
+model: pomelk1n/siglipus-twinturbo-gguf-umer # репозиторий Hugging Face с экспортом энкодера: SigLIP2 so400m/14 384; DINO — pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-1024
 revision: null # ревизия репозитория; коллекция помнит свою и с другой не работает
 device: auto # auto | cpu | cuda:<индекс>; переменная VIS_SEARCHER_DEV перекрывает; auto — cuda:0 при доступной CUDA, иначе cpu
-encoder_input: crop                                     # crop — окно этикетки с залитым фоном (вход обучения DINO); box_crop — вся бутылка как на фото (для TULIP); коллекцию собирать тем же значением
+encoder_input: [ crop, box_crop ] # входы энкодера, по пространству векторов на каждый: crop — окно этикетки с залитым фоном, box_crop — вся бутылка как на фото; два входа — гибрид, скор = среднее косинусов; коллекцию собирать тем же набором
 batch_size: 16 # потолок батча энкодера, для TensorRT — профиль engine
-top_k: 10 # сколько ближайших векторов брать из коллекции
+top_k: 10 # сколько ближайших векторов брать из каждого пространства
 
 qdrant:
-  collection: catalog_vitl16_1024
+  collection: catalog_siglip2_hybrid
   host: pomelka.pro
   port: 443
   https: true # true для сервера за TLS, ключ API — в окружении QDRANT_API_KEY
   # path: ../../../../.qdrant                           # встроенный qdrant без сервера, для локальной отладки
 
 search:
-  # mode: groups # группы одинакового дизайна: скор группы — лучший косинус её позиций из top_k
+  # mode: groups # группы одинакового дизайна: скор группы — лучший скор её позиций из top_k
   # top_groups: 3
-  # group_threshold: 0.5 # порог по косинусу группы; калибровать по гистограммам cos_top1 отчёта bench_dino
+  # group_threshold: 0.7
   mode: top_n # либо просто top_k позиций
-  cosine_threshold: 0.5 # если лучший косинус ниже, кандидатов нет
+  cosine_threshold: 0.7 # если лучший скор ниже, кандидатов нет. Гибрид SigLIP2 на тесте 2026-09-27: 0.70 — ни одного ложного отказа, 23% чужих режется сразу, остальных отсеивает VLM-реранкер; без реранкера максимум точности при 0.77 (recall@1 85.6%, ложных 5.6%, верных отказов 70%); 0.5 — выключить отказ для замеров
 
 images:
   kind: local # кропы коллекции, которые положил build_catalog

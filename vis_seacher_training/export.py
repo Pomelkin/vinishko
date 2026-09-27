@@ -120,8 +120,16 @@ def verify_tensorrt(
         min(input_size[1], images.shape[3]),
     )
     batch[:, :, :height, :width] = images[:, :, :height, :width]
-    with tempfile.TemporaryDirectory(prefix="trt-verify-") as tmp:  # engine сверки одноразовый: не в директорию модели, которая уезжает на HF, и не в общий кэш, где имена совпадают
-        runner = TensorRTRunner(path, torch.device("cuda", 0), max_batch=batch.shape[0], input_size=input_size, cache_dir=Path(tmp))
+    with (
+        tempfile.TemporaryDirectory(prefix="trt-verify-") as tmp
+    ):  # engine сверки одноразовый: не в директорию модели, которая уезжает на HF, и не в общий кэш, где имена совпадают
+        runner = TensorRTRunner(
+            path,
+            torch.device("cuda", 0),
+            max_batch=batch.shape[0],
+            input_size=input_size,
+            cache_dir=Path(tmp),
+        )
         with torch.no_grad():
             want = reference(batch).numpy()
         got = runner(batch)
