@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 TEST_CSV = Path("datasets/local/test/test.csv")
-RUNS_DIR = Path("datasets/local/no_norm")
+RUNS_DIR = Path("datasets/local/no_norm_dropna")
 KS = (1, 2, 3)
 
 

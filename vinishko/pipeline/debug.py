@@ -86,7 +86,7 @@ def print_summary(report: dict) -> None:
     console.print(table)
 
 
-def select_images(input_path: Path, limit: int | None) -> list[Path]:
+def select_images(input_path: Path, limit: int | None, drop_na: bool = False) -> list[Path]:
     """Фото из файла, датасета с CSV или директории images; порядок CSV либо имени файла."""
     if input_path.is_file():
         images = [input_path]
@@ -97,7 +97,9 @@ def select_images(input_path: Path, limit: int | None) -> list[Path]:
                 reader = csv.DictReader(stream)
                 if "image_filename" not in (reader.fieldnames or []):
                     raise click.UsageError(f"в {manifest} нет колонки image_filename")
-                images = [input_path / "images" / name for row in reader if (name := (row["image_filename"] or "").strip())]
+                images = [input_path / "images" / name for row in reader
+                          if not (drop_na and any(not (value or "").strip() for value in row.values()))
+                          if (name := (row["image_filename"] or "").strip())]
         else:
             folder = input_path / "images" if (input_path / "images").is_dir() else input_path
             images = sorted((p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES), key=lambda p: p.name.casefold())
@@ -298,6 +300,7 @@ def input_mode(stage: str, skip_normalization: bool, no_normalization: bool, ove
 @click.option("-o", "--output-dir", type=click.Path(file_okay=False, path_type=Path), required=True, help="Сюда ляжет директория с именем файла; старая с тем же именем удаляется")
 @click.option("--stage", type=click.Choice(["normalization", "search", "full"]), default="full", show_default=True, help="Последний выполняемый этап: нормализация, векторный поиск или NDR")
 @click.option("--limit", type=click.IntRange(min=1), default=None, help="Первые N фото датасета или директории; без лимита — все")
+@click.option("--drop-na", is_flag=True, help="Пропустить строки CSV с пустым значением в любой колонке")
 @click.option("--batch-size", type=click.IntRange(min=1), default=2, show_default=True, help="Число фото в пачке поиска; нормализация SAM3 всегда по одному фото")
 @click.option("--skip-normalization", is_flag=True, help="Для search/full использовать <output-dir>/<имя>/normalization из прежнего запуска, не загружая SAM3")
 @click.option("--no-normalization", is_flag=True, help="Для search/full искать прямо по каждому исходному фото целиком, без SAM3 и сохранённых кропов")
@@ -305,7 +308,7 @@ def input_mode(stage: str, skip_normalization: bool, no_normalization: bool, ove
 @click.option("--search-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=DEFAULT_CONFIG, show_default=True, help="Конфиг визуального поиска; его debug_path не используется, разбор пишется в <output-dir>/<имя>/search")
 @click.option("-c", "--norm-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True, help="Конфиг нормализации")
 @click.option("--set", "overrides", multiple=True, metavar="секция.ключ=значение", help="Переопределить параметр конфига нормализации")
-def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batch_size: int, skip_normalization: bool, no_normalization: bool, no_search: bool, search_config: Path, norm_config: Path, overrides: tuple[str, ...]) -> None:
+def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, drop_na: bool, batch_size: int, skip_normalization: bool, no_normalization: bool, no_search: bool, search_config: Path, norm_config: Path, overrides: tuple[str, ...]) -> None:
     """Прогнать выбранные фото до указанного этапа и записать выходы по директориям.
 
     <output-dir>/<имя файла>/normalization — кропы годных бутылок, маски и json как у CLI нормализации, плюс markup.json со всеми
@@ -316,7 +319,7 @@ def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batc
     if no_search:
         stage = "normalization"
     mode = input_mode(stage, skip_normalization, no_normalization, overrides)
-    images = select_images(input_path, limit)
+    images = select_images(input_path, limit, drop_na)
     if mode == "cached":
         for image in images:
             marker = output_path(output_dir, image) / "normalization" / "markup.json"
