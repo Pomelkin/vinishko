@@ -1,5 +1,6 @@
 import copy
 import json
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -119,16 +120,15 @@ def verify_tensorrt(
         min(input_size[1], images.shape[3]),
     )
     batch[:, :, :height, :width] = images[:, :, :height, :width]
-    runner = TensorRTRunner(
-        path, torch.device("cuda", 0), max_batch=batch.shape[0], input_size=input_size
-    )
-    with torch.no_grad():
-        want = reference(batch).numpy()
-    got = runner(batch)
-    cosine = float((want * got).sum(1).min())
-    logger.info(
-        f"{path.name} через TensorRT: наименьший косинус с PyTorch float32 {cosine:.5f}"
-    )
+    with tempfile.TemporaryDirectory(prefix="trt-verify-") as tmp:  # engine сверки одноразовый: не в директорию модели, которая уезжает на HF, и не в общий кэш, где имена совпадают
+        runner = TensorRTRunner(path, torch.device("cuda", 0), max_batch=batch.shape[0], input_size=input_size, cache_dir=Path(tmp))
+        with torch.no_grad():
+            want = reference(batch).numpy()
+        got = runner(batch)
+        cosine = float((want * got).sum(1).min())
+        logger.info(
+            f"{path.name} через TensorRT: наименьший косинус с PyTorch float32 {cosine:.5f}"
+        )
     return cosine
 
 
@@ -192,6 +192,7 @@ def export_model(
         "input_size": list(input_size),
         "patch_size": patch,
         "pad_color": list(fill),
+        "resize": "pad",
         "preprocess": "кроп нормализации вписать в input_size с сохранением пропорций (area при уменьшении, cubic при увеличении), дополнить pad_color по центру",
         "mean": list(mean),
         "std": list(std),

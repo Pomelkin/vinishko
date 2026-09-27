@@ -109,6 +109,8 @@ def load_config(path: Path | None = None) -> VisSearcherConfig:
         cfg.reference_images.dir = resolve_path(cfg.reference_images.dir, base)
     if cfg.catalog_csv is not None:
         cfg.catalog_csv = resolve_path(cfg.catalog_csv, base)
+    if resolve_path(Path(cfg.model), base).is_dir():  # локальная директория экспорта вместо репозитория HF: путь от файла конфига
+        cfg.model = str(resolve_path(Path(cfg.model), base))
     return cfg
 
 

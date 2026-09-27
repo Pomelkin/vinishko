@@ -17,7 +17,8 @@ from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate
 
 class VanillaVlmTests(unittest.TestCase):
     def test_sdk_receives_images_slugs_and_structured_schema(self) -> None:
-        crop = BottleCrop(1, 0.9, [], [], 0.0, np.zeros((4, 4, 3), dtype=np.uint8), {})
+        image = np.zeros((4, 4, 3), dtype=np.uint8)
+        crop = BottleCrop(1, 0.9, [], [], 0.0, image, {}, image, {})
         candidates = [Candidate(slug, 0.9, crop.crop, crop, "unused", True, {"slug": slug}) for slug in ("first", "second", "third")]
         calls = []
 

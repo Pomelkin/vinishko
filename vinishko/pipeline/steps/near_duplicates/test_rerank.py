@@ -24,7 +24,8 @@ from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate, U
 
 def crop() -> BottleCrop:
     """Минимальная бутылка с валидным RGB-кропом."""
-    return BottleCrop(1, 0.9, [], [], 0.0, np.zeros((4, 4, 3), dtype=np.uint8), {})
+    image = np.zeros((4, 4, 3), dtype=np.uint8)
+    return BottleCrop(1, 0.9, [], [], 0.0, image, {}, image, {})
 
 
 def candidate(bottle: BottleCrop, slug: str, group: str, members: list[str]) -> Candidate:

@@ -112,7 +112,7 @@ python -m vinishko.pipeline.debug photo.jpg -o runs/            # --no-search: �
 
 | Путь                         | Что внутри                                                                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `normalization/`             | кропы `photo_bN.jpg`, точные кропы `photo_bN_pipeline.npy`, маски и json на каждую годную бутылку; `markup.json` — все бутылки и причины отказов |
+| `normalization/`             | кропы поиска `photo_bN.jpg`, точные кропы `photo_bN_pipeline.npy`, кропы всей бутылки `photo_bN_box.jpg`, маски и json; `markup.json` — все бутылки и причины отказов |
 | `search/`                    | разбор поиска как при `debug_path`: `q<N>_query_<uuid>.jpg`, `q<N>_<ранг>_<группа>_<slug>_<cos>[_bygroup].jpg`, `results.json` |
 | `rerank/`                    | полный trace NDR v5 по UUID бутылки для тех групп, где потребовался вызов модели |
 | `result.json`                | итог по каждой бутылке: кандидаты либо отказ с шагом и причиной, время шагов                                  |

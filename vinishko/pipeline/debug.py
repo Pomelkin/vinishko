@@ -40,7 +40,7 @@ def normalization_markup(items: list[BottleCrop | RejectedBottle], stem: str, fm
     out = []
     for item in items:
         if isinstance(item, BottleCrop):
-            out.append({"status": "ok", **item.markup(), "crop_file": f"{stem}_b{item.index}.{fmt}", "pipeline_crop_file": f"{stem}_b{item.index}_pipeline.npy", "crop_info": item.crop_info})
+            out.append({"status": "ok", **item.markup(), "crop_file": f"{stem}_b{item.index}.{fmt}", "pipeline_crop_file": f"{stem}_b{item.index}_pipeline.npy", "box_file": f"{stem}_b{item.index}_box.{fmt}", "crop_info": item.crop_info, "box_info": item.box_info})
         else:
             out.append({"status": "rejected", **asdict(item), "title": item.reason.title, "message": item.message})
     return out
@@ -170,7 +170,13 @@ def cached_crop(row: dict, folder: Path, image: Path) -> BottleCrop:
     if crop.dtype != np.uint8 or crop.ndim != 3 or crop.shape[2] != 3:
         raise ValueError(f"кроп {crop_file} должен быть uint8 RGB")
     info = row.get("crop_info") or {"angle_deg": meta["bottle_angle"], "matrix_src_to_dst": meta["bottle_crop_matrix"]}
-    return BottleCrop(row["index"], row["score"], row["bottle"], row["label"], row["angle"], crop, info, row["uuid"])
+    box_file = folder / row.get("box_file", row["crop_file"])
+    if not box_file.resolve().is_relative_to(folder.resolve()):
+        raise ValueError(f"недопустимый путь кропа {box_file}")
+    with Image.open(box_file) as saved:
+        box_crop = np.asarray(saved.convert("RGB"))
+    box_info = row.get("box_info") or {"angle_deg": meta["bottle_angle"], "matrix_src_to_dst": meta.get("bottle_box_matrix", meta["bottle_crop_matrix"])}
+    return BottleCrop(row["index"], row["score"], row["bottle"], row["label"], row["angle"], crop, info, box_crop, box_info, row["uuid"])
 
 
 def load_normalization(image: Path, output_dir: Path) -> list[BottleCrop | RejectedBottle]:
@@ -213,7 +219,8 @@ class RawImageNormalizer:
         rgb = np.asarray(image.convert("RGB")).copy()
         width, height = image.size
         whole = [[[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]]]
-        return [BottleCrop(1, 0.0, whole, [], 0.0, rgb, {"mode": "raw", "width": width, "height": height})]
+        info = {"mode": "raw", "width": width, "height": height}
+        return [BottleCrop(1, 0.0, whole, [], 0.0, rgb, info, rgb, info)]
 
 
 def write_debug_result(
