@@ -24,11 +24,25 @@ results = searcher(
 Заданное проверяется: нет такой карты или нужного пакета — ошибка, а не тихий откат. На CUDA граф исполняет TensorRT
 (пакет `tensorrt`, группа `flash-inference`), в bfloat16 на картах с его аппаратной поддержкой, Ampere и новее, иначе во float32;
 engine собирается при первом запуске несколько минут и кэшируется в `cache_dir/engines/<репозиторий>/<ревизия>/`. На CPU —
-OpenVINO во float32 (пакет `openvino`, группа `cpu-inference`). На Ryzen 7 5825U новая модель дала эмбеддинг 1024 длины за 2,38 с на одном готовом кропе; первый запуск дополнительно скачал ONNX-граф размером 1,22 ГБ и скомпилировал его. Для 16 ГБ ОЗУ `cpu_batch_size: 1` ограничивает один вызов OpenVINO.
+OpenVINO во float32 (пакет `openvino`, группа `cpu-inference`). На Ryzen 7 5825U новая модель дала эмбеддинг 1024 длины за 2,38 с на одном готовом кропе; первый запуск дополнительно скачал ONNX-граф размером 1,22 ГБ и скомпилировал его. `cpu_batch_size` ограничивает число изображений в одном вызове OpenVINO (в текущем конфиге — 2).
+
+## Другая модель
+
+Модель поиска меняется строкой `model` в `config.yaml`: репозиторий Hugging Face либо локальная директория с тем же набором файлов
+(`config.json` с `embed_dim`, `preprocess.json`, `model.onnx`, `model.bf16.onnx`). Контракт один: вход float32 RGB NCHW 0…255, нормировка
+внутри графа, выход L2-нормированные эмбеддинги; как готовить вход, говорит `preprocess.json`: `input_size`, `resize` (`pad` — вписать
+с полями цвета `pad_color`, `squash` — растянуть без полей), `interpolation` (`area_cubic`, `bilinear`, `bicubic`), `mean` и `std` только для справки. Коллекция помнит модель и ревизию,
+поэтому после смены модели её надо пересобрать.
+
+Экспорт визуальной башни TULIP из форка open_clip в этот формат: `python -m scripts.export_tulip -o weights/tulip_so400m_14_384` (чекпоинт
+`weights/tulip-so400m-14-384.ckpt`, вход 384×384, `resize: squash`, как в замерах `scripts/bench_tulip`). SigLIP2 с Hugging Face: `python -m scripts.export_siglip2 -o weights/siglip2_so400m_14_384` (`google/siglip2-so400m-patch14-384`,
+эмбеддинг — выход MAP-головы, вход 384×384, `resize: squash`). Общий код обоих экспортов — `scripts/export_common.py`.
+Локальные экспорты лежат в `weights/`: `dinov3_vitl16_512`, `dinov3_vitl16_1024`, `tulip_so400m_14_384`, `siglip2_so400m_14_384`; в `model` можно указать репозиторий HF либо путь к такой директории, относительный
+путь считается от файла конфига, например `../../../../weights/tulip_so400m_14_384`.
 
 ## Готовая коллекция и текущий поиск
 
-Текущий `config.yaml` настроен на модель `vitl16-1024` и коллекцию `catalog_vitl16_1024` на `pomelka.pro`. При обычном запуске нормализатор создаёт `crop` этикетки для энкодера и `box_crop` всей бутылки для сохранения и каталога; NDR получает исходное фото запроса. При `--skip-normalization --normalized-dir datasets/local/normalized/test` энкодер получает JPEG из `images_crop`, а NDR — JPEG из `images_crop_box`. `images` указывает на локальную копию `vino/catalog/` в `datasets/local/normalized/catalog/images`; по ней поиск читает кандидатов. Для старых точек без `image_crop=bottle_box` NDR использует исходные эталоны из `reference_images`. Карточки берутся из `datasets/local/catalog/catalog.csv`.
+Текущий `config.yaml` настроен на модель `vitl16-1024` и коллекцию `catalog_vitl16_1024` на `pomelka.pro`. При обычном запуске нормализатор создаёт `crop` этикетки для энкодера и `box_crop` всей бутылки для сохранения и NDR. При `--skip-normalization --normalized-dir datasets/local/normalized/test` энкодер получает JPEG из `images_crop`, а NDR — JPEG из `images_crop_box`. `images` указывает на локальную копию `vino/catalog/` в `datasets/local/normalized/catalog/images`; по ней поиск читает кандидатов. Для старых точек без `image_crop=bottle_box` NDR использует исходные эталоны из `reference_images`. Карточки берутся из `datasets/local/catalog/catalog.csv`.
 
 Из S3 скачаны 176 пар JPEG теста из `test-data-norm/norm-images.tar.gz` и 1981 JPEG каталога (префикс `catalog/`). Поиск требует `QDRANT_API_KEY`; без ключа удалённый сервер отвечает 401, поэтому наличие и содержимое новой коллекции локально пока не проверены.
 
@@ -58,7 +72,10 @@ python -m vinishko.pipeline.steps.vis_searcher.build_catalog \
 Устройство энкодера — `VIS_SEARCHER_DEV`, нормализации — `NORMALIZER_DEV`.
 
 Каждое фото каталога проходит нормализацию, на нём должна найтись ровно одна годная бутылка (`--on-failure skip` пропускает остальные
-и перечисляет их в конце, `--report` пишет JSON). Вектор считается по кропу этикетки, в хранилище под именем `<slug>.jpg` записывается вся бутылка для VLM.
+и перечисляет их в конце, `--report` пишет JSON). Вектор считается с кропа, заданного `encoder_input` конфига: `crop` — окно этикетки с залитым фоном, вход обучения DINO, либо `box_crop` —
+вся бутылка как на фото, для TULIP и подобных; коллекция помнит выбор и с другим значением не примется. В хранилище картинок под именем
+`<slug>.jpg` всегда уходит вся бутылка каталожного фото (`BottleCrop.box_crop`, bbox маски с запасом, фон не тронут): её получает второй уровень как `Candidate.image`,
+она того же вида, что `box_crop` запроса, который получает NDR.
 Метаданные точки: `slug`, `group`, `group_slugs` — все позиции группы, попавшие в коллекцию, `image`, `source_image`, поля каталога
 (`name`, `winery`, `vintage`, `abv`, …), `model`, `model_revision`, `input_size`, `precision`. Группа берётся из колонки `--group-column`;
 пустое значение или отсутствие колонки — позиция сама себе группа. Дешёвые проверки идут до загрузки моделей: колонки CSV и дубли slug,
@@ -80,3 +97,18 @@ python -m vinishko.pipeline.steps.vis_searcher.build_catalog \
 
 `debug_path` — директория для разбора глазами: на каждый вызов поддиректория с меткой времени, в ней `q<N>_query_<uuid>.jpg` — кроп
 запроса для поиска, `q<N>_query_<uuid>_box.jpg` — кроп бутылки для просмотра (VLM получает исходное фото), `q<N>_<ранг>_<slug>_<cos>.jpg` — кандидаты, в режиме групп `q<N>_<ранг>_<группа>_<slug>_<cos>[_bygroup].jpg`, и `results.json`.
+
+## Оценка на тесте
+
+```bash
+python -m vinishko.pipeline.steps.vis_searcher.evaluate --test-dir datasets/hack-vine/test        # test.csv: image_filename, slug
+```
+
+Каждое фото проходит нормализацию и поиск по `config.yaml`; ответ — кандидаты бутылки с лучшим скором отбора. По фото, чей slug есть
+в коллекции, считаются recall@1/3/5 и `group_recall` (slug состоит в группе какого-то кандидата); отдельно `recall@k_any_bottle` по всем
+бутылкам фото, для полок. Пустой slug значит, что ответа нет: `correct_reject` — поиск отказал, `false_accept` — выдал кандидатов; slug задан, но в коллекции
+его нет (фото каталога не прошло нормализацию) — `answer_not_indexed`, такие фото ни в recall, ни в отказ не идут;
+`false_reject` — ответ был, а поиск отказал; `no_bottle` — нормализация не нашла годной бутылки. В отчёт идут квантили косинуса top-1
+для попаданий, промахов и ложных принятий — по ним калибруются пороги. Результат в `reports/vis_searcher/<время>/`: `report.json`,
+`per_image.csv` и `dumps/<фото>/` на каждое фото (`--dump misses` — только промахи, `none` — без дампов): копия исходника, `normalization.json`
+со всеми бутылками и причинами отказов, а если поиск был — оба кропа запроса, картинки кандидатов и `results.json`.

@@ -1,7 +1,8 @@
 # Визуальный поиск: настройки по умолчанию. Относительные пути считаются от этого файла, ../../../../ — корень репозитория.
-model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-1024 # модель новой коллекции из main
+model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-1024 # модель текущей коллекции DINOv3
 revision: null # ревизия репозитория; коллекция помнит свою и с другой не работает
-device: auto                                            # auto | cpu | cuda:<индекс>; переменная VIS_SEARCHER_DEV перекрывает; auto — cuda:0 при доступной CUDA, иначе cpu
+device: auto # auto | cpu | cuda:<индекс>; переменная VIS_SEARCHER_DEV перекрывает; auto — cuda:0 при доступной CUDA, иначе cpu
+encoder_input: crop                                     # crop — окно этикетки с залитым фоном (вход обучения DINO); box_crop — вся бутылка как на фото (для TULIP); коллекцию собирать тем же значением
 batch_size: 16 # потолок батча энкодера, для TensorRT — профиль engine
 cpu_batch_size: 2
 top_k: 1 # ближайшая позиция задаёт группу для NDR

@@ -101,6 +101,10 @@ class VisSearcher:
             raise RuntimeError(
                 f"коллекция {info.name} построена со входом {info.input_size}, у модели {files.input_size}"
             )
+        if info.encoder_input != self.cfg.encoder_input:
+            raise RuntimeError(
+                f"коллекция {info.name} собрана по {info.encoder_input}, а в конфиге encoder_input={self.cfg.encoder_input}: пересоберите коллекцию либо верните значение"
+            )
         return info
 
     def _check_store(self) -> None:
@@ -122,7 +126,7 @@ class VisSearcher:
         """Ответ по каждому кропу, в порядке кропов: результатов ровно столько, сколько кропов."""
         if not crops:
             return []
-        vectors = self.encoder([crop.crop for crop in crops])
+        vectors = self.encoder([getattr(crop, self.cfg.encoder_input) for crop in crops])
         hits_by_crop = search_many(self.client, self.collection, vectors, self.cfg.top_k)
         results = [
             self._search(crop, hits)
@@ -229,7 +233,7 @@ class VisSearcher:
         )
 
     def dump(self, results: list[BottleCandidates | UnmatchedBottle], out: Path) -> None:
-        """Разбор глазами в директорию out: кроп каждого запроса, картинки его кандидатов с косинусом, а в режиме групп и с группой, в имени файла, и results.json с причинами отказов."""
+        """Разбор глазами в директорию out: оба кропа каждого запроса (поиска и вся бутылка _box), картинки его кандидатов с косинусом, а в режиме групп и с группой, в имени файла, и results.json с причинами отказов."""
         out.mkdir(parents=True, exist_ok=True)
         grouped = isinstance(self.cfg.search, GroupSearch)
         report = []

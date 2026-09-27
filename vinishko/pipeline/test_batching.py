@@ -51,13 +51,17 @@ class BatchTests(unittest.TestCase):
         searcher.encoder = Mock(return_value=np.ones((1, 2), np.float32))
         searcher.client = object()
         searcher.collection = "catalog"
-        searcher.cfg = SimpleNamespace(top_k=5, debug_path=None)
+        searcher.cfg = SimpleNamespace(top_k=5, debug_path=None, encoder_input="crop")
         searcher._search = Mock(return_value="found")
         with patch("vinishko.pipeline.steps.vis_searcher.search.search_many", return_value=[[]]):
             self.assertEqual(searcher([bottle]), ["found"])
         sent = searcher.encoder.call_args.args[0][0]
         self.assertIs(sent, bottle.crop)
         self.assertIsNot(sent, bottle.original)
+        searcher.cfg.encoder_input = "box_crop"
+        with patch("vinishko.pipeline.steps.vis_searcher.search.search_many", return_value=[[]]):
+            searcher([bottle])
+        self.assertIs(searcher.encoder.call_args.args[0][0], bottle.box_crop)
 
     def test_encoder_preprocess_respects_model_resize_contract(self) -> None:
         image = np.full((2, 4, 3), (200, 0, 0), np.uint8)
@@ -132,7 +136,7 @@ class BatchTests(unittest.TestCase):
         )
 
     def test_cpu_encoder_limits_openvino_batch(self) -> None:
-        files = SimpleNamespace(input_size=(2, 2), pad_color=(0, 0, 0), resize="pad", embed_dim=2)
+        files = SimpleNamespace(input_size=(2, 2), pad_color=(0, 0, 0), resize="pad", interpolation="area_cubic", embed_dim=2)
         device = Device(torch.device("cpu"), "openvino", "fp32")
         runner = Mock(side_effect=lambda batch: np.ones((len(batch), 2), np.float32))
         with (

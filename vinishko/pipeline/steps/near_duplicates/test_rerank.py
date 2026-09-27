@@ -100,7 +100,7 @@ class NearDuplicateRerankerTests(unittest.TestCase):
             cfg.images = None
             cfg.reference_images.dir = root
             files = SimpleNamespace(repo=cfg.model, revision="revision", embed_dim=4, input_size=(512, 512))
-            info = CollectionInfo(cfg.qdrant.collection, 4, 1, cfg.model, "revision", (512, 512))
+            info = CollectionInfo(cfg.qdrant.collection, 4, 1, cfg.model, "revision", (512, 512), "crop")
             payload = {"slug": "first", "group": "first", "source_image": "source.png"}
             with (
                 patch("vinishko.pipeline.steps.vis_searcher.search.fetch_model", return_value=files),

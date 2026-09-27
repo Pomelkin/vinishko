@@ -10,7 +10,6 @@ dependencies = [
     "opencv-python>=5.0.0.93",
     "pandas>=3.0.5",
     "pillow>=12.3.0",
-    "pydantic>=2.0",
     "python-dotenv>=1.2.3",
     "torch==2.10.0",
     "transformers>=5.17.0",
@@ -29,6 +28,7 @@ dependencies = [
     "boto3>=1.43.75",
     "httpx>=0.28.1",
     "platformdirs>=4.11.8",
+    "pydantic>=2.13.5",
 ]
 [dependency-groups]
 cpu-inference = [
