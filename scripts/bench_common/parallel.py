@@ -17,6 +17,7 @@ from rich.progress import Progress
 
 from scripts.bench_common.data import Split
 
+
 Advance = Callable[[int], None]
 """Воркер сообщает, на сколько штук продвинулся; бар рисует главный процесс."""
 

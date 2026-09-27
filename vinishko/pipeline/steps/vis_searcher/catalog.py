@@ -9,9 +9,13 @@ from dataclasses import dataclass
 
 import numpy as np
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, ScoredPoint, VectorParams
+from qdrant_client.models import Distance
+from qdrant_client.models import PointStruct
+from qdrant_client.models import ScoredPoint
+from qdrant_client.models import VectorParams
 
 from vinishko.pipeline.steps.vis_searcher.configs import QdrantConfig
+
 
 POINT_NAMESPACE = uuid.UUID("3b1e9c6a-5d2f-4e8b-9a7c-1f0d2e3c4b5a")
 """Идентификатор точки — uuid5 от slug: повторная сборка перезаписывает точку, а не плодит дубли."""

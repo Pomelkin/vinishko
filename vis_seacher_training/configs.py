@@ -12,6 +12,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import model_validator
 
+
 DATASETS = ("winesensed", "off", "products10k")
 """Что обязано лежать в data.datasets_dir: раскладка scripts/prepare_datasets.py плюс разметка scripts/normalize_dataset.py."""
 REQUIRED_FILES = {

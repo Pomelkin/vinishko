@@ -11,7 +11,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -646,7 +647,9 @@ def predict(request: dict[str, Any]) -> dict[str, Any]:
         )
 
     query = request["query"]
-    query_image: str | bytes = query["image_bytes"] if "image_bytes" in query else query["image_path"]
+    query_image: str | bytes = (
+        query["image_bytes"] if "image_bytes" in query else query["image_path"]
+    )
     image_detail: str = runtime.get("image_detail") or "original"
     candidates = list(request["group"]["candidates"])
     allowed_slugs = [candidate["slug"] for candidate in candidates]

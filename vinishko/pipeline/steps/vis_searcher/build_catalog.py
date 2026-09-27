@@ -9,60 +9,63 @@
 import csv
 import json
 import sys
-from collections.abc import Iterator, Sequence
-from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from collections.abc import Iterator
+from collections.abc import Sequence
+from dataclasses import asdict
+from dataclasses import dataclass
+from datetime import UTC
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import rich_click as click
+from kostyl.utils import setup_logger
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
-from kostyl.utils import setup_logger
 from rich.console import Console
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-)
+from rich.progress import BarColumn
+from rich.progress import MofNCompleteColumn
+from rich.progress import Progress
+from rich.progress import SpinnerColumn
+from rich.progress import TextColumn
+from rich.progress import TimeElapsedColumn
+from rich.progress import TimeRemainingColumn
 from rich.table import Table
 
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
-from vinishko.pipeline.steps.normalization.normalize import Normalizer, crop_config
+from vinishko.pipeline.steps.normalization.normalize import Normalizer
+from vinishko.pipeline.steps.normalization.normalize import crop_config
 from vinishko.pipeline.steps.normalization.normalize import (
     load_config as load_norm_config,
 )
 from vinishko.pipeline.steps.normalization.seg import open_image
-from vinishko.pipeline.steps.vis_searcher.catalog import (
-    FIELD_GROUP,
-    FIELD_GROUP_SLUGS,
-    FIELD_IMAGE,
-    FIELD_ENCODER_INPUT,
-    FIELD_INPUT_SIZE,
-    FIELD_MODEL,
-    FIELD_NORMALIZATION,
-    FIELD_REVISION,
-    FIELD_SLUG,
-    connect,
-    create_collection,
-    normalization_fingerprint,
-    point_id,
-    upsert,
-)
-from vinishko.pipeline.steps.vis_searcher.configs import DEFAULT_CONFIG, load_config
-from vinishko.pipeline.steps.vis_searcher.device import Device, resolve_device
-from vinishko.pipeline.steps.vis_searcher.model import Encoder, ModelFiles, fetch_model
-from vinishko.pipeline.steps.vis_searcher.storage import (
-    CONTENT_TYPES,
-    MANIFEST,
-    ImageStore,
-    make_store,
-)
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_ENCODER_INPUT
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_IMAGE
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_INPUT_SIZE
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_MODEL
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_NORMALIZATION
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_REVISION
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_SLUG
+from vinishko.pipeline.steps.vis_searcher.catalog import connect
+from vinishko.pipeline.steps.vis_searcher.catalog import create_collection
+from vinishko.pipeline.steps.vis_searcher.catalog import normalization_fingerprint
+from vinishko.pipeline.steps.vis_searcher.catalog import point_id
+from vinishko.pipeline.steps.vis_searcher.catalog import upsert
+from vinishko.pipeline.steps.vis_searcher.configs import DEFAULT_CONFIG
+from vinishko.pipeline.steps.vis_searcher.configs import load_config
+from vinishko.pipeline.steps.vis_searcher.device import Device
+from vinishko.pipeline.steps.vis_searcher.device import resolve_device
+from vinishko.pipeline.steps.vis_searcher.model import Encoder
+from vinishko.pipeline.steps.vis_searcher.model import ModelFiles
+from vinishko.pipeline.steps.vis_searcher.model import fetch_model
+from vinishko.pipeline.steps.vis_searcher.storage import CONTENT_TYPES
+from vinishko.pipeline.steps.vis_searcher.storage import MANIFEST
+from vinishko.pipeline.steps.vis_searcher.storage import ImageStore
+from vinishko.pipeline.steps.vis_searcher.storage import make_store
 from vinishko.pipeline.structs import BottleCrop
+
 
 CSV_FIELDS = {
     "name": "Название вина",

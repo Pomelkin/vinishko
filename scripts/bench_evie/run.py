@@ -37,6 +37,7 @@ from scripts.bench_evie.store import TokenStore
 from scripts.bench_evie.store import join_parts
 from vinishko.pipeline.steps.normalization.normalize import load_config
 
+
 Embedded = tuple[dict[str, Split], Dropped, dict[str, TokenStore], float]
 """Режим после этапа эмбеддингов: сплиты, отсев нормализации, хранилища токенов по ролям и секунды."""
 

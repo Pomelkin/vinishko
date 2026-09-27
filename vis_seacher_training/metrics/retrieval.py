@@ -4,6 +4,7 @@ from dataclasses import field
 import cv2
 import matplotlib as mpl
 
+
 mpl.use("Agg")  # обучение идёт на сервере без дисплея
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +12,7 @@ import torch
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 from torchmetrics.functional.classification import binary_auroc
+
 
 KS = (1, 3, 5)
 TOP = max(KS)

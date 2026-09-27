@@ -7,9 +7,11 @@
 ```python
 from vinishko.pipeline.pipeline import Pipeline
 
-result = Pipeline()(photo)   # второй уровень поднимается по умолчанию, resolve=False — без него
-result.resolution   # MatchedBottle | UnmatchedBottle на каждый ответ поиска; отказы поиска переходят сюда как есть
-result.matched      # только MatchedBottle: .candidate — выбранная позиция, .source — vector | ndr_v5, .checklist — наблюдения модели
+result = Pipeline()(
+    photo
+)  # второй уровень поднимается по умолчанию, resolve=False — без него
+result.resolution  # MatchedBottle | UnmatchedBottle на каждый ответ поиска; отказы поиска переходят сюда как есть
+result.matched  # только MatchedBottle: .candidate — выбранная позиция, .source — vector | ndr_v5, .checklist — наблюдения модели
 ```
 
 `Pipeline` сам отдаёт второму уровню только `BottleCandidates` и ставит его ответы на места ответов поиска; `result.items` и `result.crops`

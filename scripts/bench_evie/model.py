@@ -8,6 +8,8 @@ import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import DataLoader
+from vinishko.pipeline.steps.vis_searcher.modeling_colqwen3_5 import DEFAULT_HEAD_DIMS
+from vinishko.pipeline.steps.vis_searcher.modeling_colqwen3_5 import set_active_head
 
 from scripts.bench_common.data import Split
 from scripts.bench_common.data import Views
@@ -19,8 +21,7 @@ from scripts.bench_evie.search import SearchTask
 from scripts.bench_evie.search import search
 from vinishko.pipeline.steps.vis_searcher import ColQwen3_5
 from vinishko.pipeline.steps.vis_searcher import ColQwen3_5Processor
-from vinishko.pipeline.steps.vis_searcher.modeling_colqwen3_5 import DEFAULT_HEAD_DIMS
-from vinishko.pipeline.steps.vis_searcher.modeling_colqwen3_5 import set_active_head
+
 
 os.environ.setdefault(
     "TOKENIZERS_PARALLELISM", "false"

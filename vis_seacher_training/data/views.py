@@ -10,6 +10,7 @@ from vinishko.pipeline.steps.normalization.normalize import all_points
 from vinishko.pipeline.steps.normalization.normalize import rotated_extent
 from vis_seacher_training.data.kernels import blend_color
 
+
 MIN_WINDOW_PX = 16
 
 

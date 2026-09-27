@@ -10,6 +10,8 @@ import torch
 from kostyl.ml.configs import DDPStrategyConfig
 from kostyl.ml.configs import SingleDeviceStrategyConfig
 from kostyl.ml.configs import SupportedStrategies
+from kostyl.ml.configs.structs.training_settings import FSDP1StrategyConfig
+from kostyl.ml.configs.structs.training_settings import FSDP2StrategyConfig
 from kostyl.ml.integrations.lightning.callbacks import setup_checkpoint_callback
 from kostyl.ml.integrations.lightning.callbacks import setup_early_stopping_callback
 from kostyl.ml.integrations.lightning.loggers.tb_logger import setup_tb_logger
@@ -19,24 +21,18 @@ from lightning import Trainer
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.strategies import DDPStrategy
-from lightning.pytorch.strategies import (
-    SingleDeviceStrategy,
-    FSDPStrategy,
-    ModelParallelStrategy,
-)
+from lightning.pytorch.strategies import FSDPStrategy
+from lightning.pytorch.strategies import ModelParallelStrategy
+from lightning.pytorch.strategies import SingleDeviceStrategy
 from lightning.pytorch.strategies import Strategy
-
-from kostyl.ml.configs.structs.training_settings import (
-    FSDP1StrategyConfig,
-    FSDP2StrategyConfig,
-)
 
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
 from vinishko.pipeline.steps.normalization.normalize import load_config
 from vis_seacher_training.configs import TrainingConfig
-from vis_seacher_training.export import export_model
 from vis_seacher_training.datamodule import WineDataModule
+from vis_seacher_training.export import export_model
 from vis_seacher_training.training_module import WineTrainingModule
+
 
 logger = setup_logger(fmt="detailed")
 

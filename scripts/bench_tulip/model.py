@@ -18,6 +18,7 @@ from scripts.bench_common.parallel import Advance
 from scripts.bench_common.parallel import EmbedTask
 from scripts.bench_common.parallel import pick_dtype
 
+
 MODEL = "TULIP-so400m-14-384"
 PRETRAINED_TAG = "webli"  # из записи этого тега форк берёт предобработку TULIP: mean и std 0.5, bicubic, squash
 RESIZE_MODES = ["squash", "longest", "shortest"]

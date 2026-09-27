@@ -7,14 +7,16 @@
 ```python
 from vinishko.pipeline.pipeline import Pipeline
 
-result = Pipeline()(photo)   # шаги и каталог с конфигами по умолчанию: Normalizer(), VisSearcher(), NearDuplicateResolver(); свой шаг или Catalog — аргументом, search=False / resolve=False — без шага
-result.normalization    # разметка нормализации как есть
-result.search           # BottleCandidates | UnmatchedBottle на каждую годную бутылку, в том же порядке
-result.resolution       # MatchedBottle | UnmatchedBottle на каждый ответ поиска; пусто без resolver
-result.matched          # бутылки с выбранной позицией: .candidate, .source, .checklist
-result.bottles          # BottleOutcome на каждую бутылку: маска, скор и ровно один исход — match, candidates, rejection (stage, reason) либо normalized
-result.items            # итоговая разметка: бутылка без ответа поиска или второго уровня — RejectedBottle с причиной
-result.timings          # секунды на шаг
+result = Pipeline()(
+    photo
+)  # шаги и каталог с конфигами по умолчанию: Normalizer(), VisSearcher(), NearDuplicateResolver(); свой шаг или Catalog — аргументом, search=False / resolve=False — без шага
+result.normalization  # разметка нормализации как есть
+result.search  # BottleCandidates | UnmatchedBottle на каждую годную бутылку, в том же порядке
+result.resolution  # MatchedBottle | UnmatchedBottle на каждый ответ поиска; пусто без resolver
+result.matched  # бутылки с выбранной позицией: .candidate, .source, .checklist
+result.bottles  # BottleOutcome на каждую бутылку: маска, скор и ровно один исход — match, candidates, rejection (stage, reason) либо normalized
+result.items  # итоговая разметка: бутылка без ответа поиска или второго уровня — RejectedBottle с причиной
+result.timings  # секунды на шаг
 ```
 
 Устройства — `segmentation.device` в normalize.toml и `device` в config.yaml (`auto`, `cpu` либо `cuda:<индекс>`); переменные окружения `NORMALIZER_DEV` и `VIS_SEARCHER_DEV` их перекрывают.

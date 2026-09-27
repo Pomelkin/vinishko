@@ -13,6 +13,7 @@ import torch
 
 from vinishko.pipeline.device import resolve_torch_device
 
+
 ENV_DEVICE = "VIS_SEARCHER_DEV"
 Backend = Literal["tensorrt", "openvino"]
 Precision = Literal["bf16", "fp32"]

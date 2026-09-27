@@ -4,16 +4,14 @@ from typing import cast
 
 import torch
 import torch.nn.functional as F
+from kostyl.ml.integrations.lightning import LightningCheckpointLoader
+from kostyl.ml.integrations.lightning import LightningConfigLoader
 from torch import nn
 from transformers import PreTrainedConfig
 from transformers import initialization as init
 from transformers.models.dinov3_vit import DINOv3ViTConfig
 from transformers.models.dinov3_vit import DINOv3ViTModel
 from transformers.models.dinov3_vit.modeling_dinov3_vit import DINOv3ViTPreTrainedModel
-from kostyl.ml.integrations.lightning import (
-    LightningCheckpointLoader,
-    LightningConfigLoader,
-)
 
 
 class DinoV3ForWineConfig(PreTrainedConfig, LightningConfigLoader):

@@ -19,6 +19,7 @@ from vis_seacher_training.data.dataset import WineViewDataset
 from vis_seacher_training.data.markup import Items
 from vis_seacher_training.data.markup import read_items
 
+
 logger = setup_logger(fmt="detailed")
 
 VAL_LOADERS = ("val", "distractors", "negatives", "catalog", "catalog_queries")

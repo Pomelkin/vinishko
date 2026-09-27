@@ -18,13 +18,12 @@ from kostyl.utils import setup_logger
 from torch import nn
 from torch.export import Dim
 
-from vis_seacher_training.export import (
-    BF16_MIN_COSINE,
-    DUMMY_BATCH,
-    ONNX_BF16_NAME,
-    ONNX_NAME,
-    OPSET,
-)
+from vis_seacher_training.export import BF16_MIN_COSINE
+from vis_seacher_training.export import DUMMY_BATCH
+from vis_seacher_training.export import ONNX_BF16_NAME
+from vis_seacher_training.export import ONNX_NAME
+from vis_seacher_training.export import OPSET
+
 
 logger = setup_logger(fmt="detailed")
 
@@ -133,10 +132,8 @@ def verify_tensorrt(
     input_size: tuple[int, int],
 ) -> float | None:
     """Сверка bf16-графа через TensorRT с PyTorch float32: наименьший косинус по батчу; None — TensorRT не установлен."""
-    from vinishko.pipeline.steps.vis_searcher.backends import (
-        TensorRTRunner,
-        tensorrt_available,
-    )
+    from vinishko.pipeline.steps.vis_searcher.backends import TensorRTRunner
+    from vinishko.pipeline.steps.vis_searcher.backends import tensorrt_available
 
     if not tensorrt_available():
         logger.warning(f"{path.name} не сверен: нет tensorrt либо CUDA")

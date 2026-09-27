@@ -9,40 +9,45 @@ import json
 import shutil
 import statistics
 import time
-from collections.abc import Iterable, Sequence
-from dataclasses import asdict, dataclass, fields
-from datetime import UTC, datetime
+from collections.abc import Iterable
+from collections.abc import Sequence
+from dataclasses import asdict
+from dataclasses import dataclass
+from dataclasses import fields
+from datetime import UTC
+from datetime import datetime
 from pathlib import Path
 
 import rich_click as click
 from kostyl.utils import setup_logger
 from rich.console import Console
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-)
+from rich.progress import BarColumn
+from rich.progress import MofNCompleteColumn
+from rich.progress import Progress
+from rich.progress import SpinnerColumn
+from rich.progress import TextColumn
+from rich.progress import TimeElapsedColumn
+from rich.progress import TimeRemainingColumn
 from rich.table import Table
 
-from vinishko.pipeline.pipeline import Pipeline, PipelineResult
+from vinishko.pipeline.pipeline import Pipeline
+from vinishko.pipeline.pipeline import PipelineResult
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
-from vinishko.pipeline.steps.normalization.normalize import Normalizer, polys_box
+from vinishko.pipeline.steps.normalization.normalize import Normalizer
 from vinishko.pipeline.steps.normalization.normalize import (
     load_config as load_norm_config,
 )
-from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS, FIELD_SLUG
-from vinishko.pipeline.steps.vis_searcher.configs import DEFAULT_CONFIG, load_config
+from vinishko.pipeline.steps.normalization.normalize import polys_box
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_SLUG
+from vinishko.pipeline.steps.vis_searcher.configs import DEFAULT_CONFIG
+from vinishko.pipeline.steps.vis_searcher.configs import load_config
 from vinishko.pipeline.steps.vis_searcher.search import VisSearcher
-from vinishko.pipeline.structs import (
-    BottleCandidates,
-    BottleCrop,
-    RejectedBottle,
-    UnmatchedBottle,
-)
+from vinishko.pipeline.structs import BottleCandidates
+from vinishko.pipeline.structs import BottleCrop
+from vinishko.pipeline.structs import RejectedBottle
+from vinishko.pipeline.structs import UnmatchedBottle
+
 
 KS = (1, 3, 5)
 DUMPS = ("misses", "all", "none")

@@ -15,6 +15,7 @@ from scripts.bench_common.parallel import Advance
 from scripts.bench_common.parallel import EmbedTask
 from vis_seacher_training.data.augmentations import resize_to_fit
 
+
 if TYPE_CHECKING:
     from onnxruntime import InferenceSession
 

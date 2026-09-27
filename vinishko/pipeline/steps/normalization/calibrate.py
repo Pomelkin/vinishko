@@ -11,19 +11,16 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import StandardScaler
 
-from vinishko.pipeline.steps.normalization.features import (
-    FEAT_SIDE,
-    FEATURES,
-    candidate_features,
-    gray_small,
-)
-from vinishko.pipeline.steps.normalization.normalize import (
-    Normalizer,
-    bottle_axis,
-    load_config,
-)
+from vinishko.pipeline.steps.normalization.features import FEAT_SIDE
+from vinishko.pipeline.steps.normalization.features import FEATURES
+from vinishko.pipeline.steps.normalization.features import candidate_features
+from vinishko.pipeline.steps.normalization.features import gray_small
+from vinishko.pipeline.steps.normalization.normalize import Normalizer
+from vinishko.pipeline.steps.normalization.normalize import bottle_axis
+from vinishko.pipeline.steps.normalization.normalize import load_config
 from vinishko.pipeline.steps.normalization.seg import open_image
 from vinishko.pipeline.structs import RejectedBottle
+
 
 HERE = Path(__file__).resolve().parent
 IOU_MATCH = 0.7  # кандидат считается попаданием в цель от этого IoU

@@ -6,7 +6,13 @@ from typing import override
 import matplotlib.pyplot as plt
 import torch
 import torch.distributed as dist
+from kostyl.ml.configs.structs.training_settings import FSDP1StrategyConfig
+from kostyl.ml.configs.structs.training_settings import FSDP2StrategyConfig
 from kostyl.ml.dist_utils import scale_lrs_by_world_size
+from kostyl.ml.dist_utils.fsdp import get_fsdp1_policies
+from kostyl.ml.dist_utils.fsdp import get_fsdp2_policies
+from kostyl.ml.dist_utils.fsdp import get_transformer_shard_modules
+from kostyl.ml.dist_utils.fsdp import select_wrap_policy
 from kostyl.ml.integrations.lightning import KostylLightningModule
 from kostyl.ml.integrations.lightning import estimate_total_steps
 from kostyl.ml.optim import create_optimizer
@@ -16,10 +22,18 @@ from kostyl.ml.optim.schedulers import CompositeScheduler
 from kostyl.utils import setup_logger
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.strategies import FSDPStrategy
+from lightning.pytorch.strategies import ModelParallelStrategy
+from torch.distributed._composable.replicate_with_fsdp import replicate
 from torch.distributed.checkpoint import load as dcp_load
 from torch.distributed.checkpoint.state_dict import StateDictOptions
 from torch.distributed.checkpoint.state_dict import get_model_state_dict
 from torch.distributed.checkpoint.state_dict import set_model_state_dict
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp import MixedPrecision
+from torch.distributed.fsdp import MixedPrecisionPolicy
+from torch.distributed.fsdp import ShardingStrategy
+from torch.distributed.fsdp import fully_shard
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
 from transformers import PreTrainedConfig
@@ -39,25 +53,7 @@ from vis_seacher_training.metrics import evaluate_retrieval
 from vis_seacher_training.metrics import panels_figure
 from vis_seacher_training.metrics import scores_figure
 from vis_seacher_training.optimization import create_param_groups
-from lightning.pytorch.strategies import ModelParallelStrategy, FSDPStrategy
-from kostyl.ml.configs.structs.training_settings import (
-    FSDP1StrategyConfig,
-    FSDP2StrategyConfig,
-)
-from torch.distributed._composable.replicate_with_fsdp import replicate
-from torch.distributed.fsdp import (
-    MixedPrecisionPolicy,
-    fully_shard,
-    ShardingStrategy,
-    MixedPrecision,
-)
-from kostyl.ml.dist_utils.fsdp import (
-    get_fsdp2_policies,
-    get_fsdp1_policies,
-    select_wrap_policy,
-    get_transformer_shard_modules,
-)
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+
 
 logger = setup_logger(fmt="detailed")
 

@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
+
 FEAT_SIDE = 1024  # резкость и салиентность считаем на уменьшенной копии
 
 BASE_FEATURES = [

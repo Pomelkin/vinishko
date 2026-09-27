@@ -13,11 +13,20 @@ from PIL import Image
 
 from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS
 from vinishko.pipeline.steps.vis_searcher.storage import encode_image
-from vinishko.pipeline.structs import BottleCandidates, Candidate, MatchedBottle, Reason, Rejection, UnmatchedBottle
+from vinishko.pipeline.structs import BottleCandidates
+from vinishko.pipeline.structs import Candidate
+from vinishko.pipeline.structs import MatchedBottle
+from vinishko.pipeline.structs import Reason
+from vinishko.pipeline.structs import Rejection
+from vinishko.pipeline.structs import UnmatchedBottle
 
-from .configs import NdrSettings, load_config
+from .configs import NdrSettings
+from .configs import load_config
 from .models import NOT_FOUND
-from .predictor import load_openrouter_env, missing_api_key_message, predict
+from .predictor import load_openrouter_env
+from .predictor import missing_api_key_message
+from .predictor import predict
+
 
 HERE = Path(__file__).resolve().parent
 NDR_CONCURRENCY = 32
@@ -61,7 +70,9 @@ class NearDuplicateError(RuntimeError):
     """Модель или данные группы не позволили получить проверенный ответ; top-1 вместо ответа не подставляется."""
 
 
-def cards_from_rows(rows: dict[str, dict[str, str]], source: str = "каталог") -> dict[str, dict]:
+def cards_from_rows(
+    rows: dict[str, dict[str, str]], source: str = "каталог"
+) -> dict[str, dict]:
     """Карточки позиций для модели из строк CSV каталога по slug: поля CSV_FIELDS, имя фото и группа."""
     required = {"image_filename", "near_duplicate_group_slug", *CSV_FIELDS.values()}
     cards = {}
@@ -88,7 +99,9 @@ def load_cards(path: Path) -> dict[str, dict]:
         for row in reader:
             slug = row["Slug"].strip()
             if not slug or slug in rows:
-                raise NearDuplicateError(f"пустой или повторный Slug в {path}: {slug!r}")
+                raise NearDuplicateError(
+                    f"пустой или повторный Slug в {path}: {slug!r}"
+                )
             rows[slug] = row
     return cards_from_rows(rows, str(path))
 
@@ -156,7 +169,9 @@ class NearDuplicateResolver:
             for name in PROMPT_FILES
         }
 
-    def __call__(self, found: list[BottleCandidates]) -> list[MatchedBottle | UnmatchedBottle]:
+    def __call__(
+        self, found: list[BottleCandidates]
+    ) -> list[MatchedBottle | UnmatchedBottle]:
         """Ответ по каждой бутылке, в том же порядке; вызовы модели идут параллельно, не больше NDR_CONCURRENCY разом."""
         if len(found) < 2:
             return [self._select(result) for result in found]
@@ -176,7 +191,9 @@ class NearDuplicateResolver:
             or not members
             or len(set(members)) != len(members)
         ):
-            raise NearDuplicateError(f"у {top.slug} некорректный group_slugs в коллекции")
+            raise NearDuplicateError(
+                f"у {top.slug} некорректный group_slugs в коллекции"
+            )
         candidates = [
             candidate for candidate in result.candidates if candidate.group == top.group
         ]
@@ -209,14 +226,15 @@ class NearDuplicateResolver:
         query_image = result.crop.box_crop
         if max(query_image.shape[:2]) > QUERY_MAX_SIDE:
             resized = Image.fromarray(query_image)
-            resized.thumbnail((QUERY_MAX_SIDE, QUERY_MAX_SIDE), Image.Resampling.LANCZOS)
+            resized.thumbnail(
+                (QUERY_MAX_SIDE, QUERY_MAX_SIDE), Image.Resampling.LANCZOS
+            )
             query_image = np.asarray(resized)
         request = {
             "query": {"image_bytes": encode_image(query_image, "png", 95)},
             "group": {
                 "candidates": [
-                    candidate_card(candidate, self.cards)
-                    for candidate in candidates
+                    candidate_card(candidate, self.cards) for candidate in candidates
                 ]
             },
             "prompts": self.prompts,
@@ -237,7 +255,9 @@ class NearDuplicateResolver:
                 for key, value in checklist.items()
             )
             detail = f"группа {top.group}: ни один из {len(members)} кандидатов не подошёл; {observations}"
-            return UnmatchedBottle(result.crop, Rejection(NearDuplicateReason.NOT_FOUND, detail))
+            return UnmatchedBottle(
+                result.crop, Rejection(NearDuplicateReason.NOT_FOUND, detail)
+            )
         return MatchedBottle(result.crop, by_slug[slug], SOURCE_MODEL, checklist)
 
     def _write_trace(self, uuid: str, response: dict) -> None:

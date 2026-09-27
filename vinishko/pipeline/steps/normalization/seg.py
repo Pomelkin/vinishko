@@ -1,11 +1,14 @@
 from functools import partial
 from pathlib import Path
-from typing import Any, cast, BinaryIO
+from typing import Any
+from typing import BinaryIO
+from typing import cast
 
 import cv2
 import numpy as np
 import torch
-from PIL import Image, ImageOps
+from PIL import Image
+from PIL import ImageOps
 from torch import Tensor
 from torchvision.ops import nms
 from ultralytics import YOLO
@@ -14,7 +17,9 @@ from ultralytics.models.sam import SAM3SemanticPredictor
 from ultralytics.utils.ops import xywh2xyxy
 
 from vinishko.pipeline.device import resolve_torch_device
-from vinishko.pipeline.steps.normalization.weights import SAM3_FILE, sam3_weights
+from vinishko.pipeline.steps.normalization.weights import SAM3_FILE
+from vinishko.pipeline.steps.normalization.weights import sam3_weights
+
 
 ENV_DEVICE = "NORMALIZER_DEV"
 """Перекрывает segmentation.device конфига: auto, cpu либо cuda:<индекс>."""

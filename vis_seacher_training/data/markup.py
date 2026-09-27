@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 from kostyl.utils import setup_logger
 
+
 logger = setup_logger(fmt="detailed")
 
 MARKUP_NAME = "normalization.jsonl"

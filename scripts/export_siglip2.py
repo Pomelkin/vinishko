@@ -13,7 +13,10 @@ from huggingface_hub import hf_hub_download
 from torch import nn
 from transformers import SiglipVisionModel
 
-from scripts.export_common import RESIZES, Contract, export_bundle
+from scripts.export_common import RESIZES
+from scripts.export_common import Contract
+from scripts.export_common import export_bundle
+
 
 DEFAULT_REPO = "google/siglip2-so400m-patch14-384"
 RESAMPLING = {2: "bilinear", 3: "bicubic"}

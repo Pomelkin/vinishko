@@ -7,6 +7,7 @@ from vis_seacher_training.metrics.retrieval import evaluate_retrieval
 from vis_seacher_training.metrics.retrieval import panels_figure
 from vis_seacher_training.metrics.retrieval import scores_figure
 
+
 __all__ = [
     "KS",
     "TOP",

@@ -16,6 +16,7 @@ from scripts.bench_common.metrics import ModeResult
 from scripts.bench_common.metrics import Retrieval
 from vinishko.pipeline.steps.normalization.seg import open_image
 
+
 MODE_TITLES = {"raw": "без нормализации", "norm": "с нормализацией"}
 PROTOCOL_TITLES = {"loo": "вся val в галерее", "oneshot": "одно фото класса в галерее"}
 ROLE_TITLES = {

@@ -12,12 +12,12 @@ import numpy as np
 from huggingface_hub import snapshot_download
 from PIL import Image
 
-from vinishko.pipeline.steps.vis_searcher.backends import (
-    OpenVinoRunner,
-    Runner,
-    TensorRTRunner,
-)
-from vinishko.pipeline.steps.vis_searcher.device import Device, Precision
+from vinishko.pipeline.steps.vis_searcher.backends import OpenVinoRunner
+from vinishko.pipeline.steps.vis_searcher.backends import Runner
+from vinishko.pipeline.steps.vis_searcher.backends import TensorRTRunner
+from vinishko.pipeline.steps.vis_searcher.device import Device
+from vinishko.pipeline.steps.vis_searcher.device import Precision
+
 
 ONNX_FP32, PREPROCESS_NAME, CONFIG_NAME = "model.onnx", "preprocess.json", "config.json"
 Resize = Literal["pad", "squash"]

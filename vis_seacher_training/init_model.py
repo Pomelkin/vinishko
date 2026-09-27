@@ -16,6 +16,7 @@ from vis_seacher_training.metrics.retrieval import protocol_rows
 from vis_seacher_training.metrics.retrieval import recall
 from vis_seacher_training.metrics.retrieval import search
 
+
 logger = setup_logger(fmt="detailed")
 
 CENTERS_NAME = "arcface_centers.pt"

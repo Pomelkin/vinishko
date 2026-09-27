@@ -7,7 +7,8 @@ import os
 import shutil
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
+from typing import Protocol
 
 import boto3
 import numpy as np
@@ -15,10 +16,9 @@ from botocore.exceptions import ClientError
 from kostyl.utils import setup_logger
 from PIL import Image
 
-from vinishko.pipeline.steps.vis_searcher.configs import (
-    LocalImagesConfig,
-    S3ImagesConfig,
-)
+from vinishko.pipeline.steps.vis_searcher.configs import LocalImagesConfig
+from vinishko.pipeline.steps.vis_searcher.configs import S3ImagesConfig
+
 
 logger = setup_logger(fmt="detailed")
 CONTENT_TYPES = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}

@@ -6,7 +6,8 @@ from io import StringIO
 
 import boto3
 
-from vinishko.pipeline.configs import LocalCatalogConfig, S3CatalogConfig
+from vinishko.pipeline.configs import LocalCatalogConfig
+from vinishko.pipeline.configs import S3CatalogConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,23 +35,37 @@ def read_catalog_text(cfg: LocalCatalogConfig | S3CatalogConfig) -> tuple[str, s
     """Текст CSV и описание источника."""
     if isinstance(cfg, LocalCatalogConfig):
         return cfg.path.read_text(encoding="utf-8-sig"), f"файл {cfg.path}"
-    body = boto3.client("s3", endpoint_url=cfg.endpoint).get_object(Bucket=cfg.bucket, Key=cfg.key)["Body"].read()
+    body = (
+        boto3.client("s3", endpoint_url=cfg.endpoint)
+        .get_object(Bucket=cfg.bucket, Key=cfg.key)["Body"]
+        .read()
+    )
     return body.decode("utf-8-sig"), f"s3 {cfg.endpoint} {cfg.bucket}/{cfg.key}"
 
 
-def load_catalog(cfg: LocalCatalogConfig | S3CatalogConfig, slug_column: str = "Slug") -> Catalog:
+def load_catalog(
+    cfg: LocalCatalogConfig | S3CatalogConfig, slug_column: str = "Slug"
+) -> Catalog:
     """Каталог из CSV по конфигу; пустой или повторный slug — ошибка."""
     text, description = read_catalog_text(cfg)
     reader = csv.DictReader(StringIO(text))
     columns = reader.fieldnames or []
     if slug_column not in columns:
-        raise RuntimeError(f"в каталоге ({description}) нет колонки {slug_column!r}; есть {columns[:8]}")
+        raise RuntimeError(
+            f"в каталоге ({description}) нет колонки {slug_column!r}; есть {columns[:8]}"
+        )
     rows: dict[str, dict[str, str]] = {}
     for record in reader:
         slug = (record[slug_column] or "").strip()
         if not slug:
-            raise RuntimeError(f"в каталоге ({description}) строка с пустым {slug_column}")
+            raise RuntimeError(
+                f"в каталоге ({description}) строка с пустым {slug_column}"
+            )
         if slug in rows:
             raise RuntimeError(f"в каталоге ({description}) slug {slug} повторяется")
-        rows[slug] = {key: (value or "").strip() for key, value in record.items() if key is not None}
+        rows[slug] = {
+            key: (value or "").strip()
+            for key, value in record.items()
+            if key is not None
+        }
     return Catalog(rows, description)

@@ -1,32 +1,34 @@
 """Оркестратор пайплайна: нормализация → визуальный поиск → выбор позиции внутри группы. Шаги не знают друг о друге, их выходы связывает этот модуль."""
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
 from typing import Protocol
 
 from PIL import Image
 
-from vinishko.pipeline.catalog import Catalog, load_catalog
+from vinishko.pipeline.catalog import Catalog
+from vinishko.pipeline.catalog import load_catalog
 from vinishko.pipeline.configs import load_config
 from vinishko.pipeline.steps.near_duplicates import NearDuplicateResolver
 from vinishko.pipeline.steps.near_duplicates.resolve import cards_from_rows
 from vinishko.pipeline.steps.normalization.normalize import Normalizer
 from vinishko.pipeline.steps.vis_searcher import VisSearcher
-from vinishko.pipeline.structs import (
-    BottleCandidates,
-    BottleCrop,
-    BottleOutcome,
-    MatchedBottle,
-    RejectedBottle,
-    UnmatchedBottle,
-)
+from vinishko.pipeline.structs import BottleCandidates
+from vinishko.pipeline.structs import BottleCrop
+from vinishko.pipeline.structs import BottleOutcome
+from vinishko.pipeline.structs import MatchedBottle
+from vinishko.pipeline.structs import RejectedBottle
+from vinishko.pipeline.structs import UnmatchedBottle
 
 
 class Searcher(Protocol):
     """Визуальный поиск: кропы бутылок → ответ на каждый, в том же порядке: BottleCandidates с кандидатами каталога либо UnmatchedBottle с отказом и причиной."""
 
-    def __call__(self, crops: list[BottleCrop]) -> list[BottleCandidates | UnmatchedBottle]: ...
+    def __call__(
+        self, crops: list[BottleCrop]
+    ) -> list[BottleCandidates | UnmatchedBottle]: ...
 
     def check_normalization(self, normalization: dict) -> None:
         """Ошибка, если нормализатор с таким crop_config вырезает кропы не так, как при сборке каталога поиска."""
@@ -39,10 +41,14 @@ class Resolver(Protocol):
     Получает только бутылки с кандидатами; ответов столько же и в том же порядке: MatchedBottle с одной позицией либо UnmatchedBottle с причиной.
     """
 
-    def __call__(self, found: list[BottleCandidates]) -> list[MatchedBottle | UnmatchedBottle]: ...
+    def __call__(
+        self, found: list[BottleCandidates]
+    ) -> list[MatchedBottle | UnmatchedBottle]: ...
 
 
-def replace_rejected(items: list[BottleCrop | RejectedBottle], rejected: list[RejectedBottle]) -> list[BottleCrop | RejectedBottle]:
+def replace_rejected(
+    items: list[BottleCrop | RejectedBottle], rejected: list[RejectedBottle]
+) -> list[BottleCrop | RejectedBottle]:
     """Разметка, где бутылки с uuid из rejected заменены отказами: так шаг после нормализации бракует бутылку."""
     by_uuid = {item.uuid: item for item in rejected}
     return [by_uuid.get(item.uuid, item) for item in items]
@@ -73,19 +79,52 @@ class PipelineResult:
         out = []
         for item in self.normalization:
             if isinstance(item, RejectedBottle):
-                out.append(BottleOutcome(item.uuid, item.score, item.bottle, item.label, None, None, [], item.rejection))
+                out.append(
+                    BottleOutcome(
+                        item.uuid,
+                        item.score,
+                        item.bottle,
+                        item.label,
+                        None,
+                        None,
+                        [],
+                        item.rejection,
+                    )
+                )
                 continue
             verdict = verdicts.get(item.uuid)
             match = verdict if isinstance(verdict, MatchedBottle) else None
-            candidates = verdict.candidates if isinstance(verdict, BottleCandidates) else []
-            rejection = verdict.rejection if isinstance(verdict, UnmatchedBottle) else None
-            out.append(BottleOutcome(item.uuid, item.score, item.bottle, item.label, item, match, candidates, rejection))
+            candidates = (
+                verdict.candidates if isinstance(verdict, BottleCandidates) else []
+            )
+            rejection = (
+                verdict.rejection if isinstance(verdict, UnmatchedBottle) else None
+            )
+            out.append(
+                BottleOutcome(
+                    item.uuid,
+                    item.score,
+                    item.bottle,
+                    item.label,
+                    item,
+                    match,
+                    candidates,
+                    rejection,
+                )
+            )
         return out
 
     @property
     def items(self) -> list[BottleCrop | RejectedBottle]:
         """Итоговая разметка: бутылка, отвергнутая поиском или вторым уровнем, стоит здесь RejectedBottle с тем же uuid и причиной шага."""
-        return replace_rejected(self.normalization, [RejectedBottle.of(r.crop, r.rejection) for r in self.final if isinstance(r, UnmatchedBottle)])
+        return replace_rejected(
+            self.normalization,
+            [
+                RejectedBottle.of(r.crop, r.rejection)
+                for r in self.final
+                if isinstance(r, UnmatchedBottle)
+            ],
+        )
 
     @property
     def crops(self) -> list[BottleCrop]:
@@ -127,7 +166,9 @@ class Pipeline:
         self.searcher: Searcher | None = (searcher or VisSearcher()) if search else None
         self.resolver: Resolver | None = None
         if search and resolve:
-            self.resolver = resolver or NearDuplicateResolver(cards=cards_from_rows(catalog.rows, catalog.description))
+            self.resolver = resolver or NearDuplicateResolver(
+                cards=cards_from_rows(catalog.rows, catalog.description)
+            )
         if self.searcher is not None:
             self.searcher.check_normalization(self.normalizer.crop_config)
 
@@ -135,7 +176,9 @@ class Pipeline:
         """Картинка → выходы шагов: разметка нормализации, ответы поиска по годным бутылкам, ответы второго уровня, время каждого шага."""
         started = time.perf_counter()
         normalization = self.normalizer(img)
-        result = PipelineResult(normalization, timings={"normalization": time.perf_counter() - started})
+        result = PipelineResult(
+            normalization, timings={"normalization": time.perf_counter() - started}
+        )
         crops = [item for item in normalization if isinstance(item, BottleCrop)]
         if not crops or self.searcher is None:
             return result
@@ -147,6 +190,9 @@ class Pipeline:
         started = time.perf_counter()
         found = [r for r in result.search if isinstance(r, BottleCandidates)]
         decided = iter(self.resolver(found))
-        result.resolution = [next(decided) if isinstance(r, BottleCandidates) else r for r in result.search]
+        result.resolution = [
+            next(decided) if isinstance(r, BottleCandidates) else r
+            for r in result.search
+        ]
         result.timings["resolve"] = time.perf_counter() - started
         return result

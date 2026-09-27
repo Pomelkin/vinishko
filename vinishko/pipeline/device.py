@@ -6,6 +6,7 @@ import re
 import torch
 from kostyl.utils import setup_logger
 
+
 logger = setup_logger(fmt="detailed")
 
 AUTO = "auto"

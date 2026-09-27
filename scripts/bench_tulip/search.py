@@ -6,6 +6,7 @@ from scripts.bench_common.data import Split
 from scripts.bench_common.metrics import TOP
 from scripts.bench_common.metrics import Retrieval
 
+
 SEARCH_BATCH = 2048
 
 

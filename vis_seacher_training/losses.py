@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 CENTER_NOISE = 0.05
 """Шум на подцентрах при инициализации из средних, в долях единичной нормы центра."""
 

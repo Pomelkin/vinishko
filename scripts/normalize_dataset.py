@@ -16,20 +16,21 @@ import rich_click as click
 import torch
 from PIL import Image
 from rich.console import Console
+from rich.progress import BarColumn
+from rich.progress import MofNCompleteColumn
+from rich.progress import Progress
+from rich.progress import SpinnerColumn
+from rich.progress import TextColumn
+from rich.progress import TimeElapsedColumn
+from rich.progress import TimeRemainingColumn
 from rich.table import Table
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-)
 
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
-from vinishko.pipeline.steps.normalization.normalize import Normalizer, load_config
-from vinishko.pipeline.structs import BottleCrop, RejectedBottle
+from vinishko.pipeline.steps.normalization.normalize import Normalizer
+from vinishko.pipeline.steps.normalization.normalize import load_config
+from vinishko.pipeline.structs import BottleCrop
+from vinishko.pipeline.structs import RejectedBottle
+
 
 console = Console()
 

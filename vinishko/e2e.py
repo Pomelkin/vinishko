@@ -9,8 +9,11 @@ import csv
 import json
 import statistics
 import time
-from dataclasses import asdict, dataclass, fields
-from datetime import UTC, datetime
+from dataclasses import asdict
+from dataclasses import dataclass
+from dataclasses import fields
+from datetime import UTC
+from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -19,7 +22,10 @@ from kostyl.utils import setup_logger
 from rich.console import Console
 from rich.table import Table
 
-from vinishko.pipeline.steps.vis_searcher.evaluate import progress, read_test, share
+from vinishko.pipeline.steps.vis_searcher.evaluate import progress
+from vinishko.pipeline.steps.vis_searcher.evaluate import read_test
+from vinishko.pipeline.steps.vis_searcher.evaluate import share
+
 
 console = Console()
 logger = setup_logger(fmt="detailed")
@@ -54,17 +60,25 @@ def ask(client: httpx.Client, path: Path) -> tuple[int, dict | None, float]:
     with path.open("rb") as file:
         response = client.post("/recognize", files={"image": (path.name, file)})
     seconds = time.perf_counter() - started
-    body = response.json() if response.headers.get("content-type", "").startswith("application/json") else None
+    body = (
+        response.json()
+        if response.headers.get("content-type", "").startswith("application/json")
+        else None
+    )
     return response.status_code, body, seconds
 
 
-def row_of(name: str, slug: str, status_code: int, body: dict | None, seconds: float) -> Row:
+def row_of(
+    name: str, slug: str, status_code: int, body: dict | None, seconds: float
+) -> Row:
     """Строка отчёта по ответу сервиса."""
     if status_code != 200 or body is None:
         return Row(name, slug, status_code, 0, "error", "", "", "", "", False, seconds)
     bottles = body["bottles"]
     if not bottles:
-        return Row(name, slug, status_code, 0, "no_bottle", "", "", "", "", not slug, seconds)
+        return Row(
+            name, slug, status_code, 0, "no_bottle", "", "", "", "", not slug, seconds
+        )
     first = bottles[0]
     match, rejection = first.get("match"), first.get("rejection")
     answer = match["slug"] if match else ""
@@ -99,7 +113,9 @@ def metrics(rows: list[Row]) -> dict:
         "accuracy": share(r.correct for r in rows),
         "precision": round(precision, 4) if precision is not None else None,
         "recall": round(recall, 4) if recall is not None else None,
-        "f1": round(2 * precision * recall / (precision + recall), 4) if precision and recall else None,
+        "f1": round(2 * precision * recall / (precision + recall), 4)
+        if precision and recall
+        else None,
         "confusion": {
             "answer_correct": correct_answers,
             "answer_wrong": sum(bool(r.answer) and not r.correct for r in with_answer),
@@ -107,17 +123,30 @@ def metrics(rows: list[Row]) -> dict:
             "reject_with_answer": sum(not r.answer for r in with_answer),
             "reject_on_empty": sum(not r.answer for r in without),
         },
-        "rejected_by_stage": {stage: sum(r.stage == stage for r in rows) for stage in ("normalization", "search", "resolve")},
+        "rejected_by_stage": {
+            stage: sum(r.stage == stage for r in rows)
+            for stage in ("normalization", "search", "resolve")
+        },
         "no_bottle": sum(r.status == "no_bottle" for r in rows),
-        "resolved_by_model": sum(r.source == "ndr_v5" or r.stage == "resolve" for r in rows),
-        "seconds": {"mean": round(statistics.mean(seconds), 3), "p50": round(statistics.median(seconds), 3), "p90": round(seconds[int(0.9 * (len(seconds) - 1))], 3)} if seconds else None,
+        "resolved_by_model": sum(
+            r.source == "ndr_v5" or r.stage == "resolve" for r in rows
+        ),
+        "seconds": {
+            "mean": round(statistics.mean(seconds), 3),
+            "p50": round(statistics.median(seconds), 3),
+            "p90": round(seconds[int(0.9 * (len(seconds) - 1))], 3),
+        }
+        if seconds
+        else None,
     }
 
 
 def print_report(report: dict) -> None:
     """Сводка в терминал."""
     health = report["health"]
-    table = Table(title=f"{report['url']} · коллекция {health.get('collection')} · второй уровень {health.get('resolver') or 'нет'}")
+    table = Table(
+        title=f"{report['url']} · коллекция {health.get('collection')} · второй уровень {health.get('resolver') or 'нет'}"
+    )
     table.add_column("метрика")
     table.add_column("значение", justify="right")
     for name, value in report["metrics"].items():
@@ -137,27 +166,76 @@ def format_metric(name: str, value: object) -> str:
 
 
 @click.command()
-@click.option("--url", default="http://127.0.0.1:8000", show_default=True, help="Адрес сервиса")
-@click.option("--test-dir", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path("datasets/hack-vine/test"), show_default=True, help="Директория с test.csv и images/")
-@click.option("--csv", "csv_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=None, help="Разметка вместо <test-dir>/test.csv")
-@click.option("--images", type=click.Path(exists=True, file_okay=False, path_type=Path), default=None, help="Фото вместо <test-dir>/images")
-@click.option("--limit", type=click.IntRange(min=1), default=None, help="Первые N фото разметки")
-@click.option("--timeout", type=float, default=300.0, show_default=True, help="Секунд на один запрос")
-@click.option("-o", "--out", type=click.Path(file_okay=False, path_type=Path), default=None, help="Куда писать report.json и per_image.csv; по умолчанию reports/e2e/<время>")
-def main(url: str, test_dir: Path, csv_path: Path | None, images: Path | None, limit: int | None, timeout: float, out: Path | None) -> None:
+@click.option(
+    "--url", default="http://127.0.0.1:8000", show_default=True, help="Адрес сервиса"
+)
+@click.option(
+    "--test-dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path("datasets/hack-vine/test"),
+    show_default=True,
+    help="Директория с test.csv и images/",
+)
+@click.option(
+    "--csv",
+    "csv_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Разметка вместо <test-dir>/test.csv",
+)
+@click.option(
+    "--images",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=None,
+    help="Фото вместо <test-dir>/images",
+)
+@click.option(
+    "--limit", type=click.IntRange(min=1), default=None, help="Первые N фото разметки"
+)
+@click.option(
+    "--timeout",
+    type=float,
+    default=300.0,
+    show_default=True,
+    help="Секунд на один запрос",
+)
+@click.option(
+    "-o",
+    "--out",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Куда писать report.json и per_image.csv; по умолчанию reports/e2e/<время>",
+)
+def main(
+    url: str,
+    test_dir: Path,
+    csv_path: Path | None,
+    images: Path | None,
+    limit: int | None,
+    timeout: float,
+    out: Path | None,
+) -> None:
     """Проверить сервис на тестовом наборе: /health, потом каждое фото в /recognize, метрики классификации итогового ответа."""
     pairs = read_test(csv_path or test_dir / "test.csv")[:limit]
     images = images or test_dir / "images"
     missing = [name for name, _ in pairs if not (images / name).is_file()]
     if missing:
-        raise click.UsageError(f"в {images} нет {len(missing)} фото из разметки, например {missing[:3]}")
-    out = out or Path("reports/e2e") / datetime.now(tz=UTC).astimezone().strftime("%Y-%m-%d_%H-%M-%S")
+        raise click.UsageError(
+            f"в {images} нет {len(missing)} фото из разметки, например {missing[:3]}"
+        )
+    out = out or Path("reports/e2e") / datetime.now(tz=UTC).astimezone().strftime(
+        "%Y-%m-%d_%H-%M-%S"
+    )
     with httpx.Client(base_url=url, timeout=httpx.Timeout(timeout)) as client:
         health = client.get("/health")
         if health.status_code != 200:
-            raise click.ClickException(f"{url}/health ответил {health.status_code}: {health.text[:200]}")
+            raise click.ClickException(
+                f"{url}/health ответил {health.status_code}: {health.text[:200]}"
+            )
         info = health.json()
-        logger.info(f"сервис {url}: коллекция {info.get('collection')}, модель {info.get('model')}, второй уровень {info.get('resolver') or 'нет'}, каталог {info.get('catalog_rows')} строк")
+        logger.info(
+            f"сервис {url}: коллекция {info.get('collection')}, модель {info.get('model')}, второй уровень {info.get('resolver') or 'нет'}, каталог {info.get('catalog_rows')} строк"
+        )
         rows: list[Row] = []
         with progress() as bar:
             task = bar.add_task("фото", total=len(pairs))
@@ -166,13 +244,17 @@ def main(url: str, test_dir: Path, csv_path: Path | None, images: Path | None, l
                 bar.update(task, advance=1)
     report = {"url": url, "health": info, "metrics": metrics(rows)}
     out.mkdir(parents=True, exist_ok=True)
-    (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
+    (out / "report.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
     with (out / "per_image.csv").open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=[field.name for field in fields(Row)])
         writer.writeheader()
         writer.writerows(asdict(row) for row in rows)
     print_report(report)
-    logger.info(f"отчёт: {out}; accuracy {report['metrics']['accuracy']}, ошибок сервиса {report['metrics']['errors']}")
+    logger.info(
+        f"отчёт: {out}; accuracy {report['metrics']['accuracy']}, ошибок сервиса {report['metrics']['errors']}"
+    )
 
 
 if __name__ == "__main__":

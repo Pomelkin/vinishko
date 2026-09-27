@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated
+from typing import Any
+from typing import Literal
 
 import yaml
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    StringConstraints,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Field
+from pydantic import StringConstraints
+from pydantic import field_validator
+from pydantic import model_validator
+
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_CONFIG = HERE / "config.yaml"

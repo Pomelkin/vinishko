@@ -8,22 +8,22 @@ from pathlib import Path
 import cv2
 import numpy as np
 import rich_click as click
+import torch
 from kostyl.utils import setup_logger
 from PIL import Image
 
-from vinishko.pipeline.steps.normalization.features import (
-    candidate_features,
-    gray_small,
-)
-from vinishko.pipeline.steps.normalization.seg import (
-    ENV_DEVICE,
-    Segmenter,
-    label_stats,
-    open_image,
-)
 from vinishko.pipeline.device import resolve_torch_device
-from vinishko.pipeline.structs import BottleCrop, Reason, RejectedBottle, Rejection
-import torch
+from vinishko.pipeline.steps.normalization.features import candidate_features
+from vinishko.pipeline.steps.normalization.features import gray_small
+from vinishko.pipeline.steps.normalization.seg import ENV_DEVICE
+from vinishko.pipeline.steps.normalization.seg import Segmenter
+from vinishko.pipeline.steps.normalization.seg import label_stats
+from vinishko.pipeline.steps.normalization.seg import open_image
+from vinishko.pipeline.structs import BottleCrop
+from vinishko.pipeline.structs import Reason
+from vinishko.pipeline.structs import RejectedBottle
+from vinishko.pipeline.structs import Rejection
+
 
 torch.set_float32_matmul_precision("high")
 
@@ -603,14 +603,20 @@ class Normalizer:
         main = self.largest_label(cand["label_polys"], ax)
         if stats["cover"] < lb["min_cover"]:
             return RejectedBottle(
-                Rejection(NormalizationReason.NO_LABEL, f"этикетки закрывают {stats['cover']:.0%} площади бутылки, нужно от {lb['min_cover']:.0%}"),
+                Rejection(
+                    NormalizationReason.NO_LABEL,
+                    f"этикетки закрывают {stats['cover']:.0%} площади бутылки, нужно от {lb['min_cover']:.0%}",
+                ),
                 score,
                 cand["polys"],
                 main,
             )
         if main is None:
             return RejectedBottle(
-                Rejection(NormalizationReason.NOT_A_LABEL, f"все наклейки уже {self.cfg['label_crop']['min_width_frac']:.0%} ширины бутылки"),
+                Rejection(
+                    NormalizationReason.NOT_A_LABEL,
+                    f"все наклейки уже {self.cfg['label_crop']['min_width_frac']:.0%} ширины бутылки",
+                ),
                 score,
                 cand["polys"],
                 None,
@@ -687,7 +693,10 @@ class Normalizer:
         min_px = self.cfg["selection"]["min_bottle_px"]
         if bh < min_px:
             return RejectedBottle(
-                Rejection(NormalizationReason.BOTTLE_TOO_SMALL, f"высота бутылки {bh:.0f} px, нужно от {min_px} px"),
+                Rejection(
+                    NormalizationReason.BOTTLE_TOO_SMALL,
+                    f"высота бутылки {bh:.0f} px, нужно от {min_px} px",
+                ),
                 score,
                 cand["polys"],
                 None,
@@ -723,14 +732,20 @@ class Normalizer:
             score = round(scores[i], 4)
             if scores[i] < self.threshold:
                 item = RejectedBottle(
-                    Rejection(NormalizationReason.NOT_TARGET, f"скор отбора {score}, порог {self.threshold:.2f}"),
+                    Rejection(
+                        NormalizationReason.NOT_TARGET,
+                        f"скор отбора {score}, порог {self.threshold:.2f}",
+                    ),
                     score,
                     c["polys"],
                     None,
                 )
             elif max_bottles and n_valid >= max_bottles:
                 item = RejectedBottle(
-                    Rejection(NormalizationReason.OVER_LIMIT, f"годных бутылок уже {max_bottles}"),
+                    Rejection(
+                        NormalizationReason.OVER_LIMIT,
+                        f"годных бутылок уже {max_bottles}",
+                    ),
                     score,
                     c["polys"],
                     None,
@@ -1120,7 +1135,9 @@ def main(
             items = norm.annotate_image(img)
             names = write_outputs(f, out_dir, np.asarray(img), items, cfg)
             rejected = ", ".join(
-                item.rejection.reason for item in items if isinstance(item, RejectedBottle)
+                item.rejection.reason
+                for item in items
+                if isinstance(item, RejectedBottle)
             )
             click.echo(
                 f"{f.name}: бутылок {len(items)}, кропов {len(names)}"

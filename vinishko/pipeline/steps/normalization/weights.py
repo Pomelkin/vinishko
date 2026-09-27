@@ -4,15 +4,14 @@ from pathlib import Path
 
 import httpx
 from platformdirs import user_cache_path
-from rich.progress import (
-    BarColumn,
-    DownloadColumn,
-    Progress,
-    TaskID,
-    TextColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
-)
+from rich.progress import BarColumn
+from rich.progress import DownloadColumn
+from rich.progress import Progress
+from rich.progress import TaskID
+from rich.progress import TextColumn
+from rich.progress import TimeRemainingColumn
+from rich.progress import TransferSpeedColumn
+
 
 # Официальный https://huggingface.co/facebook/sam3 закрыт подтверждением доступа, на ModelScope тот же файл открыт
 SAM3_URL = "https://modelscope.cn/models/facebook/sam3/resolve/master/sam3.pt"

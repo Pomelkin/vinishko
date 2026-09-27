@@ -16,6 +16,7 @@ from torch.utils.data import Dataset
 from vinishko.pipeline.steps.normalization.normalize import render_bottle
 from vinishko.pipeline.steps.normalization.seg import open_image
 
+
 MARKUP_NAME = "normalization.jsonl"
 
 Span = tuple[int, int]

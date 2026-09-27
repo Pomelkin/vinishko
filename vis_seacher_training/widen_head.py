@@ -12,6 +12,7 @@ from vis_seacher_training.init_model import CENTERS_NAME
 from vis_seacher_training.init_model import class_means
 from vis_seacher_training.init_model import oneshot_recall
 
+
 logger = setup_logger(fmt="detailed")
 
 REPORT_NAME = "widen_report.json"

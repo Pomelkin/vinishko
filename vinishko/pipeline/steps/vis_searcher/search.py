@@ -2,7 +2,8 @@
 
 import json
 import re
-from datetime import UTC, datetime
+from datetime import UTC
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -10,40 +11,35 @@ from kostyl.utils import setup_logger
 from PIL import Image
 from qdrant_client import QdrantClient
 
-from vinishko.pipeline.steps.vis_searcher.catalog import (
-    FIELD_GROUP,
-    FIELD_GROUP_SLUGS,
-    FIELD_IMAGE,
-    FIELD_SLUG,
-    CollectionInfo,
-    connect,
-    fetch_vectors,
-    inspect,
-    retrieve,
-    sample_payload,
-    search,
-)
-from vinishko.pipeline.steps.vis_searcher.configs import (
-    GroupSearch,
-    TopNSearch,
-    VisSearcherConfig,
-    load_config,
-)
-from vinishko.pipeline.steps.vis_searcher.device import Device, resolve_device
-from vinishko.pipeline.steps.vis_searcher.model import Encoder, fetch_model
-from vinishko.pipeline.steps.vis_searcher.storage import (
-    ImageStore,
-    make_store,
-    read_manifest,
-)
-from vinishko.pipeline.structs import (
-    BottleCandidates,
-    BottleCrop,
-    Candidate,
-    Reason,
-    Rejection,
-    UnmatchedBottle,
-)
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_IMAGE
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_SLUG
+from vinishko.pipeline.steps.vis_searcher.catalog import CollectionInfo
+from vinishko.pipeline.steps.vis_searcher.catalog import connect
+from vinishko.pipeline.steps.vis_searcher.catalog import fetch_vectors
+from vinishko.pipeline.steps.vis_searcher.catalog import inspect
+from vinishko.pipeline.steps.vis_searcher.catalog import retrieve
+from vinishko.pipeline.steps.vis_searcher.catalog import sample_payload
+from vinishko.pipeline.steps.vis_searcher.catalog import search
+from vinishko.pipeline.steps.vis_searcher.configs import GroupSearch
+from vinishko.pipeline.steps.vis_searcher.configs import TopNSearch
+from vinishko.pipeline.steps.vis_searcher.configs import VisSearcherConfig
+from vinishko.pipeline.steps.vis_searcher.configs import load_config
+from vinishko.pipeline.steps.vis_searcher.device import Device
+from vinishko.pipeline.steps.vis_searcher.device import resolve_device
+from vinishko.pipeline.steps.vis_searcher.model import Encoder
+from vinishko.pipeline.steps.vis_searcher.model import fetch_model
+from vinishko.pipeline.steps.vis_searcher.storage import ImageStore
+from vinishko.pipeline.steps.vis_searcher.storage import make_store
+from vinishko.pipeline.steps.vis_searcher.storage import read_manifest
+from vinishko.pipeline.structs import BottleCandidates
+from vinishko.pipeline.structs import BottleCrop
+from vinishko.pipeline.structs import Candidate
+from vinishko.pipeline.structs import Reason
+from vinishko.pipeline.structs import Rejection
+from vinishko.pipeline.structs import UnmatchedBottle
+
 
 logger = setup_logger(fmt="detailed")
 
@@ -351,7 +347,13 @@ class VisSearcher:
                 {
                     "query": crop.uuid,
                     "bottle_score": crop.score,
-                    "rejected": {"stage": result.rejection.stage, "reason": result.rejection.reason, "detail": result.rejection.detail} if isinstance(result, UnmatchedBottle) else None,
+                    "rejected": {
+                        "stage": result.rejection.stage,
+                        "reason": result.rejection.reason,
+                        "detail": result.rejection.detail,
+                    }
+                    if isinstance(result, UnmatchedBottle)
+                    else None,
                     "candidates": [
                         {
                             "slug": c.slug,

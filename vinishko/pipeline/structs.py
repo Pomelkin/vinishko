@@ -1,9 +1,11 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from enum import StrEnum
 from typing import Literal
 from uuid import uuid4
 
 import numpy as np
+
 
 Stage = Literal["normalization", "search", "resolve"]
 """Шаги пайплайна, которые могут отказать по бутылке."""
@@ -16,7 +18,9 @@ def new_uuid() -> str:
 
 def polygons_bbox(polygons: list) -> list[int]:
     """Бокс [x1, y1, x2, y2] включительно по вершинам полигонов."""
-    pts = np.concatenate([np.asarray(p, np.float64).reshape(-1, 2) for p in polygons if len(p)])
+    pts = np.concatenate(
+        [np.asarray(p, np.float64).reshape(-1, 2) for p in polygons if len(p)]
+    )
     (x1, y1), (x2, y2) = pts.min(0), pts.max(0)
     return [int(x1), int(y1), int(x2), int(y2)]
 
@@ -74,7 +78,9 @@ class Rejection:
     @property
     def message(self) -> str:
         """Готовая строка для интерфейса: заголовок причины и что именно не прошло."""
-        return f"{self.reason.label}: {self.detail}" if self.detail else self.reason.label
+        return (
+            f"{self.reason.label}: {self.detail}" if self.detail else self.reason.label
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -251,9 +257,13 @@ class BottleOutcome:
     rejection: Rejection | None
 
     def __post_init__(self) -> None:
-        outcomes = sum((self.match is not None, bool(self.candidates), self.rejection is not None))
+        outcomes = sum(
+            (self.match is not None, bool(self.candidates), self.rejection is not None)
+        )
         if outcomes > 1 or (outcomes == 0 and self.crop is None):
-            raise ValueError("у бутылки не больше одного исхода: позиция, кандидаты либо отказ; без исхода только годная бутылка без поиска")
+            raise ValueError(
+                "у бутылки не больше одного исхода: позиция, кандидаты либо отказ; без исхода только годная бутылка без поиска"
+            )
 
     @property
     def status(self) -> Literal["matched", "candidates", "rejected", "normalized"]:

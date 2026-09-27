@@ -30,11 +30,12 @@ from scripts.bench_common.data import normalized
 from scripts.bench_common.data import protocol_rows
 from scripts.bench_common.data import read_split
 from scripts.bench_common.metrics import ModeResult
-from scripts.bench_common.report import column_title
 from scripts.bench_common.report import ReportSpec
 from scripts.bench_common.report import build_html
+from scripts.bench_common.report import column_title
 from scripts.bench_common.report import metric_sections
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
+
 
 console = Console()
 

@@ -13,6 +13,7 @@ from vis_seacher_training.data.views import ViewParams
 from vis_seacher_training.data.views import mute_background
 from vis_seacher_training.data.views import render_view
 
+
 INTERPOLATIONS = {
     "nearest": cv2.INTER_NEAREST,
     "linear": cv2.INTER_LINEAR,

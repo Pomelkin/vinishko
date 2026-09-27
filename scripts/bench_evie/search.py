@@ -2,11 +2,12 @@ from dataclasses import dataclass
 
 import numpy as np
 import torch
+from vinishko.pipeline.steps.vis_searcher.utils.maxsim import maxsim_inbatch
 
 from scripts.bench_common.metrics import TOP
 from scripts.bench_common.parallel import Advance
 from scripts.bench_evie.store import TokenStore
-from vinishko.pipeline.steps.vis_searcher.utils.maxsim import maxsim_inbatch
+
 
 QUERY_BATCH = 16
 BLOCK_BYTES = 1 << 30  # блок галереи на устройстве

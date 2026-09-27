@@ -9,11 +9,13 @@ import time
 from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
+from typing import Protocol
 
 import numpy as np
 import torch
 from kostyl.utils import setup_logger
+
 
 logger = setup_logger(fmt="detailed")
 

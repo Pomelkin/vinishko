@@ -4,7 +4,11 @@ import json
 import os
 import shutil
 from collections import Counter
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Iterator
+from collections.abc import AsyncIterator
+from collections.abc import Awaitable
+from collections.abc import Callable
+from collections.abc import Iterable
+from collections.abc import Iterator
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
@@ -13,22 +17,24 @@ from typing import Literal
 import httpx
 import pyarrow.parquet as pq
 import rich_click as click
-from huggingface_hub import HfApi, get_token, hf_hub_url
+from huggingface_hub import HfApi
+from huggingface_hub import get_token
+from huggingface_hub import hf_hub_url
 from huggingface_hub.hf_api import RepoFile
-from rich.console import Console, Group
+from rich.console import Console
+from rich.console import Group
 from rich.live import Live
-from rich.progress import (
-    BarColumn,
-    DownloadColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TaskID,
-    TextColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
-)
+from rich.progress import BarColumn
+from rich.progress import DownloadColumn
+from rich.progress import MofNCompleteColumn
+from rich.progress import Progress
+from rich.progress import SpinnerColumn
+from rich.progress import TaskID
+from rich.progress import TextColumn
+from rich.progress import TimeRemainingColumn
+from rich.progress import TransferSpeedColumn
 from rich.table import Table
+
 
 console = Console()
 

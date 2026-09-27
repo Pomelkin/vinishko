@@ -12,7 +12,10 @@ import rich_click as click
 import torch
 from torch import nn
 
-from scripts.export_common import RESIZES, Contract, export_bundle
+from scripts.export_common import RESIZES
+from scripts.export_common import Contract
+from scripts.export_common import export_bundle
+
 
 MODEL = "TULIP-so400m-14-384"
 PRETRAINED_TAG = "webli"

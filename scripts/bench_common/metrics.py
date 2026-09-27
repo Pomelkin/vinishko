@@ -7,6 +7,7 @@ from sklearn.metrics import roc_auc_score
 from scripts.bench_common.data import Split
 from scripts.bench_common.data import protocol_rows
 
+
 KS = (1, 3, 5)
 TOP = max(KS)
 FPRS = (0.01, 0.05)
