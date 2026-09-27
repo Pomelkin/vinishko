@@ -18,7 +18,7 @@ FIELD_SLUG, FIELD_GROUP, FIELD_GROUP_SLUGS, FIELD_IMAGE = (
     "group_slugs",
     "image",
 )
-FIELD_MODEL, FIELD_REVISION, FIELD_INPUT_SIZE = "model", "model_revision", "input_size"
+FIELD_MODEL, FIELD_REVISION, FIELD_INPUT_SIZE, FIELD_ENCODER_INPUT = "model", "model_revision", "input_size", "encoder_input"
 """Чем построена коллекция; лежит в каждой точке, поиск сверяет с загруженной моделью."""
 
 
@@ -75,10 +75,12 @@ class CollectionInfo:
     model: str
     revision: str
     input_size: tuple[int, int]
+    encoder_input: str
+    """Какой кроп бутылки кодировался при сборке: crop либо box_crop."""
 
 
 def inspect(client: QdrantClient, name: str) -> CollectionInfo:
-    """Проверки коллекции: существует, не пуста, точки помнят модель."""
+    """Проверки коллекции: существует, не пуста, точки помнят модель; encoder_input без поля — crop."""
     if not client.collection_exists(name):
         raise RuntimeError(f"в qdrant нет коллекции {name}")
     count = client.count(name, exact=True).count
@@ -109,6 +111,7 @@ def inspect(client: QdrantClient, name: str) -> CollectionInfo:
         payload[FIELD_MODEL],
         payload[FIELD_REVISION],
         tuple(payload[FIELD_INPUT_SIZE]),
+        payload.get(FIELD_ENCODER_INPUT, "crop"),  # коллекции до 2026-09-27 собирались только по crop, поля у них нет
     )
 
 

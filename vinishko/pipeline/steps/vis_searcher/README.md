@@ -37,8 +37,9 @@ OpenVINO во float32 (пакет `openvino`, группа `cpu-inference`), о�
 поэтому после смены модели её надо пересобрать.
 
 Экспорт визуальной башни TULIP из форка open_clip в этот формат: `python -m scripts.export_tulip -o weights/tulip_so400m_14_384` (чекпоинт
-`weights/tulip-so400m-14-384.ckpt`, вход 384×384, `resize: squash`, как в замерах `scripts/bench_tulip`). Локальные экспорты лежат в `weights/`:
-`dinov3_vitl16_512`, `dinov3_vitl16_1024`, `tulip_so400m_14_384`; в `model` можно указать репозиторий HF либо путь к такой директории, относительный
+`weights/tulip-so400m-14-384.ckpt`, вход 384×384, `resize: squash`, как в замерах `scripts/bench_tulip`). SigLIP2 с Hugging Face: `python -m scripts.export_siglip2 -o weights/siglip2_so400m_14_384` (`google/siglip2-so400m-patch14-384`,
+эмбеддинг — выход MAP-головы, вход 384×384, `resize: squash`). Общий код обоих экспортов — `scripts/export_common.py`.
+Локальные экспорты лежат в `weights/`: `dinov3_vitl16_512`, `dinov3_vitl16_1024`, `tulip_so400m_14_384`, `siglip2_so400m_14_384`; в `model` можно указать репозиторий HF либо путь к такой директории, относительный
 путь считается от файла конфига, например `../../../../weights/tulip_so400m_14_384`.
 
 ## Коллекция
@@ -54,8 +55,9 @@ python -m vinishko.pipeline.steps.vis_searcher.build_catalog \
 Устройство энкодера — `VIS_SEARCHER_DEV`, нормализации — `NORMALIZER_DEV`.
 
 Каждое фото каталога проходит нормализацию, на нём должна найтись ровно одна годная бутылка (`--on-failure skip` пропускает остальные
-и перечисляет их в конце, `--report` пишет JSON). Вектор считается с кропа поиска (`BottleCrop.crop`, окно этикетки с залитым фоном), а в хранилище картинок под именем `<slug>.jpg` уходит вся
-бутылка каталожного фото (`BottleCrop.box_crop`, bbox маски с запасом, фон не тронут): её получает второй уровень как `Candidate.image`,
+и перечисляет их в конце, `--report` пишет JSON). Вектор считается с кропа, заданного `encoder_input` конфига: `crop` — окно этикетки с залитым фоном, вход обучения DINO, либо `box_crop` —
+вся бутылка как на фото, для TULIP и подобных; коллекция помнит выбор и с другим значением не примется. В хранилище картинок под именем
+`<slug>.jpg` всегда уходит вся бутылка каталожного фото (`BottleCrop.box_crop`, bbox маски с запасом, фон не тронут): её получает второй уровень как `Candidate.image`,
 она того же вида, что `box_crop` запроса.
 Метаданные точки: `slug`, `group`, `group_slugs` — все позиции группы, попавшие в коллекцию, `image`, `source_image`, поля каталога
 (`name`, `winery`, `vintage`, `abv`, …), `model`, `model_revision`, `input_size`, `precision`. Группа берётся из колонки `--group-column`;
@@ -87,7 +89,9 @@ python -m vinishko.pipeline.steps.vis_searcher.evaluate --test-dir datasets/hack
 
 Каждое фото проходит нормализацию и поиск по `config.yaml`; ответ — кандидаты бутылки с лучшим скором отбора. По фото, чей slug есть
 в коллекции, считаются recall@1/3/5 и `group_recall` (slug состоит в группе какого-то кандидата); отдельно `recall@k_any_bottle` по всем
-бутылкам фото, для полок. Пустой slug значит, что ответа нет: `correct_reject` — поиск отказал, `false_accept` — выдал кандидатов;
+бутылкам фото, для полок. Пустой slug значит, что ответа нет: `correct_reject` — поиск отказал, `false_accept` — выдал кандидатов; slug задан, но в коллекции
+его нет (фото каталога не прошло нормализацию) — `answer_not_indexed`, такие фото ни в recall, ни в отказ не идут;
 `false_reject` — ответ был, а поиск отказал; `no_bottle` — нормализация не нашла годной бутылки. В отчёт идут квантили косинуса top-1
 для попаданий, промахов и ложных принятий — по ним калибруются пороги. Результат в `reports/vis_searcher/<время>/`: `report.json`,
-`per_image.csv` и дампы поиска по промахам (`--dump all|none`).
+`per_image.csv` и `dumps/<фото>/` на каждое фото (`--dump misses` — только промахи, `none` — без дампов): копия исходника, `normalization.json`
+со всеми бутылками и причинами отказов, а если поиск был — оба кропа запроса, картинки кандидатов и `results.json`.

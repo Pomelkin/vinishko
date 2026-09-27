@@ -193,6 +193,7 @@ def export_model(
         "patch_size": patch,
         "pad_color": list(fill),
         "resize": "pad",
+        "interpolation": "area_cubic",
         "preprocess": "кроп нормализации вписать в input_size с сохранением пропорций (area при уменьшении, cubic при увеличении), дополнить pad_color по центру",
         "mean": list(mean),
         "std": list(std),

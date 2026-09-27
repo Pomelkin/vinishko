@@ -93,6 +93,10 @@ class VisSearcher:
             raise RuntimeError(
                 f"коллекция {info.name} построена со входом {info.input_size}, у модели {files.input_size}"
             )
+        if info.encoder_input != self.cfg.encoder_input:
+            raise RuntimeError(
+                f"коллекция {info.name} собрана по {info.encoder_input}, а в конфиге encoder_input={self.cfg.encoder_input}: пересоберите коллекцию либо верните значение"
+            )
         return info
 
     def _check_store(self) -> None:
@@ -107,7 +111,7 @@ class VisSearcher:
         """Ответ по каждому кропу, в порядке кропов: результатов ровно столько, сколько кропов."""
         if not crops:
             return []
-        vectors = self.encoder([crop.crop for crop in crops])
+        vectors = self.encoder([getattr(crop, self.cfg.encoder_input) for crop in crops])
         results = [
             self._search(crop, vector)
             for crop, vector in zip(crops, vectors, strict=True)
