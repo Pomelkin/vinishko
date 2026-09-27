@@ -16,6 +16,7 @@ import numpy as np
 from PIL import Image
 
 from vinishko.pipeline.steps.near_duplicates import predictor
+from vinishko.pipeline.steps.near_duplicates.configs import DEFAULT_CONFIG, load_config as load_ndr_config
 from vinishko.pipeline.steps.near_duplicates.rerank import CSV_FIELDS, NDR_CONCURRENCY, NearDuplicateError, NearDuplicateReranker, candidate_card, load_cards
 from vinishko.pipeline.steps.vis_searcher.storage import S3Store
 from vinishko.pipeline.steps.vis_searcher.catalog import CollectionInfo
@@ -66,6 +67,26 @@ class FakeStore:
 
 
 class NearDuplicateRerankerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        env = patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-only"})
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_settings_are_loaded_from_yaml(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "config.yaml"
+            path.write_text(
+                DEFAULT_CONFIG.read_text(encoding="utf-8").replace(
+                    "model: deepseek/deepseek-v4.1-flash", "model: test/model",
+                ),
+                encoding="utf-8",
+            )
+            settings = load_ndr_config(path)
+        self.assertEqual(settings.openrouter.model, "test/model")
+        self.assertEqual(settings.openrouter.routing.only, ("together",))
+        self.assertEqual(settings.generation.max_completion_tokens, 4096)
+        self.assertEqual(NearDuplicateReranker(settings=settings).settings, settings)
+
     def test_local_catalog_supplies_full_v5_card(self) -> None:
         bottle = crop()
         position = candidate(bottle, "first", "group", ["first", "second"])
@@ -174,7 +195,7 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         top = candidate(bottle, "one", "one", ["one"])
         store = FakeStore()
         with patch("vinishko.pipeline.steps.near_duplicates.rerank.predict") as model:
-            result = NearDuplicateReranker(reference_store=store)([BottleCandidates(bottle, [top])])[0]
+            result = NearDuplicateReranker(reference_store=store).call([BottleCandidates(bottle, [top])])[0]
         self.assertEqual([c.slug for c in result.candidates], ["one"])
         self.assertEqual(result.selection["source"], "vector")
         self.assertEqual(store.names, [])
@@ -280,6 +301,21 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         with patch("vinishko.pipeline.steps.near_duplicates.rerank.predict") as model, self.assertRaises(NearDuplicateError):
             NearDuplicateReranker()([BottleCandidates(bottle, [top])])
         model.assert_not_called()
+
+    def test_missing_openrouter_key_reports_env_file(self) -> None:
+        bottle = crop()
+        candidates = [candidate(bottle, slug, "group", ["first", "second"]) for slug in ("first", "second")]
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(predictor, "PROJECT_ROOT", Path(temp)), patch.dict(os.environ, {}, clear=True):
+                with self.assertRaisesRegex(NearDuplicateError, r"OPENROUTER_API_KEY.*\.env"):
+                    NearDuplicateReranker().call([BottleCandidates(bottle, candidates)])
+
+    def test_openrouter_key_is_loaded_from_project_env(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            (Path(temp) / ".env").write_text("OPENROUTER_API_KEY=test-only\n", encoding="utf-8")
+            with patch.object(predictor, "PROJECT_ROOT", Path(temp)), patch.dict(os.environ, {}, clear=True):
+                predictor.load_openrouter_env()
+                self.assertEqual(os.environ["OPENROUTER_API_KEY"], "test-only")
 
     def test_v5_predictor_accepts_images_in_memory_with_strict_slug_enum(self) -> None:
         bottle = crop()

@@ -16,9 +16,9 @@ from vinishko.pipeline.steps.vis_searcher.configs import VisSearcherConfig
 from vinishko.pipeline.steps.vis_searcher.storage import ImageStore, encode_image, make_store
 from vinishko.pipeline.structs import BottleCandidates, Candidate, Reason, UnmatchedBottle
 
-from .config import SETTINGS, NdrSettings
+from .configs import NdrSettings, load_config
 from .models import NOT_FOUND
-from .predictor import predict
+from .predictor import load_openrouter_env, missing_api_key_message, predict
 
 HERE = Path(__file__).resolve().parent
 NDR_CONCURRENCY = 32
@@ -113,8 +113,8 @@ def candidate_card(candidate: Candidate, reference_store: ImageStore | None = No
 class NearDuplicateReranker:
     """Берёт группу первого векторного кандидата и вызывает NDR v5 только для группы из 2+ SKU."""
 
-    def __init__(self, settings: NdrSettings = SETTINGS, trace_dir: Path | None = None, reference_store: ImageStore | None = None, catalog_csv: Path | None = None) -> None:
-        self.settings = settings
+    def __init__(self, settings: NdrSettings | None = None, trace_dir: Path | None = None, reference_store: ImageStore | None = None, catalog_csv: Path | None = None) -> None:
+        self.settings = settings if settings is not None else load_config()
         self.trace_dir = trace_dir
         self.reference_store = reference_store
         self.cards = load_cards(catalog_csv) if catalog_csv is not None else None
@@ -130,6 +130,10 @@ class NearDuplicateReranker:
         return cls(trace_dir=trace_dir, reference_store=store, catalog_csv=cfg.catalog_csv if cfg is not None else None)
 
     def __call__(self, results: list[BottleCandidates | UnmatchedBottle]) -> list[BottleCandidates | UnmatchedBottle]:
+        """Call the step from Pipeline and other callable consumers."""
+        return self.call(results)
+
+    def call(self, results: list[BottleCandidates | UnmatchedBottle]) -> list[BottleCandidates | UnmatchedBottle]:
         """Сохраняет порядок бутылок; каждый ответ содержит один SKU либо отказ."""
         if len(results) < 2:
             return [self._select(result) if isinstance(result, BottleCandidates) else result for result in results]
@@ -156,8 +160,11 @@ class NearDuplicateReranker:
         if len(members) == 1:
             return BottleCandidates(result.crop, [top], selection={"source": "vector", "slug": top.slug})
 
+        load_openrouter_env()
         settings = self.settings
         provider = settings.openrouter
+        if not (os.environ.get(provider.api_key_env) or "").strip():
+            raise NearDuplicateError(missing_api_key_message(provider.api_key_env))
         generation = settings.generation
         runtime = {
             "model": os.environ.get("OPENROUTER_MODEL") or provider.model,
