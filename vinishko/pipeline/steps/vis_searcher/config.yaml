@@ -3,7 +3,7 @@ model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-1024 # модель новой
 revision: null # ревизия репозитория; коллекция помнит свою и с другой не работает
 device: auto                                            # auto | cpu | cuda:<индекс>; переменная VIS_SEARCHER_DEV перекрывает; auto — cuda:0 при доступной CUDA, иначе cpu
 batch_size: 16 # потолок батча энкодера, для TensorRT — профиль engine
-cpu_batch_size: 1 # безопасный потолок на машине с 16 ГБ ОЗУ; 2 быстрее при достаточной свободной памяти
+cpu_batch_size: 2
 top_k: 1 # ближайшая позиция задаёт группу для NDR
 
 qdrant:

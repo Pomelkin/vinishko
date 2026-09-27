@@ -19,23 +19,23 @@ OPENROUTER_API_KEY=ваш_ключ
 # QDRANT_API_KEY=ключ_если_сервер_его_требует
 ```
 
-Готовые кропы из S3 уже лежат в `datasets/local/normalized/test/images` (172 из 176 тестовых фото). Исходные фото и `test.csv` остаются в `datasets/local/test`. Эти команды **не загружают SAM3** и после прогона записывают `metrics.json` и `per_image.csv` в каталог `-o`:
+Актуальная выборка из `s3://vino/test-data-norm/norm-images.tar.gz` лежит в `datasets/local/normalized/test`: `images_crop` содержит 176 кропов этикеток для DINO, `images_crop_box` — 176 кропов бутылок для NDR. Исходные фото и `test.csv` остаются в `datasets/local/test`. Эти команды **не загружают SAM3** и после прогона записывают `metrics.json` и `per_image.csv` в каталог `-o`:
 
 ```powershell
-# Только векторный поиск по двум готовым кропам DINO
-python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs_s3 --stage search --normalized-dir datasets\local\normalized\test\images --limit 2
+# Только векторный поиск по готовым кропам DINO
+python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs_s3 --stage search --skip-normalization --normalized-dir datasets\local\normalized\test --limit 2
 
 # Векторный поиск + выбор внутри группы NDR v5; для вызова модели нужен OPENROUTER_API_KEY
-python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs_s3 --stage full --normalized-dir datasets\local\normalized\test\images --limit 2
+python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs_s3 --stage full --skip-normalization --normalized-dir datasets\local\normalized\test --limit 2
 
-# Вся тестовая выборка: 172 фото идут в поиск; 4 без готового кропа учитываются как отказ нормализации
-python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs_s3 --stage search --normalized-dir datasets\local\normalized\test\images
+# Вся тестовая выборка: 176 фото идут в поиск
+python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs_s3 --stage search --skip-normalization --normalized-dir datasets\local\normalized\test
 
 # Только NDR по уже сохранённому поиску в том же каталоге -o; Qdrant и DINO не запускаются
-python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs_s3 --stage ndr --normalized-dir datasets\local\normalized\test\images
+python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs_s3 --stage ndr --normalized-dir datasets\local\normalized\test
 ```
 
-Для `--stage ndr` нужны прежние `runs_s3/<имя фото>/search/results.json`, JPEG в `search/` и `result.json`. Каталог `search/` сохраняется, `rerank/`, `result.json` и итоговые метрики обновляются. Ключ `OPENROUTER_API_KEY` нужен для групп с несколькими SKU; если в группе один SKU, NDR выбирает его без вызова модели. `--normalized-dir` здесь нужен только для пропуска тех четырёх фото, которые не участвовали в поиске.
+Для `--stage ndr` нужны прежние `runs_s3/<имя фото>/search/results.json`, JPEG в `search/` и `result.json`. Каталог `search/` сохраняется, `rerank/`, `result.json` и итоговые метрики обновляются. Ключ `OPENROUTER_API_KEY` нужен для групп с несколькими SKU; если в группе один SKU, NDR выбирает его без вызова модели. `--normalized-dir` здесь выбирает фото с готовыми кропами бутылок для NDR.
 
 Новые локальные прогоны нормализации и другие режимы:
 
@@ -52,32 +52,32 @@ python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs --s
 # Повторный поиск по уже готовой нормализации в том же каталоге runs — SAM3 не загружается
 python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs --stage search --limit 2 --skip-normalization
 
-# Вообще без нормализации: каждое исходное фото целиком становится запросом поиска
-python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs_raw --stage search --limit 2 --no-normalization
-
 # Полный pipeline, включая NDR — OpenRouter вызывается для групп из нескольких SKU
 python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs --stage full --limit 2 --batch-size 2
 
 # Повторить поиск и NDR без нормализации
 python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs --stage full --limit 2 --skip-normalization
 
-# Полный pipeline по исходным фото целиком, без SAM3
-python -m vinishko.pipeline.debug datasets\local\test -o datasets\local\runs_raw --stage full --limit 2 --no-normalization
 ```
 
 `debug.py` автоматически загружает `.env` из корня репозитория; файл исключён из Git. Переменные окружения PowerShell имеют приоритет. Обычный запуск перезаписывает папки выбранных фото в `datasets/local/runs`. `--stage search` повторно выполняет нормализацию, если не указан режим обхода; без `--limit` выбираются все фото.
 
-Есть три независимых режима без SAM3:
+Есть два способа использовать готовую нормализацию без SAM3:
 
 | Флаг | Что передаётся в поиск | Нужен предыдущий запуск нормализации |
 | --- | --- | --- |
-| `--skip-normalization` | Сохранённые кропы и разметка из `<output-dir>/<имя фото>/normalization/` | Да; используйте тот же `-o` и те же исходные фото |
-| `--no-normalization` | Исходное фото целиком как один запрос, без выделения бутылки или этикетки | Нет |
-| `--normalized-dir <папка>` | Готовый JPEG-кроп этикетки для DINO по имени исходного фото; для VLM используется исходное фото | Нет; кропы должны лежать в указанной папке |
+| `--skip-normalization` | Сохранённые кропы и разметка из `<output-dir>/<имя фото>/normalization/`; с `--normalized-dir` — готовые кропы S3 | Для сохранённого запуска — да; для S3 — нет |
+| `--normalized-dir <папка>` | `images_crop` для DINO и `images_crop_box` для NDR; старая плоская папка JPEG использует исходное фото для NDR | Нет; кропы должны лежать в указанной папке |
 
-Режимы работают только с `--stage search` или `full` и не допускают `--set`; вместе их указывать нельзя. Старые `search/`, `rerank/` и `result.json` заменяются, а сохранённая папка `normalization/` остаётся на месте. Новые результаты нормализации содержат два точных несжатых кропа: этикетка для DINO и вся бутылка для просмотра и каталога. VLM получает исходное фото запроса, уменьшенное до 1600 px при необходимости. Старые результаты поддерживаются, но у них нет второго кропа. S3-поставка теста содержит только старый кроп этикетки: для NDR в режиме `--normalized-dir` берётся уменьшенное исходное фото. В режиме `--no-normalization` фото с несколькими бутылками даёт один общий запрос, поэтому точность может снизиться.
+Режимы работают только с `--stage search` или `full` и не допускают `--set`; `--skip-normalization` можно сочетать с `--normalized-dir`. Старые `search/`, `rerank/` и `result.json` заменяются, а сохранённая папка `normalization/` остаётся на месте. Новые результаты нормализации содержат два точных несжатых кропа: этикетка для DINO и вся бутылка для просмотра и каталога. В режиме готовых парных JPEG search получает `images_crop`, а NDR — `images_crop_box` без уменьшения. Старая плоская папка JPEG использует исходное фото для NDR.
 
-При наличии `test.csv` в исходной папке `metrics.json` содержит два среза: `all` — accuracy@1/3/5 по всем выбранным фото, где пустой slug или `not_found` засчитывается при верном отказе; `catalog_only` — accuracy@1/3/5 только по фото, чей slug есть в локальном `catalog.csv`. Отдельно записываются число фото без ответа в Каталоге, доля верных отказов, ложных принятий, `searched_images`, `missing_normalization` и среднее время по фото, дошедшим до поиска. На полном тесте знаменатели — 176 фото в `all`, 135 в `catalog_only`; четыре без готового кропа входят в отчёт как `no_normalization` с пустым ответом. `per_image.csv` показывает исходную разметку, целевой ответ после проверки Каталога и полученный slug. С `--limit 2` метрики относятся только к первым двум фото из `test.csv`, и предупреждение о недостающих кропах за пределами лимита не выводится. `--labels путь\к\test.csv` задаёт разметку явно.
+При наличии `test.csv` `metrics.json` разделяет оценку поиска (`search`) и итогового выбора (`ndr`, только для `--stage full`, `ndr` и `metrics`). Поиск оценивается по сохранённому `search/results.json` до NDR: `recall@1/3/5` по первому найденному кропу, `recall@k_any_bottle` по всем кропам, `group_recall` по группе и распределение косинуса top-1. NDR оставляет один SKU или отказ, поэтому у него `accuracy` по всем размеченным фото, включая slug без вектора в индексе; `accuracy_indexed_or_empty` исключает такие фото, а `correct_slug_rate_for_indexed_answers` показывает долю верно выбранных slug среди фото, чей правильный slug есть в индексе. Метрик `@k` для NDR нет. Оба этапа показывают `false_reject`, `correct_reject`, `false_accept`, `not_indexed_accepted` и `no_bottle`. В знаменатель recall входят только фото, чей slug реально проиндексирован в Qdrant; пустые slug проверяют отказ, а заданные, но отсутствующие в индексе, учитываются отдельно как `answer_not_indexed`. При поиске сохраняется `indexed_slugs.json`, который затем использует отдельный запуск NDR или пересчёт. `per_image.csv` содержит исходный slug, наличие в индексе, позиции ответа и решения обоих этапов. С `--limit 2` метрики относятся только к первым двум фото из `test.csv`. `--labels путь\к\test.csv` задаёт разметку явно.
+
+Пересчитать метрики уже завершённого прогона без моделей и повторных вызовов NDR:
+
+```powershell
+.venv/Scripts/python.exe -m vinishko.pipeline.debug datasets/local/test -o datasets/local/runs_s3 --stage metrics
+```
 
 Текущий удалённый Qdrant требует `QDRANT_API_KEY`: без него сервер отвечает 401. Замените пример `ключ_если_сервер_его_требует` в `.env` настоящим ключом от коллеги и уберите `#` перед строкой. Не добавляйте `.env` в Git.
 
@@ -103,11 +103,11 @@ result.timings          # секунды на шаг
 results = Pipeline(searcher=VisSearcher()).run_many([photo1, photo2])  # общий поиск кропов; ограничивайте размер списка
 ```
 
-Поиск берёт один ближайший вектор из удалённого Qdrant и по его `group_slugs` загружает всю группу. Если в группе одна позиция, она становится ответом без вызова OpenRouter. Для группы из нескольких позиций NDR v5 получает исходное фото запроса после EXIF-поворота, изображения кандидатов из локальной копии S3-каталога и карточки из `catalog.csv`. Для старых точек Qdrant без признака `image_crop=bottle_box` используются оригинальные эталоны. Он возвращает один slug либо `near_duplicate_not_found`; ошибки вызова и нарушения контракта поднимаются как ошибки пайплайна. `result.search[*].selection` показывает источник решения и наблюдения NDR.
+Поиск берёт один ближайший вектор из удалённого Qdrant и по его `group_slugs` загружает всю группу. Если в группе одна позиция, она становится ответом без вызова OpenRouter. Для группы из нескольких позиций NDR v5 получает `images_crop_box` в режиме парной S3-выборки или исходное фото запроса при обычном запуске, изображения кандидатов из локальной копии S3-каталога и карточки из `catalog.csv`. Для старых точек Qdrant без признака `image_crop=bottle_box` используются оригинальные эталоны. Он возвращает один slug либо `near_duplicate_not_found`; ошибки вызова и нарушения контракта поднимаются как ошибки пайплайна. `result.search[*].selection` показывает источник решения и наблюдения NDR.
 
 ## Исходные фото и кропы
 
-`datasets/local/catalog/images` и `datasets/local/test/images` содержат исходные фото. Из S3 скачаны готовые кропы: `datasets/local/normalized/test/images` (172 JPEG для DINO, 75,8 МБ) и `datasets/local/normalized/catalog/images` (1981 JPEG для кандидатов VLM, 165,8 МБ). Из каталоговых файлов 1977 загружены после обновления с двумя кропами, четыре остались от прежней загрузки; принадлежность этих четырёх новой коллекции Qdrant без ключа пока не проверить. В тестовой поставке отсутствуют `test_000082`, `test_000083`, `test_000090`, `test_000120`; у исходников бывает `.webp`, а нормализованный файл называется `<stem>.jpg`. При обычном запуске нормализатор создаёт кроп поиска и кроп всей бутылки; отладочный CLI сохраняет оба в `runs/<фото>/normalization/`.
+`datasets/local/catalog/images` и `datasets/local/test/images` содержат исходные фото. Из S3 скачаны готовые кропы: `datasets/local/normalized/test/images_crop` (176 JPEG для DINO, 76,1 МБ), `datasets/local/normalized/test/images_crop_box` (176 JPEG для NDR, 33,1 МБ) и `datasets/local/normalized/catalog/images` (1981 JPEG для кандидатов VLM, 165,8 МБ). Из каталоговых файлов 1977 загружены после обновления с двумя кропами, четыре остались от прежней загрузки; принадлежность этих четырёх новой коллекции Qdrant без ключа пока не проверить. У исходников бывает `.webp`, а нормализованный файл называется `<stem>.jpg`. При обычном запуске нормализатор создаёт кроп поиска и кроп всей бутылки; отладочный CLI сохраняет оба в `runs/<фото>/normalization/`.
 
 Векторы каталога рассчитываются при отдельной сборке коллекции: `build_catalog` читает исходные фото, нормализует каждое принятое фото, считает вектор по кропу этикетки и сохраняет кроп всей бутылки для VLM в хранилище `images`. Запрос использует уже заполненную коллегой коллекцию.
 

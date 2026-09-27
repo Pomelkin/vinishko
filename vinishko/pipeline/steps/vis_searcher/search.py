@@ -266,6 +266,7 @@ class VisSearcher:
                             "group": c.group,
                             "score": c.score,
                             "retrieved": c.retrieved,
+                            "group_slugs": c.payload.get(FIELD_GROUP_SLUGS, []),
                         }
                         for c in candidates
                     ],

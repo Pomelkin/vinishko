@@ -3,6 +3,7 @@
 import csv
 import json
 import shutil
+import statistics
 import time
 from collections import deque
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -28,6 +29,7 @@ from vinishko.pipeline.steps.near_duplicates.rerank import NDR_CONCURRENCY, Near
 from vinishko.pipeline.steps.vis_searcher import VisSearcher
 from vinishko.pipeline.steps.vis_searcher import load_config as load_search_config
 from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS
+from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_SLUG, connect
 from vinishko.pipeline.steps.vis_searcher.configs import DEFAULT_CONFIG
 from vinishko.pipeline.steps.vis_searcher.search import SearchReason
 from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate, RejectedBottle, UnmatchedBottle
@@ -36,7 +38,7 @@ console = Console()
 logger = setup_logger(fmt="detailed")
 ROOT = Path(__file__).resolve().parents[2]
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
-InputMode = Literal["sam3", "cached", "raw", "precomputed"]
+InputMode = Literal["sam3", "cached", "precomputed"]
 
 
 def normalization_markup(items: list[BottleCrop | RejectedBottle], stem: str, fmt: str) -> list[dict]:
@@ -124,7 +126,7 @@ def output_path(output_dir: Path, image: Path) -> Path:
 
 
 def prepare_output(output_dir: Path, image: Path, *, mode: InputMode = "sam3") -> Path:
-    """Создаёт папку результата; cached/raw сохраняют прежнюю нормализацию, если она есть."""
+    """Создаёт папку результата; готовые кропы сохраняют прежнюю нормализацию, если она есть."""
     out = output_path(output_dir, image)
     if mode != "sam3":
         if mode == "cached" and not (out / "normalization" / "markup.json").is_file():
@@ -228,25 +230,26 @@ class CachedNormalizer:
         return load_normalization(image, self.output_dir, include_original=self.include_original)
 
 
-class RawImageNormalizer:
-    """Прямой поиск по целому фото: один синтетический кроп без сегментации и отбора."""
-
-    def __call__(self, image: Image.Image) -> list[BottleCrop]:
-        rgb = np.asarray(image.convert("RGB")).copy()
-        width, height = image.size
-        whole = [[[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]]]
-        return [BottleCrop(1, 0.0, whole, [], 0.0, rgb, {"mode": "raw", "width": width, "height": height}, rgb, {"mode": "raw"}, original=rgb)]
-
-
 def precomputed_file(image: Path, folder: Path) -> Path | None:
-    """S3-кропы теста названы по stem исходного фото, всегда с расширением .jpg."""
-    return next((path for suffix in (".jpg", ".png", ".webp") if (path := folder / f"{image.stem}{suffix}").is_file()), None)
+    """Кроп этикетки: новая парная поставка или прежняя плоская папка."""
+    crop_dir = folder / "images_crop" if (folder / "images_crop").is_dir() else folder
+    return next((path for suffix in (".jpg", ".png", ".webp") if (path := crop_dir / f"{image.stem}{suffix}").is_file()), None)
+
+
+def precomputed_box_file(image: Path, folder: Path) -> Path | None:
+    """Кроп бутылки из парной поставки; у старой плоской поставки его нет."""
+    if not (folder / "images_crop").is_dir():
+        return None
+    box_dir = folder / "images_crop_box"
+    return next((path for suffix in (".jpg", ".png", ".webp") if (path := box_dir / f"{image.stem}{suffix}").is_file()), None)
 
 
 def select_precomputed_images(images: list[Path], folder: Path) -> tuple[list[Path], list[Path]]:
     """Разделяет уже выбранные фото на готовые кропы и отказы нормализации."""
-    available = [image for image in images if precomputed_file(image, folder) is not None]
-    missing = [image for image in images if precomputed_file(image, folder) is None]
+    paired = (folder / "images_crop").is_dir()
+    available = [image for image in images if precomputed_file(image, folder) is not None and (not paired or precomputed_box_file(image, folder) is not None)]
+    available_set = set(available)
+    missing = [image for image in images if image not in available_set]
     if missing:
         logger.warning(f"нет готовых кропов: {len(missing)} из {len(images)} выбранных фото; поиск их пропустит, метрики учтут как отказ нормализации: {[image.name for image in missing[:8]]}")
     if not available:
@@ -255,7 +258,7 @@ def select_precomputed_images(images: list[Path], folder: Path) -> tuple[list[Pa
 
 
 class PrecomputedNormalizer:
-    """Готовый кроп поиска из S3 и исходное фото для VLM; SAM3 не загружается."""
+    """Готовый кроп этикетки для поиска и кроп бутылки для NDR."""
 
     def __init__(self, folder: Path) -> None:
         self.folder = folder
@@ -265,12 +268,17 @@ class PrecomputedNormalizer:
         if path is None:
             raise FileNotFoundError(f"нет готового кропа для {image} в {self.folder}")
         crop = np.asarray(open_image(path)).copy()
-        original = open_image(image)
-        original.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
-        box = np.asarray(original).copy()
+        box_path = precomputed_box_file(image, self.folder)
+        if (self.folder / "images_crop").is_dir() and box_path is None:
+            raise FileNotFoundError(f"нет кропа бутылки для {image} в {self.folder / 'images_crop_box'}")
+        box_image = open_image(box_path or image)
+        if box_path is None:
+            box_image.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+        box = np.asarray(box_image).copy()
         height, width = box.shape[:2]
         whole = [[[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]]]
-        return [BottleCrop(1, 0.0, whole, [], 0.0, crop, {"mode": "precomputed", "source": str(path)}, box, {"mode": "original_fallback"}, original=box)]
+        box_info = {"mode": "precomputed", "source": str(box_path)} if box_path else {"mode": "original_fallback"}
+        return [BottleCrop(1, 0.0, whole, [], 0.0, crop, {"mode": "precomputed", "source": str(path)}, box, box_info, original=box)]
 
 
 def write_debug_result(
@@ -287,8 +295,6 @@ def write_debug_result(
         result.timings["normalization_cached"] = result.timings.pop("normalization")
     elif mode == "precomputed":
         result.timings["normalization_precomputed"] = result.timings.pop("normalization")
-    elif mode == "raw":
-        result.timings["raw_input"] = result.timings.pop("normalization")
     else:
         if norm_cfg is None or not isinstance(img, Image.Image):
             raise RuntimeError("нет изображения или конфига для записи нормализации")
@@ -302,7 +308,7 @@ def write_debug_result(
         (norm_dir / "markup.json").write_text(
             json.dumps(normalization_markup(result.normalization, image.stem, norm_cfg["output"]["format"]), ensure_ascii=False, indent=1), encoding="utf-8"
         )
-    if searcher is not None and result.search:
+    if searcher is not None and result.search and not (out / "search" / "results.json").is_file():
         searcher.dump(result.search, out / "search")
     report = summary(image, result)
     report["input_mode"] = mode
@@ -351,6 +357,8 @@ def run_debug_batches(
                 if reranker is None or not result.search:
                     write_debug_result(image, out, img, result, norm_cfg, searcher, mode)
                     return
+                if searcher is not None:
+                    searcher.dump(result.search, out / "search")
                 worker = reranker.with_trace_dir(out / "rerank") if isinstance(reranker, NearDuplicateReranker) else reranker
                 if worker is reranker:
                     worker.trace_dir = out / "rerank"
@@ -378,75 +386,175 @@ def expected_slugs(input_path: Path, labels: Path | None) -> dict[str, str]:
         }
 
 
-def write_metrics(images: list[Path], output_dir: Path, stage: str, truth: dict[str, str], catalog_csv: Path | None = None, missing_normalization: list[Path] | None = None) -> dict:
-    """Итог по выбранным фото из result.json; метрики считаются после полного прогона."""
-    if truth and stage != "normalization" and (catalog_csv is None or not catalog_csv.is_file()):
-        raise click.UsageError("для метрик catalog_only нужен существующий catalog_csv в конфиге поиска")
-    known: set[str] | None = None
+def indexed_slugs(client, collection: str) -> set[str]:
+    """Slug, для которых в текущей коллекции действительно есть вектор."""
+    slugs: set[str] = set()
+    offset = None
+    while True:
+        points, offset = client.scroll(collection, limit=1024, offset=offset, with_payload=[FIELD_SLUG], with_vectors=False)
+        slugs.update(point.payload[FIELD_SLUG] for point in points if point.payload and FIELD_SLUG in point.payload)
+        if offset is None:
+            return slugs
+
+
+def known_slugs_for_metrics(output_dir: Path, cfg, searcher: VisSearcher | None = None) -> set[str]:
+    """Снимок slug коллекции сохраняется для отдельного запуска NDR и повторного расчёта."""
+    snapshot = output_dir / "indexed_slugs.json"
+    collection = cfg.qdrant.collection
+    if searcher is None and snapshot.is_file():
+        saved = json.loads(snapshot.read_text(encoding="utf-8"))
+        if saved["collection"] == collection:
+            return set(saved["slugs"])
+    client = searcher.client if searcher is not None else connect(cfg.qdrant)
+    slugs = indexed_slugs(client, collection)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    snapshot.write_text(json.dumps({"collection": collection, "slugs": sorted(slugs)}, ensure_ascii=False, indent=2), encoding="utf-8")
+    return slugs
+
+
+def share(values) -> float | None:
+    values = list(values)
+    return round(sum(values) / len(values), 4) if values else None
+
+
+def quantiles(values: list[float]) -> dict | None:
+    if not values:
+        return None
+    values = sorted(values)
+    return {"n": len(values), "min": round(values[0], 3), "p10": round(values[len(values) // 10], 3), "median": round(statistics.median(values), 3), "max": round(values[-1], 3)}
+
+
+def score_rows(rows: list[dict], *, ndr: bool) -> dict:
+    """Раздельная оценка поиска и окончательного выбора одного SKU."""
+    labeled = [row for row in rows if row["expected"] is not None]
+    with_answer = [row for row in labeled if row["in_catalog"]]
+    without = [row for row in labeled if not row["expected"]]
+    unindexed = [row for row in labeled if row["expected"] and not row["in_catalog"]]
+    prefix = "ndr" if ndr else "search"
+    status = lambda row: row[f"{prefix}_status"]
+    out = {"images": len(labeled), "with_answer": len(with_answer), "without_answer": len(without), "answer_not_indexed": len(unindexed)}
+    if ndr:
+        eligible = with_answer + without
+        out["accuracy"] = share((row["ndr_rank"] == 1 if row["expected"] else status(row) != "candidates") for row in labeled)
+        out["accuracy_indexed_or_empty"] = share((row["ndr_rank"] == 1 if row["in_catalog"] else status(row) != "candidates") for row in eligible)
+        out["correct_slug_rate_for_indexed_answers"] = share(row["ndr_rank"] == 1 for row in with_answer)
+    else:
+        for k in (1, 3, 5):
+            out[f"recall@{k}"] = share(row["search_rank"] is not None and row["search_rank"] <= k for row in with_answer)
+            out[f"recall@{k}_any_bottle"] = share(row["search_rank_any"] is not None and row["search_rank_any"] <= k for row in with_answer)
+        out["group_recall"] = share(row["search_group_hit"] for row in with_answer)
+    out["false_reject"] = share(status(row) == "no_match" for row in with_answer)
+    out["correct_reject"] = share(status(row) == "no_match" for row in without)
+    out["false_accept"] = share(status(row) == "candidates" for row in without)
+    out["not_indexed_accepted"] = share(status(row) == "candidates" for row in unindexed)
+    out["no_bottle"] = share(status(row) == "no_bottle" for row in labeled)
+    if ndr:
+        out["seconds_per_image"] = round(statistics.mean(row["ndr_seconds"] for row in labeled), 3) if labeled else None
+    else:
+        out["seconds_per_image"] = round(statistics.mean(row["search_seconds"] for row in labeled), 3) if labeled else None
+        out["top1_cos"] = {
+            "hits": quantiles([row["search_top1_score"] for row in with_answer if row["search_rank"] == 1 and row["search_top1_score"] is not None]),
+            "wrong": quantiles([row["search_top1_score"] for row in with_answer if status(row) == "candidates" and row["search_rank"] != 1 and row["search_top1_score"] is not None]),
+            "false_accept": quantiles([row["search_top1_score"] for row in without if row["search_top1_score"] is not None]),
+        }
+    return out
+
+
+def write_metrics(images: list[Path], output_dir: Path, stage: str, truth: dict[str, str], catalog_csv: Path | None = None, missing_normalization: list[Path] | None = None, known: set[str] | None = None) -> dict:
+    """Поиск оценивается по search/results.json, NDR — по итоговому result.json."""
+    catalog_source = "qdrant" if known is not None else "catalog_csv"
+    groups: dict[str, str] = {}
     if catalog_csv is not None and catalog_csv.is_file():
         with catalog_csv.open(encoding="utf-8-sig", newline="") as stream:
             reader = csv.DictReader(stream)
             if "Slug" not in (reader.fieldnames or []):
                 raise click.UsageError(f"в {catalog_csv} нет колонки Slug")
-            known = {row["Slug"].strip() for row in reader}
+            groups = {row["Slug"].strip(): (row.get("near_duplicate_group_slug") or "").strip() or row["Slug"].strip() for row in reader}
+    if truth and stage != "normalization" and known is None and not groups:
+        raise click.UsageError("для оценки нужен снимок slug коллекции или catalog_csv")
+    if known is None:
+        known = set(groups)
     missing_set = set(missing_normalization or [])
     rows = []
     for image in images:
-        report = {"bottles": [], "timings_s": {}} if image in missing_set else json.loads((output_path(output_dir, image) / "result.json").read_text(encoding="utf-8"))
-        found = next((b for b in report["bottles"] if b["status"] == "candidates"), None)
-        candidates = found["candidates"] if found else []
+        missing = image in missing_set
+        out = output_path(output_dir, image)
+        report = {"bottles": [], "timings_s": {}} if missing else json.loads((out / "result.json").read_text(encoding="utf-8"))
         expected = truth.get(image.name)
-        target = expected if expected is None or known is None or expected in known else ""
-        predicted = candidates[0]["slug"] if candidates else ""
-        rows.append({
-            "image": image.name,
-            "expected": expected,
-            "target": target,
-            "predicted": predicted,
-            "rank": next((i for i, c in enumerate(candidates, 1) if c["slug"] == target), None) if target else None,
-            "status": "no_normalization" if image in missing_set else "normalized" if stage == "normalization" and any(b["status"] == "normalized" for b in report["bottles"]) else "candidates" if candidates else "no_match",
-            "seconds": round(sum(report["timings_s"].values()), 3),
+        row = {"image": image.name, "expected": expected, "in_catalog": bool(expected) and expected in known,
+               "missing_normalization": missing, "seconds": round(sum(report["timings_s"].values()), 3)}
+        if stage == "normalization":
+            row["status"] = "normalized" if any(b["status"] == "normalized" for b in report["bottles"]) else "no_bottle"
+            rows.append(row)
+            continue
+        search_file = out / "search" / "results.json"
+        if missing:
+            queries = []
+        elif search_file.is_file():
+            queries = json.loads(search_file.read_text(encoding="utf-8"))["queries"]
+        elif stage == "search":
+            queries = [{"query": bottle.get("uuid"), "candidates": bottle.get("candidates", []), "rejected": bottle.get("status") != "candidates"} for bottle in report["bottles"] if bottle.get("step") != "normalization"]
+        else:
+            raise click.UsageError(f"нет сохранённой выдачи поиска: {search_file}")
+        if stage in ("full", "ndr", "metrics") and any(query.get("selection") is not None for query in queries):
+            raise click.UsageError(f"в {search_file} сохранён уже итог NDR; для recall поиска нужен повторный --stage search")
+        first = queries[0] if queries else None
+        search_candidates = first["candidates"] if first and not first["rejected"] else []
+        search_rank = next((i for i, c in enumerate(search_candidates, 1) if c["slug"] == expected), None) if expected else None
+        ranks = [i for query in queries for i, c in enumerate(query["candidates"], 1) if c["slug"] == expected] if expected else []
+        target_group = groups.get(expected) if expected else None
+        row.update({
+            "search_status": "no_bottle" if not queries else "candidates" if search_candidates else "no_match",
+            "search_top1": search_candidates[0]["slug"] if search_candidates else "",
+            "search_top1_score": search_candidates[0]["score"] if search_candidates else None,
+            "search_rank": search_rank,
+            "search_rank_any": min(ranks) if ranks else None,
+            "search_group_hit": bool(expected and any(expected in c.get("group_slugs", []) or (target_group and c["group"] == target_group) for c in search_candidates)),
+            "search_seconds": round(sum(value for key, value in report["timings_s"].items() if key != "rerank"), 3),
         })
-    labeled = [row for row in rows if row["expected"] is not None] if stage != "normalization" else []
-    positive = [row for row in labeled if row["target"]]
-    negative = [row for row in labeled if not row["target"]]
-
-    def share(values: list[bool]) -> float | None:
-        return round(sum(values) / len(values), 4) if values else None
-
-    def accuracy_at(group: list[dict], k: int, *, include_rejects: bool) -> float | None:
-        return share([not row["predicted"] if include_rejects and not row["target"] else row["rank"] is not None and row["rank"] <= k for row in group])
-
-    metrics = {
-        "stage": stage,
-        "images": len(rows),
-        "searched_images": len(rows) - len(missing_set),
-        "missing_normalization": len(missing_set),
-        "labeled_images": len(labeled),
-        "all": {"images": len(labeled), **{f"accuracy_at_{k}": accuracy_at(labeled, k, include_rejects=True) for k in (1, 3, 5)}},
-        "catalog_only": {"images": len(positive), **{f"accuracy_at_{k}": accuracy_at(positive, k, include_rejects=False) for k in (1, 3, 5)}},
-        "not_found": len(negative),
-        "correct_reject": share([not row["predicted"] for row in negative]),
-        "false_accept": share([bool(row["predicted"]) for row in negative]),
-        "no_match": sum(not row["predicted"] for row in rows),
-        "mean_seconds_per_image": round(sum(row["seconds"] for row in rows) / (len(rows) - len(missing_set)), 3) if len(rows) > len(missing_set) else None,
-    }
+        if stage in ("full", "ndr", "metrics"):
+            by_uuid = {b["uuid"]: b for b in report["bottles"]}
+            final = by_uuid.get(first["query"]) if first else None
+            final_candidates = final.get("candidates", []) if final and final["status"] == "candidates" else []
+            row.update({"ndr_status": "no_bottle" if not first else "candidates" if final_candidates else "no_match",
+                        "ndr_predicted": final_candidates[0]["slug"] if final_candidates else "",
+                        "ndr_rank": 1 if expected and final_candidates and final_candidates[0]["slug"] == expected else None,
+                        "ndr_seconds": report["timings_s"].get("rerank", 0.0)})
+        rows.append(row)
+    metrics = {"stage": stage, "images": len(rows), "searched_images": len(rows) - len(missing_set), "missing_normalization": len(missing_set), "labeled_images": sum(row["expected"] is not None for row in rows)}
     if stage == "normalization":
-        metrics = {"stage": stage, "images": len(rows), "normalized": sum(row["status"] == "normalized" for row in rows), "mean_seconds_per_image": metrics["mean_seconds_per_image"]}
+        metrics.update(normalized=sum(row["status"] == "normalized" for row in rows), mean_seconds_per_image=round(statistics.mean(row["seconds"] for row in rows), 3) if rows else None)
+    else:
+        metrics["catalog_source"] = catalog_source
+        metrics["search"] = score_rows(rows, ndr=False)
+        if stage in ("full", "ndr", "metrics"):
+            metrics["ndr"] = score_rows(rows, ndr=True)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
     with (output_dir / "per_image.csv").open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=["image", "expected", "target", "predicted", "rank", "status", "seconds"])
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]) if rows else ["image", "expected"])
         writer.writeheader()
         writer.writerows(rows)
     if stage == "normalization":
         console.print(f"Нормализация: {metrics['normalized']}/{metrics['images']} фото; среднее {metrics['mean_seconds_per_image']} с")
     else:
-        console.print(f"Метрики ({stage}): все {metrics['all']}; с ответом в Каталоге {metrics['catalog_only']}; верные отказы {metrics['correct_reject']}")
+        for name in ("search", "ndr"):
+            if name not in metrics:
+                continue
+            table = Table(title=f"Метрики {name}")
+            table.add_column("метрика")
+            table.add_column("значение", justify="right")
+            for key, value in metrics[name].items():
+                if key == "top1_cos":
+                    for label, q in value.items():
+                        table.add_row(f"cos top-1, {label}", "—" if q is None else f"n={q['n']} min {q['min']} p10 {q['p10']} med {q['median']} max {q['max']}")
+                else:
+                    table.add_row(key, "—" if value is None else f"{value:.1%}" if isinstance(value, float) and key != "seconds_per_image" else str(value))
+            console.print(table)
     return metrics
 
 
-def load_saved_search(image: Path, output_dir: Path) -> tuple[dict, list[BottleCandidates | UnmatchedBottle]]:
+def load_saved_search(image: Path, output_dir: Path, normalized_dir: Path | None = None) -> tuple[dict, list[BottleCandidates | UnmatchedBottle]]:
     """Восстанавливает выдачу поиска из его JSON и сохранённых JPEG, не подключаясь к Qdrant."""
     out = output_path(output_dir, image)
     search_dir = out / "search"
@@ -463,8 +571,10 @@ def load_saved_search(image: Path, output_dir: Path) -> tuple[dict, list[BottleC
             with Image.open(path) as stored:
                 return np.asarray(stored.convert("RGB")).copy()
 
-        original_image = open_image(image)
-        original_image.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+        box_file = precomputed_box_file(image, normalized_dir) if normalized_dir is not None and report.get("input_mode") == "precomputed" else None
+        original_image = open_image(box_file or image)
+        if box_file is None:
+            original_image.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
         original = np.asarray(original_image).copy()
         results: list[BottleCandidates | UnmatchedBottle] = []
         for number, query in enumerate(saved["queries"], 1):
@@ -501,11 +611,11 @@ def load_saved_search(image: Path, output_dir: Path) -> tuple[dict, list[BottleC
         raise click.ClickException(f"не удалось прочитать сохранённый поиск для {image}: {exc}") from exc
 
 
-def run_saved_ndr(images: list[Path], output_dir: Path, reranker: NearDuplicateReranker) -> None:
+def run_saved_ndr(images: list[Path], output_dir: Path, reranker: NearDuplicateReranker, normalized_dir: Path | None = None) -> None:
     """Запускает только NDR и обновляет итог, не изменяя каталог search/."""
     def process(image: Path) -> dict:
         out = output_path(output_dir, image)
-        report, found = load_saved_search(image, output_dir)
+        report, found = load_saved_search(image, output_dir, normalized_dir)
         trace_dir = out / "rerank"
         if trace_dir.exists():
             if not trace_dir.resolve().is_relative_to(out):
@@ -531,32 +641,29 @@ def run_saved_ndr(images: list[Path], output_dir: Path, reranker: NearDuplicateR
             logger.info(f"NDR: результаты {output_path(output_dir, image)}")
 
 
-def input_mode(stage: str, skip_normalization: bool, no_normalization: bool, normalized_dir: Path | None, overrides: tuple[str, ...]) -> InputMode:
-    """Два разных обхода SAM3: сохранённые кропы или исходное фото целиком."""
-    if sum((skip_normalization, no_normalization, normalized_dir is not None)) > 1:
-        raise click.UsageError("--skip-normalization, --no-normalization и --normalized-dir нельзя использовать вместе")
-    if stage == "normalization" and (skip_normalization or no_normalization or normalized_dir is not None):
+def input_mode(stage: str, skip_normalization: bool, normalized_dir: Path | None, overrides: tuple[str, ...]) -> InputMode:
+    """Выбор нормализации SAM3, сохранённого запуска или готовых кропов."""
+    if stage == "normalization" and (skip_normalization or normalized_dir is not None):
         raise click.UsageError("обход нормализации допустим только с --stage search или full")
-    if (skip_normalization or no_normalization or normalized_dir is not None) and overrides:
+    if (skip_normalization or normalized_dir is not None) and overrides:
         raise click.UsageError("--set действует только при запуске SAM3 без обхода нормализации")
-    return "cached" if skip_normalization else "raw" if no_normalization else "precomputed" if normalized_dir is not None else "sam3"
+    return "precomputed" if normalized_dir is not None else "cached" if skip_normalization else "sam3"
 
 
 @click.command()
 @click.argument("input_path", type=click.Path(exists=True, path_type=Path))
 @click.option("-o", "--output-dir", type=click.Path(file_okay=False, path_type=Path), required=True, help="Каталог результатов; --stage ndr читает из него сохранённый поиск")
-@click.option("--stage", type=click.Choice(["normalization", "search", "ndr", "full"]), default="full", show_default=True, help="Этап: нормализация, поиск, NDR по сохранённому поиску или полный прогон")
+@click.option("--stage", type=click.Choice(["normalization", "search", "ndr", "full", "metrics"]), default="full", show_default=True, help="Этап: нормализация, поиск, NDR по сохранённому поиску, полный прогон или пересчёт метрик")
 @click.option("--limit", type=click.IntRange(min=1), default=None, help="Первые N фото датасета или директории; без лимита — все")
 @click.option("--batch-size", type=click.IntRange(min=1), default=2, show_default=True, help="Число фото в пачке поиска; нормализация SAM3 всегда по одному фото")
-@click.option("--skip-normalization", is_flag=True, help="Для search/full использовать <output-dir>/<имя>/normalization из прежнего запуска, не загружая SAM3")
-@click.option("--no-normalization", is_flag=True, help="Для search/full искать прямо по каждому исходному фото целиком, без SAM3 и сохранённых кропов")
-@click.option("--normalized-dir", type=click.Path(exists=True, file_okay=False, path_type=Path), default=None, help="Готовые кропы DINO по stem фото; при --stage ndr определяет фото, прошедшие прежний поиск")
+@click.option("--skip-normalization", is_flag=True, help="Для search/full использовать сохранённую нормализацию; вместе с --normalized-dir — готовые кропы из этой папки")
+@click.option("--normalized-dir", type=click.Path(exists=True, file_okay=False, path_type=Path), default=None, help="Папка с парой images_crop/images_crop_box или с прежними JPEG; совместима с --skip-normalization")
 @click.option("--labels", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=None, help="CSV с image_filename и slug для итоговых метрик; по умолчанию <input_path>/test.csv")
 @click.option("--no-search", is_flag=True, help="Синоним --stage normalization")
 @click.option("--search-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=DEFAULT_CONFIG, show_default=True, help="Конфиг визуального поиска; его debug_path не используется, разбор пишется в <output-dir>/<имя>/search")
 @click.option("-c", "--norm-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True, help="Конфиг нормализации")
 @click.option("--set", "overrides", multiple=True, metavar="секция.ключ=значение", help="Переопределить параметр конфига нормализации")
-def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batch_size: int, skip_normalization: bool, no_normalization: bool, normalized_dir: Path | None, labels: Path | None, no_search: bool, search_config: Path, norm_config: Path, overrides: tuple[str, ...]) -> None:
+def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batch_size: int, skip_normalization: bool, normalized_dir: Path | None, labels: Path | None, no_search: bool, search_config: Path, norm_config: Path, overrides: tuple[str, ...]) -> None:
     """Прогнать выбранные фото до этапа или выполнить NDR по сохранённой выдаче поиска.
 
     <output-dir>/<имя файла>/normalization — кропы годных бутылок, маски и json как у CLI нормализации, плюс markup.json со всеми
@@ -566,17 +673,24 @@ def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batc
     load_dotenv(ROOT / ".env", override=False)
     if no_search:
         stage = "normalization"
-    if stage == "ndr" and (skip_normalization or no_normalization or overrides):
-        raise click.UsageError("--stage ndr читает сохранённый поиск; --skip-normalization, --no-normalization и --set здесь не нужны")
-    mode = input_mode(stage, skip_normalization, no_normalization, normalized_dir, overrides)
+    if stage in ("ndr", "metrics") and (skip_normalization or overrides):
+        raise click.UsageError(f"--stage {stage} читает сохранённые результаты; --skip-normalization и --set здесь не нужны")
+    mode = input_mode(stage, skip_normalization, normalized_dir, overrides)
     selected_images = select_images(input_path, limit)
     images, missing_normalization = select_precomputed_images(selected_images, normalized_dir) if normalized_dir is not None else (selected_images, [])
+    truth = expected_slugs(input_path, labels)
+    if stage == "metrics":
+        cfg = load_search_config(search_config)
+        known = known_slugs_for_metrics(output_dir, cfg) if truth else None
+        write_metrics(selected_images, output_dir, stage, truth, cfg.catalog_csv, missing_normalization, known)
+        return
     if stage == "ndr":
         cfg = load_search_config(search_config)
+        known = known_slugs_for_metrics(output_dir, cfg) if truth else None
         reranker = NearDuplicateReranker.from_search_config(cfg)
         logger.info(f"этап ndr; изображений {len(images)}; поиск читается из {output_dir}")
-        run_saved_ndr(images, output_dir, reranker)
-        write_metrics(selected_images, output_dir, stage, expected_slugs(input_path, labels), cfg.catalog_csv, missing_normalization)
+        run_saved_ndr(images, output_dir, reranker, normalized_dir)
+        write_metrics(selected_images, output_dir, stage, truth, cfg.catalog_csv, missing_normalization, known)
         return
     if mode == "cached":
         for image in images:
@@ -584,10 +698,11 @@ def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batc
             if not marker.is_file():
                 raise click.UsageError(f"нет сохранённой нормализации для {image}: {marker}")
     norm_cfg = load_norm_config(norm_config, list(overrides)) if mode == "sam3" else None
-    normalizer = Normalizer(norm_cfg, norm_config.resolve().parent) if mode == "sam3" else CachedNormalizer(output_dir, include_original=stage == "full") if mode == "cached" else PrecomputedNormalizer(normalized_dir) if mode == "precomputed" else RawImageNormalizer()
+    normalizer = Normalizer(norm_cfg, norm_config.resolve().parent) if mode == "sam3" else CachedNormalizer(output_dir, include_original=stage == "full") if mode == "cached" else PrecomputedNormalizer(normalized_dir)
     searcher = None
     reranker = None
     catalog_csv = None
+    known = None
     if stage != "normalization":
         cfg = load_search_config(search_config)
         catalog_csv = getattr(cfg, "catalog_csv", None)
@@ -596,13 +711,14 @@ def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batc
             searcher = VisSearcher(cfg)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
+        known = known_slugs_for_metrics(output_dir, cfg, searcher) if truth else None
         if stage == "full":
             reranker = NearDuplicateReranker.from_search_config(cfg)
     pipeline = Pipeline(normalizer, searcher, reranker, enable_rerank=stage == "full")
     search_batch_size = batch_size if searcher is not None else 1
     logger.info(f"этап {stage}; изображений {len(images)}; фото в пачке {search_batch_size}; вход {mode}")
     run_debug_batches(images, output_dir, pipeline, searcher, reranker, norm_cfg, mode, search_batch_size)
-    write_metrics(selected_images, output_dir, stage, expected_slugs(input_path, labels), catalog_csv, missing_normalization)
+    write_metrics(selected_images, output_dir, stage, truth, catalog_csv, missing_normalization, known)
 
 
 if __name__ == "__main__":

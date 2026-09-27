@@ -28,9 +28,9 @@ OpenVINO во float32 (пакет `openvino`, группа `cpu-inference`). Н�
 
 ## Готовая коллекция и текущий поиск
 
-Текущий `config.yaml` настроен на модель `vitl16-1024` и коллекцию `catalog_vitl16_1024` на `pomelka.pro`. При обычном запуске нормализатор создаёт `crop` этикетки для энкодера и `box_crop` всей бутылки для сохранения и каталога; NDR получает исходное фото запроса. При `--normalized-dir` энкодер получает готовые JPEG из `datasets/local/normalized/test/images`, а NDR — исходное фото, поскольку S3-поставка теста содержит только кропы этикетки. `images` указывает на локальную копию `vino/catalog/` в `datasets/local/normalized/catalog/images`; по ней поиск читает кандидатов. Для старых точек без `image_crop=bottle_box` NDR использует исходные Эталоны из `reference_images`. Карточки берутся из `datasets/local/catalog/catalog.csv`.
+Текущий `config.yaml` настроен на модель `vitl16-1024` и коллекцию `catalog_vitl16_1024` на `pomelka.pro`. При обычном запуске нормализатор создаёт `crop` этикетки для энкодера и `box_crop` всей бутылки для сохранения и каталога; NDR получает исходное фото запроса. При `--skip-normalization --normalized-dir datasets/local/normalized/test` энкодер получает JPEG из `images_crop`, а NDR — JPEG из `images_crop_box`. `images` указывает на локальную копию `vino/catalog/` в `datasets/local/normalized/catalog/images`; по ней поиск читает кандидатов. Для старых точек без `image_crop=bottle_box` NDR использует исходные эталоны из `reference_images`. Карточки берутся из `datasets/local/catalog/catalog.csv`.
 
-Из S3 скачаны 172 JPEG теста (префикс `normalized/test/images/`) и 1981 JPEG каталога (префикс `catalog/`). Четырёх тестовых кропов нет. Поиск требует `QDRANT_API_KEY`; без ключа удалённый сервер отвечает 401, поэтому наличие и содержимое новой коллекции локально пока не проверены.
+Из S3 скачаны 176 пар JPEG теста из `test-data-norm/norm-images.tar.gz` и 1981 JPEG каталога (префикс `catalog/`). Поиск требует `QDRANT_API_KEY`; без ключа удалённый сервер отвечает 401, поэтому наличие и содержимое новой коллекции локально пока не проверены.
 
 ## Сборка новой коллекции
 
