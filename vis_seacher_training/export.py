@@ -41,7 +41,7 @@ class WineEncoderForExport(nn.Module):
         compute_dtype: torch.dtype = torch.float32,
     ) -> None:
         super().__init__()
-        self.model = model.to(compute_dtype).eval()
+        self.model = model.to(compute_dtype).eval()  # ty: ignore[invalid-argument-type]
         self.compute_dtype = compute_dtype
         self.register_buffer("mean", torch.tensor(mean).view(1, 3, 1, 1))
         self.register_buffer("std", torch.tensor(std).view(1, 3, 1, 1))

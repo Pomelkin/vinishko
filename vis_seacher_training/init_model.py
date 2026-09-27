@@ -80,14 +80,14 @@ def whitening_head(
     ).T  # (embed_dim, in): проекция с единичной дисперсией по каждой компоненте
     projected = standardized @ weight.T
     with torch.no_grad():
-        bn_in.running_mean.copy_(mean.float())
-        bn_in.running_var.copy_(var.float())
+        bn_in.running_mean.copy_(mean.float())  # ty: ignore[unresolved-attribute]
+        bn_in.running_var.copy_(var.float())  # ty: ignore[unresolved-attribute]
         bn_in.weight.fill_(1.0)
         bn_in.bias.zero_()
         linear.weight.copy_(weight.float())
         linear.bias.zero_()
-        bn_out.running_mean.copy_(projected.mean(0).float())
-        bn_out.running_var.copy_(projected.var(0, unbiased=False).float())
+        bn_out.running_mean.copy_(projected.mean(0).float())  # ty: ignore[unresolved-attribute]
+        bn_out.running_var.copy_(projected.var(0, unbiased=False).float())  # ty: ignore[unresolved-attribute]
         bn_out.weight.copy_((damped / damped[0]).pow((1 - power) / 2).float())
         bn_out.bias.zero_()
     return float(top_vals.sum() / eigvals.sum())

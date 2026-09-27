@@ -100,7 +100,7 @@ class OnnxRuntimeRunner:
 
     def __call__(self, images: torch.Tensor) -> np.ndarray:
         (vectors,) = self.session.run([OUTPUT_NAME], {INPUT_NAME: images.numpy()})
-        return vectors
+        return vectors  # ty: ignore[invalid-return-type]
 
 
 Runner = Callable[[torch.Tensor], np.ndarray]

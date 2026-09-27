@@ -350,7 +350,7 @@ class WineTrainingModule(KostylLightningModule):
 
     @override
     def configure_optimizers(self) -> dict[str, Any] | torch.optim.Optimizer:  # ty: ignore[invalid-method-override]
-        self.model.train()  # from_pretrained отдаёт модель в eval, а Lightning режим обучения сам не включает: иначе BatchNorm головы учился бы по замороженным статистикам
+        self.model.train()  # from_pretrained отдаёт модель в eval, а Lightning режим обучения сам не включает: иначе BatchNorm головы учился бы по замороженным статистикам  # ty: ignore[unresolved-attribute]
 
         hp = self.hyperparams
         if dist.is_initialized():

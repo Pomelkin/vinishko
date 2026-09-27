@@ -21,8 +21,8 @@ REPORT_NAME = "widen_report.json"
 def standardized(features: torch.Tensor, bn: nn.BatchNorm1d) -> torch.Tensor:
     """Вход Linear головы: признаки после первого BN в eval с γ=1, β=0."""
     return (
-        (features.double() - bn.running_mean.double())
-        / (bn.running_var.double() + bn.eps).sqrt()
+        (features.double() - bn.running_mean.double())  # ty: ignore[unresolved-attribute]
+        / (bn.running_var.double() + bn.eps).sqrt()  # ty: ignore[unresolved-attribute]
     ).float()
 
 
@@ -167,7 +167,7 @@ def main(
     for name, values in report.items():
         logger.info(
             f"val {len(val_features)} картинок по кэшу признаков, {name}: "
-            + ", ".join(f"{k} {v:.3f}" for k, v in values.items())
+            + ", ".join(f"{k} {v:.3f}" for k, v in values.items())  # ty: ignore[unresolved-attribute]
         )
     logger.info(
         f"голова {old_dim} → {embed_dim}: {embed_dim - old_dim} новых строк из PCA остатка держат {kept:.1%} его дисперсии; γ и β обоих BN сброшены"

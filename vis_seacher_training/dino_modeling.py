@@ -152,8 +152,8 @@ class DinoV3ForWine(DINOv3ViTPreTrainedModel, LightningCheckpointLoader):
         model = cls(config)
         model.backbone.load_state_dict(backbone.state_dict(), strict=True)
         return model.to(
-            backbone.device
-        )  # новая модель собирается на CPU, device_map переносил только временный бэкбон  # ty: ignore[invalid-argument-type]
+            backbone.device  # ty: ignore[invalid-argument-type]
+        )  # новая модель собирается на CPU, device_map переносил только временный бэкбон
 
     @torch.no_grad()
     def _init_weights(self, module: nn.Module) -> None:

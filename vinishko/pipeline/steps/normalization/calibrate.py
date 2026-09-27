@@ -321,7 +321,7 @@ def main(
         and n not in synthetic
         and not (excl and excl.search(n))
     ]
-    by_regex = sum(1 for n in marked if excl and excl.search(n) and n not in synthetic)  # ty: ignore[redundant-condition]
+    by_regex = sum(1 for n in marked if excl and excl.search(n) and n not in synthetic)
     click.echo(
         f"размеченных картинок: {len(marked)}, найдено в {images}: {len(todo)}, исключено как синтетические: {len(synthetic)}"
         + (f", по --exclude: {by_regex}" if excl else "")
