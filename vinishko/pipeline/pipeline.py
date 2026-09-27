@@ -1,5 +1,6 @@
 """Оркестратор пайплайна: нормализация → визуальный поиск → реранкер. Шаги не знают друг о друге, их выходы связывает этот модуль."""
 
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -10,6 +11,8 @@ from PIL import Image
 
 from vinishko.pipeline.steps.normalization.normalize import Normalizer
 from vinishko.pipeline.steps.near_duplicates import NearDuplicateReranker
+from vinishko.pipeline.steps.vanilla_vlm_rerank import VanillaVlmReranker
+from vinishko.pipeline.steps.vis_searcher.configs import TopNSearch, VisSearcherConfig
 from vinishko.pipeline.structs import BottleCandidates, BottleCrop, RejectedBottle, UnmatchedBottle
 
 
@@ -63,9 +66,17 @@ class Pipeline:
     def __init__(self, normalizer: Normalizer | None = None, searcher: Searcher | None = None, reranker: Reranker | None = None, *, enable_rerank: bool = True) -> None:
         self.normalizer = normalizer or Normalizer()
         self.searcher = searcher
+        mode = os.environ.get("MATCH_MODE") or "groups"
+        if mode not in {"groups", "vanilla_vlm"}:
+            raise ValueError(f"MATCH_MODE должен быть groups или vanilla_vlm, получено {mode!r}")
+        cfg = getattr(searcher, "cfg", None)
+        if mode == "vanilla_vlm" and isinstance(cfg, VisSearcherConfig):
+            cfg.top_k = 3
+            cfg.search = TopNSearch(mode="top_n", cosine_threshold=-1.0)
         self.reranker = reranker if enable_rerank else None
         if enable_rerank and self.reranker is None and searcher is not None:
-            self.reranker = NearDuplicateReranker.from_search_config(getattr(searcher, "cfg", None))
+            chosen = VanillaVlmReranker if mode == "vanilla_vlm" else NearDuplicateReranker
+            self.reranker = chosen.from_search_config(cfg)
 
     def __call__(self, img: Image.Image | Path | str) -> PipelineResult:
         """Картинка → выходы шагов: разметка нормализации, ответы поиска по годным бутылкам, время каждого шага."""

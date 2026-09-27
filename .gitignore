@@ -227,3 +227,6 @@ vis_seacher_training/experiments/*/*/
 /.qdrant
 /datasets/hack-vine
 /catalog
+
+.idea
+/experiments/

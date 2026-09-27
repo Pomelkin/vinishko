@@ -234,6 +234,35 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         self.assertEqual(len([part for part in call.call_args.kwargs["api_content"] if part["type"] == "image_url"]), 3)
         self.assertTrue(all(part["image"]["path"] is None for part in call.call_args.kwargs["trace_content"] if part["type"] == "image_url"))
 
+    def test_openrouter_proxy_is_used_only_when_configured(self) -> None:
+        def response() -> BytesIO:
+            result = BytesIO(b'{"choices": []}')
+            result.status = 200
+            result.headers = {}
+            return result
+
+        kwargs = {
+            "runtime": {"api_base": "https://openrouter.ai/api/v1", "model": "test/model"},
+            "api_key": "test-only",
+            "system_prompt": "test",
+            "api_content": [],
+            "trace_content": [],
+            "output_format": {"json_schema": {"schema": {}}},
+            "validator": lambda value: value,
+        }
+        with patch.dict(os.environ, {"openrouter_http_proxy": "http://127.0.0.1:8080"}), patch.object(predictor.urllib.request, "build_opener") as build, patch.object(predictor.urllib.request, "urlopen") as direct:
+            build.return_value.open.side_effect = lambda *_args, **_kwargs: response()
+            predictor.call_model(**kwargs)
+            build.assert_called_once()
+            self.assertEqual(build.call_args.args[0].proxies, {"http": "http://127.0.0.1:8080", "https": "http://127.0.0.1:8080"})
+            build.return_value.open.assert_called_once()
+            direct.assert_not_called()
+
+        with patch.dict(os.environ, {"openrouter_http_proxy": ""}), patch.object(predictor.urllib.request, "build_opener") as build, patch.object(predictor.urllib.request, "urlopen", side_effect=lambda *_args, **_kwargs: response()) as direct:
+            predictor.call_model(**kwargs)
+            build.assert_not_called()
+            direct.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

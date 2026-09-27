@@ -21,6 +21,7 @@ from vinishko.pipeline.steps.normalization.normalize import NormalizationReason,
 from vinishko.pipeline.steps.normalization.normalize import load_config as load_norm_config
 from vinishko.pipeline.steps.normalization.seg import open_image
 from vinishko.pipeline.steps.near_duplicates import NearDuplicateReranker
+from vinishko.pipeline.steps.vanilla_vlm_rerank import VanillaVlmReranker
 from vinishko.pipeline.steps.near_duplicates.rerank import NearDuplicateReason
 from vinishko.pipeline.steps.vis_searcher import VisSearcher
 from vinishko.pipeline.steps.vis_searcher import load_config as load_search_config
@@ -253,7 +254,7 @@ def run_debug_batches(
     output_dir: Path,
     pipeline: Pipeline,
     searcher: VisSearcher | None,
-    reranker: NearDuplicateReranker | None,
+    reranker: NearDuplicateReranker | VanillaVlmReranker | None,
     norm_cfg: dict | None,
     mode: InputMode,
     batch_size: int,
@@ -332,9 +333,8 @@ def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batc
             searcher = VisSearcher(cfg)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
-        if stage == "full":
-            reranker = NearDuplicateReranker.from_search_config(cfg)
-    pipeline = Pipeline(normalizer, searcher, reranker, enable_rerank=stage == "full")
+    pipeline = Pipeline(normalizer, searcher, enable_rerank=stage == "full")
+    reranker = pipeline.reranker
     search_batch_size = batch_size if searcher is not None else 1
     logger.info(f"этап {stage}; изображений {len(images)}; фото в пачке {search_batch_size}; вход {mode}")
     run_debug_batches(images, output_dir, pipeline, searcher, reranker, norm_cfg, mode, search_batch_size)

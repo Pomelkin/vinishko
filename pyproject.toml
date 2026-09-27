@@ -7,10 +7,12 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "numpy>=2.5.3",
     "onnx>=1.22.0",
+    "openai>=3.16.2,<4",
     "opencv-python>=5.0.0.93",
     "pandas>=3.0.5",
     "pillow>=12.3.0",
     "pydantic>=2.0",
+    "pydantic-settings>=2.15.0",
     "python-dotenv>=1.2.3",
     "torch==2.10.0",
     "transformers>=5.17.0",

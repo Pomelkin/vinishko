@@ -81,6 +81,7 @@ class DebugCliTests(unittest.TestCase):
                 ]
             )
             with (
+                patch.dict("os.environ", {"MATCH_MODE": "groups"}),
                 patch.object(debug, "load_search_config", return_value=SimpleNamespace(debug_path=None)),
                 patch.object(debug, "VisSearcher", return_value=searcher),
                 patch.object(debug, "Normalizer") as normalizer,
@@ -132,6 +133,7 @@ class DebugCliTests(unittest.TestCase):
             )
             reranker = Mock(side_effect=lambda results: results)
             with (
+                patch.dict("os.environ", {"MATCH_MODE": "groups"}),
                 patch.object(debug, "load_search_config", return_value=SimpleNamespace(debug_path=None)),
                 patch.object(debug, "VisSearcher", return_value=searcher),
                 patch.object(debug.NearDuplicateReranker, "from_search_config", return_value=reranker),

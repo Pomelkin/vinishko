@@ -449,6 +449,11 @@ def call_model(  # noqa: C901 - сохранён контракт и обраб�
 
     timeout_seconds = float(runtime.get("timeout", 120))
     deadline = time.monotonic() + timeout_seconds
+    proxy = os.environ.get("openrouter_http_proxy")
+    open_request = (
+        urllib.request.build_opener(urllib.request.ProxyHandler({"http": proxy, "https": proxy})).open
+        if proxy else urllib.request.urlopen
+    )
     try:
         for retry_number in range(MAX_429_RETRIES + 1):
             http_request = urllib.request.Request(  # noqa: S310 - endpoint_url проверяет схему.
@@ -458,7 +463,7 @@ def call_model(  # noqa: C901 - сохранён контракт и обраб�
                 method="POST",
             )
             try:
-                response_context = urllib.request.urlopen(  # noqa: S310 - endpoint_url проверяет схему.
+                response_context = open_request(  # noqa: S310 - endpoint_url проверяет схему.
                     http_request,
                     timeout=remaining_seconds(deadline, timeout_seconds),
                 )
