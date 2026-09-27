@@ -83,13 +83,13 @@ class BottleCrop:
     crop_info: dict
     """Как кроп получен из оригинала — угол, запас, матрицы matrix_src_to_dst и matrix_dst_to_src; см. render_bottle."""
     box_crop: np.ndarray
-    """RGB-кроп всей бутылки с обычным фоном для сохранения и каталога; VLM получает original."""
+    """RGB-кроп всей бутылки с обычным фоном для NDR/VLM, сохранения и каталога."""
     box_info: dict
     """Геометрия box_crop относительно исходного фото."""
     uuid: str = field(default_factory=new_uuid)
     """Идентификатор бутылки; по нему возможный RejectedBottle связан с этим кропом."""
     original: np.ndarray | None = None
-    """Исходное RGB-фото запроса после EXIF-поворота для VLM; crop остаётся входом DINO."""
+    """Необязательное исходное RGB-фото после EXIF-поворота; NDR получает box_crop, поиск — crop."""
 
     def reject(self, reason: Reason, detail: str) -> RejectedBottle:
         """Отказ по этой бутылке на более позднем шаге пайплайна: те же маски, скор и uuid."""

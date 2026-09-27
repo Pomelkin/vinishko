@@ -585,7 +585,7 @@ def load_saved_search(image: Path, output_dir: Path, normalized_dir: Path | None
             crop = BottleCrop(
                 number, query["bottle_score"], [], [], 0.0,
                 rgb(search_dir / f"{prefix}.jpg"), {},
-                rgb(search_dir / f"{prefix}_box.jpg"), {}, uuid, original,
+                original.copy() if box_file is not None else rgb(search_dir / f"{prefix}_box.jpg"), {}, uuid, original,
             )
             rows = query["candidates"]
             if query["rejected"] is not None:

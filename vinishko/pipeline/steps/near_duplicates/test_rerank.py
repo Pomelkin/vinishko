@@ -180,7 +180,7 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         self.assertEqual(store.names, [])
         model.assert_not_called()
 
-    def test_group_uses_all_members_and_returns_selected_slug(self) -> None:
+    def test_group_sends_box_crop_and_returns_selected_slug(self) -> None:
         base = crop()
         base.box_crop[:] = 177
         bottle = BottleCrop(base.index, base.score, base.bottle, base.label, base.angle, base.crop, base.crop_info, base.box_crop, base.box_info, original=np.full((6, 7, 3), 222, np.uint8))
@@ -199,8 +199,8 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         self.assertTrue(request["group"]["candidates"][0]["reference_image_bytes"].startswith(b"RIFF"))
         self.assertTrue(request["query"]["image_bytes"].startswith(b"\x89PNG"))
         with Image.open(BytesIO(request["query"]["image_bytes"])) as query:
-            self.assertEqual(query.size, (7, 6))
-            self.assertEqual(query.getpixel((0, 0)), (222, 222, 222))
+            self.assertEqual(query.size, (4, 4))
+            self.assertEqual(query.getpixel((0, 0)), (177, 177, 177))
 
     def test_ndr_requests_run_concurrently_with_limit_32_and_keep_order(self) -> None:
         lock = threading.Lock()

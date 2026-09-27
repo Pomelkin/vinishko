@@ -340,6 +340,7 @@ class DebugCliTests(unittest.TestCase):
             found = BottleCandidates(seen[0], [Candidate("wine", 0.9, seen[0].box_crop, seen[0], "wine", True, {})])
             debug.VisSearcher.dump(SimpleNamespace(cfg=SimpleNamespace(search=SimpleNamespace(mode="groups"), top_k=1)), [found], output / "first" / "search")
             _, restored = debug.load_saved_search(source, output, normalized)
+            np.testing.assert_array_equal(restored[0].crop.box_crop, seen[0].box_crop)
             np.testing.assert_array_equal(restored[0].crop.original, seen[0].box_crop)
 
     def test_ndr_uses_saved_search_without_repeating_search(self) -> None:
@@ -390,6 +391,7 @@ class DebugCliTests(unittest.TestCase):
             passed = reranker.call_args.args[0][0]
             self.assertEqual(passed.crop.uuid, crop.uuid)
             self.assertEqual(passed.crop.box_crop.shape, box.shape)
+            np.testing.assert_array_equal(passed.crop.box_crop[0, 0], [180, 180, 180])
             self.assertEqual(passed.crop.original.shape, (8, 12, 3))
             np.testing.assert_array_equal(passed.crop.original[0, 0], [20, 30, 40])
             self.assertEqual(passed.candidates[0].payload["group_slugs"], ["first", "second"])

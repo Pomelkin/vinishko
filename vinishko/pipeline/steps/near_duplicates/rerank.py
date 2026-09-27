@@ -171,7 +171,7 @@ class NearDuplicateReranker:
             "provider": provider.routing.request_payload(),
             "timeout": settings.execution.timeout_seconds,
         }
-        query_image = result.crop.original if result.crop.original is not None else result.crop.box_crop
+        query_image = result.crop.box_crop
         if max(query_image.shape[:2]) > 1600:
             resized = Image.fromarray(query_image)
             resized.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
