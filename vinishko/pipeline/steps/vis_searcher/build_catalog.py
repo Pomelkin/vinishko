@@ -180,6 +180,7 @@ def make_payload(
         FIELD_GROUP: row.group,
         FIELD_GROUP_SLUGS: [],
         FIELD_IMAGE: image,
+        "image_crop": "bottle_box",
         "source_image": row.photo,
         **row.fields,
         "bottle_score": crop.score,
@@ -263,7 +264,7 @@ def build(
             vectors = encoder([crop.crop for _, crop in crops])
             for (row, crop), vector in zip(crops, vectors, strict=True):
                 name = f"{row.slug}.{fmt}"
-                store.put(name, crop.crop, fmt, quality)
+                store.put(name, crop.box_crop, fmt, quality)
                 state.vectors[row.slug] = vector
                 state.payloads[row.slug] = make_payload(
                     row, crop, name, encoder.files, encoder.device

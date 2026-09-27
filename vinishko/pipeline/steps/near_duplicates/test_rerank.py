@@ -24,7 +24,8 @@ from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate, U
 
 def crop() -> BottleCrop:
     """Минимальная бутылка с валидным RGB-кропом."""
-    return BottleCrop(1, 0.9, [], [], 0.0, np.zeros((4, 4, 3), dtype=np.uint8), {})
+    rgb = np.zeros((4, 4, 3), dtype=np.uint8)
+    return BottleCrop(1, 0.9, [], [], 0.0, rgb, {}, rgb.copy(), {})
 
 
 def candidate(bottle: BottleCrop, slug: str, group: str, members: list[str]) -> Candidate:
@@ -78,6 +79,15 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         self.assertEqual(card["aging_or_reserve"], "резерв")
         self.assertEqual(card["grapes"], "")
         self.assertEqual(store.names, ["original.webp"])
+
+    def test_new_catalog_uses_box_crop_for_vlm(self) -> None:
+        bottle = crop()
+        position = candidate(bottle, "first", "first", ["first"])
+        position.payload["image_crop"] = "bottle_box"
+        store = FakeStore()
+        card = candidate_card(position, store)
+        self.assertTrue(card["reference_image_bytes"].startswith(b"\x89PNG"))
+        self.assertEqual(store.names, [])
 
     def test_query_only_search_uses_local_source_image_without_s3(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -169,6 +179,7 @@ class NearDuplicateRerankerTests(unittest.TestCase):
 
     def test_group_uses_all_members_and_returns_selected_slug(self) -> None:
         bottle = crop()
+        bottle.box_crop[:] = 177
         top = candidate(bottle, "first", "group", ["first", "second"])
         second = candidate(bottle, "second", "group", ["first", "second"])
         outsider = candidate(bottle, "outsider", "other", ["outsider"])
@@ -183,6 +194,8 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         self.assertEqual(request["group"]["candidates"][0]["grapes"], "Пино нуар")
         self.assertTrue(request["group"]["candidates"][0]["reference_image_bytes"].startswith(b"RIFF"))
         self.assertTrue(request["query"]["image_bytes"].startswith(b"\x89PNG"))
+        with Image.open(BytesIO(request["query"]["image_bytes"])) as query:
+            self.assertEqual(query.getpixel((0, 0)), (177, 177, 177))
 
     def test_not_found_becomes_rejected_bottle(self) -> None:
         bottle = crop()

@@ -239,6 +239,9 @@ class VisSearcher:
             Image.fromarray(crop.crop).save(
                 out / f"q{n}_query_{crop.uuid[:8]}.jpg", quality=95
             )
+            Image.fromarray(crop.box_crop).save(
+                out / f"q{n}_query_{crop.uuid[:8]}_box.jpg", quality=95
+            )
             for rank, c in enumerate(candidates, 1):
                 parts = [
                     f"q{n}",

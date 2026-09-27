@@ -35,8 +35,16 @@ def to_numpy(x: Tensor | np.ndarray) -> np.ndarray:
 
 
 def open_image(path: Path | str) -> Image.Image:
-    """RGB-картинка с явно применённым EXIF-поворотом, иначе координаты разойдутся с тем, как её видит человек."""
-    return ImageOps.exif_transpose(Image.open(path)).convert("RGB")
+    """RGB-картинка с явно применённым EXIF-поворотом, иначе координаты разойдутся с тем, как её видит человек.
+
+    Прозрачность кладётся на белую подложку: каталожные вырезки почти все RGBA, под прозрачным у них чёрный, а кромка полупрозрачная,
+    и простое отбрасывание альфы давало бутылку на чёрном фоне с рваной светлой каймой — так её видели и SAM3, и второй уровень.
+    """
+    image = ImageOps.exif_transpose(Image.open(path))
+    if image.mode in ("RGBA", "LA", "PA") or "transparency" in image.info:
+        image = image.convert("RGBA")
+        image = Image.alpha_composite(Image.new("RGBA", image.size, (255, 255, 255, 255)), image)
+    return image.convert("RGB")
 
 
 def no_masks() -> Masks:
@@ -377,8 +385,7 @@ class Segmenter:
         try:
             return self._ground(self._predictor, prompts, (bgr.shape[0], bgr.shape[1]))
         finally:
-            # Признаки прошлого кадра не нужны после копирования масок на CPU;
-            # на машине без GPU это освобождает память перед поиском и следующим кадром.
+            # Маски уже скопированы на CPU; перед следующим кадром освобождаем признаки SAM3.
             self._predictor.reset_image()
 
     def _labels(

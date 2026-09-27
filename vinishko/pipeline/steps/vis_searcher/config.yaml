@@ -1,5 +1,5 @@
 # Визуальный поиск: настройки по умолчанию. Относительные пути считаются от этого файла, ../../../../ — корень репозитория.
-model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-512 # репозиторий Hugging Face с экспортом DinoV3ForWine
+model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-1024 # модель новой коллекции из main
 revision: null # ревизия репозитория; коллекция помнит свою и с другой не работает
 device: auto                                            # auto | cpu | cuda:<индекс>; переменная VIS_SEARCHER_DEV перекрывает; auto — cuda:0 при доступной CUDA, иначе cpu
 batch_size: 16 # потолок батча энкодера, для TensorRT — профиль engine
@@ -7,7 +7,7 @@ cpu_batch_size: 1 # безопасный потолок на машине с 16 
 top_k: 1 # ближайшая позиция задаёт группу для NDR
 
 qdrant:
-  collection: catalog_vitl16_512
+  collection: catalog_vitl16_1024
   host: pomelka.pro
   port: 443
   https: true # true для сервера за TLS, ключ API — в окружении QDRANT_API_KEY
@@ -20,12 +20,12 @@ search:
   # mode: top_n                                         # либо просто top_k позиций
   # cosine_threshold: 0.5                               # если лучший косинус ниже, кандидатов нет
 
-images: null # запрос читает локальные оригиналы по source_image; S3-кропы не нужны
-# Для кропов коллекции: kind: s3, endpoint: https://s3.ru-6.storage.selcloud.ru,
-# bucket: vino, prefix: catalog/vitl16_512 (под секцией images)
+images:
+  kind: local # готовые изображения кандидатов для VLM из S3 vino/catalog/
+  dir: ../../../../datasets/local/normalized/catalog/images
 
 reference_images:
-  kind: local # оригинальные Эталоны для поиска и NDR v5
+  kind: local # резервные оригинальные Эталоны для старых записей Qdrant без image_crop=bottle_box
   dir: ../../../../datasets/local/catalog/images
 catalog_csv: ../../../../datasets/local/catalog/catalog.csv # полные карточки для NDR v5
 

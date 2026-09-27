@@ -4,7 +4,7 @@ from PIL import Image
 
 FEAT_SIDE = 1024  # резкость и салиентность считаем на уменьшенной копии
 
-FEATURES = [
+BASE_FEATURES = [
     "conf",
     "conf_rel",
     "conf_rank",
@@ -22,6 +22,17 @@ FEATURES = [
     "log_n_strong",
     "log_crowd",
 ]
+LABEL_FEATURES = [
+    "label_conf",
+    "label_cover",
+    "label_fill",
+    "log_label_sharp",
+    "log_label_px",
+    "log_bottle_px",
+    "label_px_rel",
+    "log_n_readable",
+]
+FEATURES = BASE_FEATURES + LABEL_FEATURES
 
 
 def spectral_saliency(gray: np.ndarray) -> np.ndarray:
@@ -41,6 +52,17 @@ def spectral_saliency(gray: np.ndarray) -> np.ndarray:
     )
 
 
+def label_short_side(polys_list: list[dict]) -> float:
+    """Короткая сторона самой крупной этикетки корпуса в пикселях оригинала; 0, если этикеток нет."""
+    best, best_area = 0.0, 0.0
+    for lab in polys_list:
+        pts = [np.asarray(p, np.float32) for p in lab["polys"] if len(p) >= 3]
+        area = sum(cv2.contourArea(p) for p in pts)
+        if pts and area > best_area:
+            best_area, best = area, min(cv2.minAreaRect(np.concatenate(pts))[1])
+    return float(best)
+
+
 def candidate_features(gray_small: np.ndarray, seg: dict) -> list[dict]:
     """Признаки всех кандидатов одной картинки. gray_small: уменьшенная серая копия оригинала."""
     w, h, cands = seg["w"], seg["h"], seg["cands"]
@@ -56,8 +78,11 @@ def candidate_features(gray_small: np.ndarray, seg: dict) -> list[dict]:
     order = {c["id"]: r for r, c in enumerate(sorted(cands, key=lambda c: -c["conf"]))}
     n_strong = sum(c["conf"] >= 0.7 for c in cands)
     kernel = np.ones((3, 3), np.uint8)
+    lab_px = [label_short_side(c.get("label_polys", [])) for c in cands]
+    max_lab_px = max(lab_px) + 1e-6
+    n_readable = sum(1 for c in cands if c.get("label", {}).get("cover", 0) >= 0.1)
     out = []
-    for c in cands:
+    for idx, c in enumerate(cands):
         x1, y1, x2, y2 = c["box"]
         mask = np.zeros(gray_small.shape, np.uint8)
         polys = [
@@ -106,9 +131,27 @@ def candidate_features(gray_small: np.ndarray, seg: dict) -> list[dict]:
                 "log_n_cands": float(np.log(len(cands))),
                 "log_n_strong": float(np.log1p(n_strong)),
                 "log_crowd": float(np.log1p(crowd)),
+                **label_feats(c, lab_px[idx], max_lab_px, n_readable, max(rw, rh) / s),
             }
         )
     return out
+
+
+def label_feats(
+    c: dict, lab_px: float, max_lab_px: float, n_readable: int, bottle_px: float
+) -> dict:
+    """Признаки этикетки кандидата по статистике SAM3: уверенность, покрытие, заполнение, резкость и размер в пикселях."""
+    lb = c.get("label", {})
+    return {
+        "label_conf": lb.get("conf", 0.0),
+        "label_cover": lb.get("cover", 0.0),
+        "label_fill": lb.get("fill", 0.0),
+        "log_label_sharp": float(np.log1p(lb.get("sharpness", 0.0))),
+        "log_label_px": float(np.log1p(lab_px)),
+        "log_bottle_px": float(np.log1p(bottle_px)),
+        "label_px_rel": lab_px / max_lab_px,
+        "log_n_readable": float(np.log1p(n_readable)),
+    }
 
 
 def gray_small(img: Image.Image, side: int = FEAT_SIDE) -> np.ndarray:

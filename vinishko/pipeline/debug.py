@@ -31,7 +31,7 @@ console = Console()
 logger = setup_logger(fmt="detailed")
 ROOT = Path(__file__).resolve().parents[2]
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
-InputMode = Literal["sam3", "cached", "raw"]
+InputMode = Literal["sam3", "cached", "raw", "precomputed"]
 
 
 def normalization_markup(items: list[BottleCrop | RejectedBottle], stem: str, fmt: str) -> list[dict]:
@@ -39,7 +39,7 @@ def normalization_markup(items: list[BottleCrop | RejectedBottle], stem: str, fm
     out = []
     for item in items:
         if isinstance(item, BottleCrop):
-            out.append({"status": "ok", **item.markup(), "crop_file": f"{stem}_b{item.index}.{fmt}", "pipeline_crop_file": f"{stem}_b{item.index}_pipeline.npy", "crop_info": item.crop_info})
+            out.append({"status": "ok", **item.markup(), "crop_file": f"{stem}_b{item.index}.{fmt}", "pipeline_crop_file": f"{stem}_b{item.index}_pipeline.npy", "crop_info": item.crop_info, "box_file": f"{stem}_b{item.index}_box.{fmt}", "pipeline_box_file": f"{stem}_b{item.index}_box_pipeline.npy", "box_info": item.box_info})
         else:
             out.append({"status": "rejected", **asdict(item), "title": item.reason.title, "message": item.message})
     return out
@@ -167,7 +167,21 @@ def cached_crop(row: dict, folder: Path, image: Path) -> BottleCrop:
     if crop.dtype != np.uint8 or crop.ndim != 3 or crop.shape[2] != 3:
         raise ValueError(f"кроп {crop_file} должен быть uint8 RGB")
     info = row.get("crop_info") or {"angle_deg": meta["bottle_angle"], "matrix_src_to_dst": meta["bottle_crop_matrix"]}
-    return BottleCrop(row["index"], row["score"], row["bottle"], row["label"], row["angle"], crop, info, row["uuid"])
+    box_name = row.get("pipeline_box_file") or row.get("box_file")
+    if box_name:
+        box_file = folder / box_name
+        if not box_file.resolve().is_relative_to(folder.resolve()):
+            raise ValueError(f"недопустимый путь кропа {box_file}")
+        if box_file.suffix == ".npy":
+            box = np.load(box_file, allow_pickle=False)
+        else:
+            with Image.open(box_file) as saved:
+                box = np.asarray(saved.convert("RGB"))
+    else:
+        box = crop  # старый кэш содержал только кроп для поиска
+    if box.dtype != np.uint8 or box.ndim != 3 or box.shape[2] != 3:
+        raise ValueError(f"кроп {box_name} должен быть uint8 RGB")
+    return BottleCrop(row["index"], row["score"], row["bottle"], row["label"], row["angle"], crop, info, box, row.get("box_info") or {}, row["uuid"])
 
 
 def load_normalization(image: Path, output_dir: Path) -> list[BottleCrop | RejectedBottle]:
@@ -210,7 +224,46 @@ class RawImageNormalizer:
         rgb = np.asarray(image.convert("RGB")).copy()
         width, height = image.size
         whole = [[[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]]]
-        return [BottleCrop(1, 0.0, whole, [], 0.0, rgb, {"mode": "raw", "width": width, "height": height})]
+        return [BottleCrop(1, 0.0, whole, [], 0.0, rgb, {"mode": "raw", "width": width, "height": height}, rgb, {"mode": "raw"})]
+
+
+def precomputed_file(image: Path, folder: Path) -> Path | None:
+    """S3-кропы теста названы по stem исходного фото, всегда с расширением .jpg."""
+    return next((path for suffix in (".jpg", ".png", ".webp") if (path := folder / f"{image.stem}{suffix}").is_file()), None)
+
+
+def select_precomputed_images(images: list[Path], folder: Path) -> tuple[list[Path], list[Path]]:
+    """Разделяет уже выбранные фото на готовые кропы и отказы нормализации."""
+    available = [image for image in images if precomputed_file(image, folder) is not None]
+    missing = [image for image in images if precomputed_file(image, folder) is None]
+    if missing:
+        logger.warning(f"нет готовых кропов: {len(missing)} из {len(images)} выбранных фото; поиск их пропустит, метрики учтут как отказ нормализации: {[image.name for image in missing[:8]]}")
+    if not available:
+        raise click.UsageError(f"в {folder} нет кропов для выбранных фото")
+    return available, missing
+
+
+class PrecomputedNormalizer:
+    """Готовый кроп поиска из S3 и исходное фото для VLM; SAM3 не загружается."""
+
+    def __init__(self, folder: Path, *, include_box: bool = True) -> None:
+        self.folder = folder
+        self.include_box = include_box
+
+    def __call__(self, image: Path) -> list[BottleCrop]:
+        path = precomputed_file(image, self.folder)
+        if path is None:
+            raise FileNotFoundError(f"нет готового кропа для {image} в {self.folder}")
+        crop = np.asarray(open_image(path)).copy()
+        if self.include_box:
+            original = open_image(image)
+            original.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+            box = np.asarray(original).copy()
+        else:
+            box = crop
+        height, width = box.shape[:2]
+        whole = [[[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]]]
+        return [BottleCrop(1, 0.0, whole, [], 0.0, crop, {"mode": "precomputed", "source": str(path)}, box, {"mode": "original_fallback" if self.include_box else "search_only"})]
 
 
 def write_debug_result(
@@ -225,6 +278,8 @@ def write_debug_result(
     """Сохраняет ответ по фото и пишет нормализацию только после реального SAM3."""
     if mode == "cached":
         result.timings["normalization_cached"] = result.timings.pop("normalization")
+    elif mode == "precomputed":
+        result.timings["normalization_precomputed"] = result.timings.pop("normalization")
     elif mode == "raw":
         result.timings["raw_input"] = result.timings.pop("normalization")
     else:
@@ -236,6 +291,7 @@ def write_debug_result(
         for item in result.normalization:
             if isinstance(item, BottleCrop):
                 np.save(norm_dir / f"{image.stem}_b{item.index}_pipeline.npy", item.crop)
+                np.save(norm_dir / f"{image.stem}_b{item.index}_box_pipeline.npy", item.box_crop)
         (norm_dir / "markup.json").write_text(
             json.dumps(normalization_markup(result.normalization, image.stem, norm_cfg["output"]["format"]), ensure_ascii=False, indent=1), encoding="utf-8"
         )
@@ -262,7 +318,7 @@ def run_debug_batches(
     for start in range(0, len(images), batch_size):
         batch_paths = images[start : start + batch_size]
         outputs = [prepare_output(output_dir, image, mode=mode) for image in batch_paths]
-        batch_images = batch_paths if mode == "cached" else [open_image(image) for image in batch_paths]
+        batch_images = batch_paths if mode in ("cached", "precomputed") else [open_image(image) for image in batch_paths]
 
         def before_rerank(index: int, dirs: list[Path] = outputs) -> None:
             if reranker is not None:
@@ -281,15 +337,98 @@ def run_debug_batches(
         pipeline.run_many(batch_images, before_rerank=before_rerank, on_result=write_result)
 
 
-def input_mode(stage: str, skip_normalization: bool, no_normalization: bool, overrides: tuple[str, ...]) -> InputMode:
+def expected_slugs(input_path: Path, labels: Path | None) -> dict[str, str]:
+    """Разметка теста по имени файла; пустой slug означает вино вне Каталога."""
+    manifest = labels or (input_path / "test.csv" if input_path.is_dir() else None)
+    if manifest is None or not manifest.is_file():
+        return {}
+    with manifest.open(encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        if not {"image_filename", "slug"}.issubset(reader.fieldnames or []):
+            raise click.UsageError(f"в {manifest} нужны колонки image_filename и slug")
+        return {
+            row["image_filename"].strip(): "" if (slug := (row["slug"] or "").strip()).lower() in {"not_found", "near_duplicate_not_found"} else slug
+            for row in reader
+        }
+
+
+def write_metrics(images: list[Path], output_dir: Path, stage: str, truth: dict[str, str], catalog_csv: Path | None = None, missing_normalization: list[Path] | None = None) -> dict:
+    """Итог по выбранным фото из result.json; метрики считаются после полного прогона."""
+    if truth and stage != "normalization" and (catalog_csv is None or not catalog_csv.is_file()):
+        raise click.UsageError("для метрик catalog_only нужен существующий catalog_csv в конфиге поиска")
+    known: set[str] | None = None
+    if catalog_csv is not None and catalog_csv.is_file():
+        with catalog_csv.open(encoding="utf-8-sig", newline="") as stream:
+            reader = csv.DictReader(stream)
+            if "Slug" not in (reader.fieldnames or []):
+                raise click.UsageError(f"в {catalog_csv} нет колонки Slug")
+            known = {row["Slug"].strip() for row in reader}
+    missing_set = set(missing_normalization or [])
+    rows = []
+    for image in images:
+        report = {"bottles": [], "timings_s": {}} if image in missing_set else json.loads((output_path(output_dir, image) / "result.json").read_text(encoding="utf-8"))
+        found = next((b for b in report["bottles"] if b["status"] == "candidates"), None)
+        candidates = found["candidates"] if found else []
+        expected = truth.get(image.name)
+        target = expected if expected is None or known is None or expected in known else ""
+        predicted = candidates[0]["slug"] if candidates else ""
+        rows.append({
+            "image": image.name,
+            "expected": expected,
+            "target": target,
+            "predicted": predicted,
+            "rank": next((i for i, c in enumerate(candidates, 1) if c["slug"] == target), None) if target else None,
+            "status": "no_normalization" if image in missing_set else "normalized" if stage == "normalization" and any(b["status"] == "normalized" for b in report["bottles"]) else "candidates" if candidates else "no_match",
+            "seconds": round(sum(report["timings_s"].values()), 3),
+        })
+    labeled = [row for row in rows if row["expected"] is not None] if stage != "normalization" else []
+    positive = [row for row in labeled if row["target"]]
+    negative = [row for row in labeled if not row["target"]]
+
+    def share(values: list[bool]) -> float | None:
+        return round(sum(values) / len(values), 4) if values else None
+
+    def accuracy_at(group: list[dict], k: int, *, include_rejects: bool) -> float | None:
+        return share([not row["predicted"] if include_rejects and not row["target"] else row["rank"] is not None and row["rank"] <= k for row in group])
+
+    metrics = {
+        "stage": stage,
+        "images": len(rows),
+        "searched_images": len(rows) - len(missing_set),
+        "missing_normalization": len(missing_set),
+        "labeled_images": len(labeled),
+        "all": {"images": len(labeled), **{f"accuracy_at_{k}": accuracy_at(labeled, k, include_rejects=True) for k in (1, 3, 5)}},
+        "catalog_only": {"images": len(positive), **{f"accuracy_at_{k}": accuracy_at(positive, k, include_rejects=False) for k in (1, 3, 5)}},
+        "not_found": len(negative),
+        "correct_reject": share([not row["predicted"] for row in negative]),
+        "false_accept": share([bool(row["predicted"]) for row in negative]),
+        "no_match": sum(not row["predicted"] for row in rows),
+        "mean_seconds_per_image": round(sum(row["seconds"] for row in rows) / (len(rows) - len(missing_set)), 3) if len(rows) > len(missing_set) else None,
+    }
+    if stage == "normalization":
+        metrics = {"stage": stage, "images": len(rows), "normalized": sum(row["status"] == "normalized" for row in rows), "mean_seconds_per_image": metrics["mean_seconds_per_image"]}
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
+    with (output_dir / "per_image.csv").open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=["image", "expected", "target", "predicted", "rank", "status", "seconds"])
+        writer.writeheader()
+        writer.writerows(rows)
+    if stage == "normalization":
+        console.print(f"Нормализация: {metrics['normalized']}/{metrics['images']} фото; среднее {metrics['mean_seconds_per_image']} с")
+    else:
+        console.print(f"Метрики ({stage}): все {metrics['all']}; с ответом в Каталоге {metrics['catalog_only']}; верные отказы {metrics['correct_reject']}")
+    return metrics
+
+
+def input_mode(stage: str, skip_normalization: bool, no_normalization: bool, normalized_dir: Path | None, overrides: tuple[str, ...]) -> InputMode:
     """Два разных обхода SAM3: сохранённые кропы или исходное фото целиком."""
-    if skip_normalization and no_normalization:
-        raise click.UsageError("--skip-normalization и --no-normalization нельзя использовать вместе")
-    if stage == "normalization" and (skip_normalization or no_normalization):
+    if sum((skip_normalization, no_normalization, normalized_dir is not None)) > 1:
+        raise click.UsageError("--skip-normalization, --no-normalization и --normalized-dir нельзя использовать вместе")
+    if stage == "normalization" and (skip_normalization or no_normalization or normalized_dir is not None):
         raise click.UsageError("обход нормализации допустим только с --stage search или full")
-    if (skip_normalization or no_normalization) and overrides:
+    if (skip_normalization or no_normalization or normalized_dir is not None) and overrides:
         raise click.UsageError("--set действует только при запуске SAM3 без обхода нормализации")
-    return "cached" if skip_normalization else "raw" if no_normalization else "sam3"
+    return "cached" if skip_normalization else "raw" if no_normalization else "precomputed" if normalized_dir is not None else "sam3"
 
 
 @click.command()
@@ -300,11 +439,13 @@ def input_mode(stage: str, skip_normalization: bool, no_normalization: bool, ove
 @click.option("--batch-size", type=click.IntRange(min=1), default=2, show_default=True, help="Число фото в пачке поиска; нормализация SAM3 всегда по одному фото")
 @click.option("--skip-normalization", is_flag=True, help="Для search/full использовать <output-dir>/<имя>/normalization из прежнего запуска, не загружая SAM3")
 @click.option("--no-normalization", is_flag=True, help="Для search/full искать прямо по каждому исходному фото целиком, без SAM3 и сохранённых кропов")
+@click.option("--normalized-dir", type=click.Path(exists=True, file_okay=False, path_type=Path), default=None, help="Готовые кропы DINO по stem фото (например datasets/local/normalized/test/images); VLM получает исходное фото")
+@click.option("--labels", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=None, help="CSV с image_filename и slug для итоговых метрик; по умолчанию <input_path>/test.csv")
 @click.option("--no-search", is_flag=True, help="Синоним --stage normalization")
 @click.option("--search-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=DEFAULT_CONFIG, show_default=True, help="Конфиг визуального поиска; его debug_path не используется, разбор пишется в <output-dir>/<имя>/search")
 @click.option("-c", "--norm-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True, help="Конфиг нормализации")
 @click.option("--set", "overrides", multiple=True, metavar="секция.ключ=значение", help="Переопределить параметр конфига нормализации")
-def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batch_size: int, skip_normalization: bool, no_normalization: bool, no_search: bool, search_config: Path, norm_config: Path, overrides: tuple[str, ...]) -> None:
+def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batch_size: int, skip_normalization: bool, no_normalization: bool, normalized_dir: Path | None, labels: Path | None, no_search: bool, search_config: Path, norm_config: Path, overrides: tuple[str, ...]) -> None:
     """Прогнать выбранные фото до указанного этапа и записать выходы по директориям.
 
     <output-dir>/<имя файла>/normalization — кропы годных бутылок, маски и json как у CLI нормализации, плюс markup.json со всеми
@@ -314,19 +455,22 @@ def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batc
     load_dotenv(ROOT / ".env", override=False)
     if no_search:
         stage = "normalization"
-    mode = input_mode(stage, skip_normalization, no_normalization, overrides)
-    images = select_images(input_path, limit)
+    mode = input_mode(stage, skip_normalization, no_normalization, normalized_dir, overrides)
+    selected_images = select_images(input_path, limit)
+    images, missing_normalization = select_precomputed_images(selected_images, normalized_dir) if normalized_dir is not None else (selected_images, [])
     if mode == "cached":
         for image in images:
             marker = output_path(output_dir, image) / "normalization" / "markup.json"
             if not marker.is_file():
                 raise click.UsageError(f"нет сохранённой нормализации для {image}: {marker}")
     norm_cfg = load_norm_config(norm_config, list(overrides)) if mode == "sam3" else None
-    normalizer = Normalizer(norm_cfg, norm_config.resolve().parent) if mode == "sam3" else CachedNormalizer(output_dir) if mode == "cached" else RawImageNormalizer()
+    normalizer = Normalizer(norm_cfg, norm_config.resolve().parent) if mode == "sam3" else CachedNormalizer(output_dir) if mode == "cached" else PrecomputedNormalizer(normalized_dir, include_box=stage == "full") if mode == "precomputed" else RawImageNormalizer()
     searcher = None
     reranker = None
+    catalog_csv = None
     if stage != "normalization":
         cfg = load_search_config(search_config)
+        catalog_csv = getattr(cfg, "catalog_csv", None)
         cfg.debug_path = None
         try:
             searcher = VisSearcher(cfg)
@@ -338,6 +482,7 @@ def main(input_path: Path, output_dir: Path, stage: str, limit: int | None, batc
     search_batch_size = batch_size if searcher is not None else 1
     logger.info(f"этап {stage}; изображений {len(images)}; фото в пачке {search_batch_size}; вход {mode}")
     run_debug_batches(images, output_dir, pipeline, searcher, reranker, norm_cfg, mode, search_batch_size)
+    write_metrics(selected_images, output_dir, stage, expected_slugs(input_path, labels), catalog_csv, missing_normalization)
 
 
 if __name__ == "__main__":

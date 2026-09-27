@@ -77,7 +77,7 @@ def candidate_card(candidate: Candidate, reference_store: ImageStore | None = No
         raise NearDuplicateError(f"у {candidate.slug} нет карточки в локальном Каталоге")
     if card is not None and card["group"] != candidate.group:
         raise NearDuplicateError(f"группа {candidate.slug} в локальном Каталоге и Qdrant не совпадает")
-    if reference_store is None:
+    if payload.get("image_crop") == "bottle_box" or reference_store is None:
         image_bytes = encode_image(candidate.image, "png", 95)
     else:
         source_image = card["image_filename"] if card is not None else payload.get("source_image")
@@ -152,7 +152,7 @@ class NearDuplicateReranker:
             "timeout": settings.execution.timeout_seconds,
         }
         request = {
-            "query": {"image_bytes": encode_image(result.crop.crop, "png", 95)},
+            "query": {"image_bytes": encode_image(result.crop.box_crop, "png", 95)},
             "group": {"candidates": [candidate_card(candidate, self.reference_store, self.cards) for candidate in candidates]},
             "prompts": self.prompts,
             "runtime": runtime,

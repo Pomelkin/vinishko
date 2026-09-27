@@ -13,10 +13,27 @@ from click.testing import CliRunner
 from PIL import Image
 
 from vinishko.pipeline import debug
-from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate
+from vinishko.pipeline.steps.vis_searcher.search import SearchReason
+from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate, UnmatchedBottle
 
 
 class DebugCliTests(unittest.TestCase):
+    def test_slug_absent_from_catalog_is_scored_as_not_found(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            image = root / "outside.jpg"
+            image.write_bytes(b"unused")
+            output = root / "runs"
+            result_dir = output / image.stem
+            result_dir.mkdir(parents=True)
+            (result_dir / "result.json").write_text(json.dumps({"bottles": [{"status": "rejected"}], "timings_s": {"search": 1.0}}), encoding="utf-8")
+            catalog = root / "catalog.csv"
+            catalog.write_text("Slug\ninside\n", encoding="utf-8")
+            metrics = debug.write_metrics([image], output, "search", {image.name: "outside"}, catalog)
+            self.assertEqual(metrics["all"]["accuracy_at_1"], 1.0)
+            self.assertEqual(metrics["catalog_only"]["images"], 0)
+            self.assertEqual(metrics["not_found"], 1)
+
     def test_two_dataset_images_stop_after_normalization(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -56,11 +73,12 @@ class DebugCliTests(unittest.TestCase):
             norm_dir = output / "photo" / "normalization"
             norm_dir.mkdir(parents=True)
             exact = np.full((2, 2, 3), 137, np.uint8)
-            crop = BottleCrop(1, 0.9, [], [], 0.0, exact, {"angle_deg": 0.0})
+            crop = BottleCrop(1, 0.9, [], [], 0.0, exact, {"angle_deg": 0.0}, exact, {})
             markup = debug.normalization_markup([crop], image.stem, "jpg")
             marker = norm_dir / "markup.json"
             marker.write_text(json.dumps(markup), encoding="utf-8")
             np.save(norm_dir / markup[0]["pipeline_crop_file"], exact)
+            np.save(norm_dir / markup[0]["pipeline_box_file"], exact)
             Image.new("RGB", (2, 2), (0, 0, 0)).save(norm_dir / markup[0]["crop_file"])
             (norm_dir / "photo_b1.json").write_text(
                 json.dumps({"uuid": crop.uuid, "source": str(image)}), encoding="utf-8"
@@ -114,6 +132,70 @@ class DebugCliTests(unittest.TestCase):
             )
             self.assertNotEqual(result.exit_code, 0)
             self.assertIn("--stage search", result.output)
+
+    def test_s3_crops_are_used_for_search_and_metrics_without_sam3(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dataset = root / "test"
+            originals = dataset / "images"
+            originals.mkdir(parents=True)
+            normalized = root / "normalized"
+            normalized.mkdir()
+            for name in ("first.webp", "missing.webp", "third.webp"):
+                Image.new("RGB", (12, 8), (12, 34, 56)).save(originals / name)
+            for stem in ("first", "third"):
+                Image.new("RGB", (3, 2), (201, 22, 33)).save(normalized / f"{stem}.jpg", quality=100)
+            with (dataset / "test.csv").open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.DictWriter(stream, fieldnames=["image_filename", "slug"])
+                writer.writeheader()
+                writer.writerows([{"image_filename": "first.webp", "slug": "first"}, {"image_filename": "third.webp", "slug": "not_found"}, {"image_filename": "missing.webp", "slug": ""}])
+            catalog = root / "catalog.csv"
+            catalog.write_text("Slug\nfirst\n", encoding="utf-8")
+            seen = []
+
+            def search(crops: list[BottleCrop]) -> list[BottleCandidates | UnmatchedBottle]:
+                seen.extend(crops)
+                first, third = crops
+                return [
+                    BottleCandidates(first, [Candidate("other", 0.9, first.box_crop, first, "other", True, {})]),
+                    UnmatchedBottle(third, third.reject(SearchReason.NO_MATCH, "no match")),
+                ]
+
+            output = root / "runs"
+            with (
+                patch.object(debug, "load_search_config", return_value=SimpleNamespace(debug_path=None, catalog_csv=catalog)),
+                patch.object(debug, "VisSearcher", return_value=Mock(side_effect=search)),
+                patch.object(debug, "Normalizer") as sam3,
+            ):
+                result = CliRunner().invoke(debug.main, [str(dataset), "-o", str(output), "--stage", "search", "--normalized-dir", str(normalized), "--limit", "2"])
+            self.assertEqual(result.exit_code, 0, str(result.exception))
+            self.assertNotIn("нет готового кропа", result.output)
+            sam3.assert_not_called()
+            self.assertEqual(len(seen), 2)
+            self.assertEqual(seen[0].crop.shape, (2, 3, 3))
+            self.assertEqual(seen[0].box_crop.shape, (2, 3, 3))
+            self.assertEqual(debug.PrecomputedNormalizer(normalized)(originals / "first.webp")[0].box_crop.shape, (8, 12, 3))
+            self.assertFalse((output / "missing").exists())
+            metrics = json.loads((output / "metrics.json").read_text(encoding="utf-8"))
+            self.assertEqual(metrics["images"], 2)
+            self.assertEqual(metrics["all"]["images"], 2)
+            self.assertEqual(metrics["all"]["accuracy_at_1"], 0.5)
+            self.assertEqual(metrics["catalog_only"]["images"], 1)
+            self.assertEqual(metrics["catalog_only"]["accuracy_at_1"], 0.0)
+            self.assertEqual(metrics["not_found"], 1)
+            self.assertEqual(metrics["correct_reject"], 1.0)
+
+            with (
+                patch.object(debug, "load_search_config", return_value=SimpleNamespace(debug_path=None, catalog_csv=catalog)),
+                patch.object(debug, "VisSearcher", return_value=Mock(side_effect=search)),
+            ):
+                full = CliRunner().invoke(debug.main, [str(dataset), "-o", str(output), "--stage", "search", "--normalized-dir", str(normalized)])
+            self.assertEqual(full.exit_code, 0, str(full.exception))
+            complete_metrics = json.loads((output / "metrics.json").read_text(encoding="utf-8"))
+            self.assertEqual(complete_metrics["images"], 3)
+            self.assertEqual(complete_metrics["searched_images"], 2)
+            self.assertEqual(complete_metrics["missing_normalization"], 1)
+            self.assertEqual(complete_metrics["all"]["accuracy_at_1"], 0.6667)
 
     def test_raw_mode_searches_whole_image_without_cached_normalization(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -178,10 +260,14 @@ class DebugCliTests(unittest.TestCase):
             image.write_bytes(b"source file")
             norm_dir = root / "runs" / "photo" / "normalization"
             norm_dir.mkdir(parents=True)
-            crop = BottleCrop(1, 0.9, [], [], 0.0, np.zeros((2, 2, 3), np.uint8), {})
+            rgb = np.zeros((2, 2, 3), np.uint8)
+            crop = BottleCrop(1, 0.9, [], [], 0.0, rgb, {}, rgb, {})
             row = debug.normalization_markup([crop], image.stem, "jpg")[0]
             row.pop("pipeline_crop_file")
             row.pop("crop_info")
+            row.pop("box_file")
+            row.pop("pipeline_box_file")
+            row.pop("box_info")
             rows = [row, {"status": "rejected", "reason": "not_target", "detail": "score low", "score": 0.1, "bottle": [], "label": None, "uuid": "rejected"}]
             (norm_dir / "markup.json").write_text(json.dumps(rows), encoding="utf-8")
             Image.new("RGB", (2, 2), (23, 23, 23)).save(norm_dir / row["crop_file"])

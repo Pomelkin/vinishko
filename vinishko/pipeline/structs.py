@@ -82,6 +82,10 @@ class BottleCrop:
     """RGB-кроп для энкодера: поворот на angle, окно вокруг основной этикетки с запасом в пределах маски бутылки, фон вне маски залит; см. render_bottle."""
     crop_info: dict
     """Как кроп получен из оригинала — угол, запас, матрицы matrix_src_to_dst и matrix_dst_to_src; см. render_bottle."""
+    box_crop: np.ndarray
+    """RGB-кроп всей бутылки с обычным фоном для VLM; визуальный поиск использует crop."""
+    box_info: dict
+    """Геометрия box_crop относительно исходного фото."""
     uuid: str = field(default_factory=new_uuid)
     """Идентификатор бутылки; по нему возможный RejectedBottle связан с этим кропом."""
 

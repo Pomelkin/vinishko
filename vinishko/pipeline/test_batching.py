@@ -11,15 +11,23 @@ import torch
 from vinishko.pipeline.pipeline import Pipeline
 from vinishko.pipeline.steps.vis_searcher.catalog import search_many
 from vinishko.pipeline.steps.vis_searcher.device import Device
-from vinishko.pipeline.steps.vis_searcher.model import Encoder
+from vinishko.pipeline.steps.vis_searcher.model import Encoder, Preprocess
 from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate
 
 
 def crop(index: int) -> BottleCrop:
-    return BottleCrop(index, 0.9, [], [], 0.0, np.zeros((2, 2, 3), np.uint8), {})
+    rgb = np.zeros((2, 2, 3), np.uint8)
+    return BottleCrop(index, 0.9, [], [], 0.0, rgb, {}, rgb, {})
 
 
 class BatchTests(unittest.TestCase):
+    def test_encoder_preprocess_respects_model_resize_contract(self) -> None:
+        image = np.full((2, 4, 3), (200, 0, 0), np.uint8)
+        padded = Preprocess((4, 4), (1, 2, 3), "pad")(image)
+        squashed = Preprocess((4, 4), (1, 2, 3), "squash")(image)
+        np.testing.assert_array_equal(padded[:, 0, 0], [1, 2, 3])
+        np.testing.assert_array_equal(squashed[:, 0, 0], [200, 0, 0])
+
     def test_pipeline_batches_search_and_keeps_image_boundaries(self) -> None:
         first, second, third = crop(1), crop(2), crop(1)
         normalizer = Mock(side_effect=[[first, second], [], [third]])
@@ -86,7 +94,7 @@ class BatchTests(unittest.TestCase):
         )
 
     def test_cpu_encoder_limits_openvino_batch(self) -> None:
-        files = SimpleNamespace(input_size=(2, 2), pad_color=(0, 0, 0), embed_dim=2)
+        files = SimpleNamespace(input_size=(2, 2), pad_color=(0, 0, 0), resize="pad", embed_dim=2)
         device = Device(torch.device("cpu"), "openvino", "fp32")
         runner = Mock(side_effect=lambda batch: np.ones((len(batch), 2), np.float32))
         with (
