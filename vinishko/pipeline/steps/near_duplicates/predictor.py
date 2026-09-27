@@ -15,6 +15,8 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
+
 from .models import ModelContractError
 from .models import nearest_output_model
 from .models import response_format
@@ -37,6 +39,17 @@ HTTP_TOO_MANY_REQUESTS = 429
 MAX_429_RETRIES = 0
 RETRY_BASE_DELAY_SECONDS = 1.0
 RESPONSE_READ_CHUNK_BYTES = 64 * 1024
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+
+
+def load_openrouter_env() -> None:
+    """Load project .env while keeping explicitly set environment variables."""
+    load_dotenv(PROJECT_ROOT / ".env", override=False)
+
+
+def missing_api_key_message(api_key_env: str) -> str:
+    """Explain where to set the missing OpenRouter key."""
+    return f"{api_key_env} не задан: добавьте ключ в .env в корне проекта или задайте переменную окружения"
 
 
 class ModelCallTimeoutError(TimeoutError):
@@ -594,10 +607,11 @@ def failure(status: str, error: str, trace: dict[str, Any]) -> dict[str, Any]:
 
 def predict(request: dict[str, Any]) -> dict[str, Any]:
     """Choose the nearest candidate or not_found in one complete-group call."""
+    load_openrouter_env()
     runtime = request["runtime"]
     model = runtime.get("model") or os.environ.get("OPENROUTER_MODEL")
     api_key_env = runtime.get("api_key_env", "OPENROUTER_API_KEY")
-    api_key = os.environ.get(api_key_env)
+    api_key = (os.environ.get(api_key_env) or "").strip()
     runtime = {**runtime, "model": model}
     trace: dict[str, Any] = {
         "pipeline": "select_nearest_once",
@@ -616,7 +630,7 @@ def predict(request: dict[str, Any]) -> dict[str, Any]:
     if not api_key:
         return failure(
             "predictor_error",
-            f"environment variable {api_key_env} is not set",
+            missing_api_key_message(api_key_env),
             trace,
         )
 

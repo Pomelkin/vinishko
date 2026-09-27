@@ -1,20 +1,29 @@
 """Адаптер NDR v5: группа из Qdrant и кропы в памяти → точный slug или отказ."""
 
 import csv
+import copy
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import BoundedSemaphore
+
+import numpy as np
+from PIL import Image
 
 from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS
 from vinishko.pipeline.steps.vis_searcher.configs import VisSearcherConfig
 from vinishko.pipeline.steps.vis_searcher.storage import ImageStore, encode_image, make_store
 from vinishko.pipeline.structs import BottleCandidates, Candidate, Reason, UnmatchedBottle
 
-from .config import SETTINGS, NdrSettings
+from .configs import NdrSettings, load_config
 from .models import NOT_FOUND
-from .predictor import predict
+from .predictor import load_openrouter_env, missing_api_key_message, predict
 
 HERE = Path(__file__).resolve().parent
+NDR_CONCURRENCY = 32
+NDR_SEMAPHORE = BoundedSemaphore(NDR_CONCURRENCY)
+NDR_EXECUTOR = ThreadPoolExecutor(max_workers=NDR_CONCURRENCY)
 PROMPT_FILES = (
     "resolve_multiple_same",
     "compare_year_matters",
@@ -77,7 +86,7 @@ def candidate_card(candidate: Candidate, reference_store: ImageStore | None = No
         raise NearDuplicateError(f"у {candidate.slug} нет карточки в локальном Каталоге")
     if card is not None and card["group"] != candidate.group:
         raise NearDuplicateError(f"группа {candidate.slug} в локальном Каталоге и Qdrant не совпадает")
-    if reference_store is None:
+    if payload.get("image_crop") == "bottle_box" or reference_store is None:
         image_bytes = encode_image(candidate.image, "png", 95)
     else:
         source_image = card["image_filename"] if card is not None else payload.get("source_image")
@@ -104,8 +113,8 @@ def candidate_card(candidate: Candidate, reference_store: ImageStore | None = No
 class NearDuplicateReranker:
     """Берёт группу первого векторного кандидата и вызывает NDR v5 только для группы из 2+ SKU."""
 
-    def __init__(self, settings: NdrSettings = SETTINGS, trace_dir: Path | None = None, reference_store: ImageStore | None = None, catalog_csv: Path | None = None) -> None:
-        self.settings = settings
+    def __init__(self, settings: NdrSettings | None = None, trace_dir: Path | None = None, reference_store: ImageStore | None = None, catalog_csv: Path | None = None) -> None:
+        self.settings = settings if settings is not None else load_config()
         self.trace_dir = trace_dir
         self.reference_store = reference_store
         self.cards = load_cards(catalog_csv) if catalog_csv is not None else None
@@ -121,8 +130,23 @@ class NearDuplicateReranker:
         return cls(trace_dir=trace_dir, reference_store=store, catalog_csv=cfg.catalog_csv if cfg is not None else None)
 
     def __call__(self, results: list[BottleCandidates | UnmatchedBottle]) -> list[BottleCandidates | UnmatchedBottle]:
+        """Call the step from Pipeline and other callable consumers."""
+        return self.call(results)
+
+    def call(self, results: list[BottleCandidates | UnmatchedBottle]) -> list[BottleCandidates | UnmatchedBottle]:
         """Сохраняет порядок бутылок; каждый ответ содержит один SKU либо отказ."""
-        return [self._select(result) if isinstance(result, BottleCandidates) else result for result in results]
+        if len(results) < 2:
+            return [self._select(result) if isinstance(result, BottleCandidates) else result for result in results]
+        return list(NDR_EXECUTOR.map(
+            lambda result: self._select(result) if isinstance(result, BottleCandidates) else result,
+            results,
+        ))
+
+    def with_trace_dir(self, trace_dir: Path | None) -> "NearDuplicateReranker":
+        """Отдельный путь trace для параллельного прогона разных фото."""
+        worker = copy.copy(self)
+        worker.trace_dir = trace_dir
+        return worker
 
     def _select(self, result: BottleCandidates) -> BottleCandidates | UnmatchedBottle:
         top = result.candidates[0]
@@ -136,8 +160,11 @@ class NearDuplicateReranker:
         if len(members) == 1:
             return BottleCandidates(result.crop, [top], selection={"source": "vector", "slug": top.slug})
 
+        load_openrouter_env()
         settings = self.settings
         provider = settings.openrouter
+        if not (os.environ.get(provider.api_key_env) or "").strip():
+            raise NearDuplicateError(missing_api_key_message(provider.api_key_env))
         generation = settings.generation
         runtime = {
             "model": os.environ.get("OPENROUTER_MODEL") or provider.model,
@@ -151,13 +178,19 @@ class NearDuplicateReranker:
             "provider": provider.routing.request_payload(),
             "timeout": settings.execution.timeout_seconds,
         }
+        query_image = result.crop.box_crop
+        if max(query_image.shape[:2]) > 1600:
+            resized = Image.fromarray(query_image)
+            resized.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+            query_image = np.asarray(resized)
         request = {
-            "query": {"image_bytes": encode_image(result.crop.crop, "png", 95)},
+            "query": {"image_bytes": encode_image(query_image, "png", 95)},
             "group": {"candidates": [candidate_card(candidate, self.reference_store, self.cards) for candidate in candidates]},
             "prompts": self.prompts,
             "runtime": runtime,
         }
-        response = predict(request)
+        with NDR_SEMAPHORE:
+            response = predict(request)
         self._write_trace(result.crop.uuid, response)
         if response["_status"] != "ok":
             raise NearDuplicateError(f"NDR {response['_status']} для группы {top.group}: {response['_error']}")

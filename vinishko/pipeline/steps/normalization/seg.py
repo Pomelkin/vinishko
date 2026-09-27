@@ -385,8 +385,7 @@ class Segmenter:
         try:
             return self._ground(self._predictor, prompts, (bgr.shape[0], bgr.shape[1]))
         finally:
-            # Признаки прошлого кадра не нужны после копирования масок на CPU;
-            # на машине без GPU это освобождает память перед поиском и следующим кадром.
+            # Маски уже скопированы на CPU; перед следующим кадром освобождаем признаки SAM3.
             self._predictor.reset_image()
 
     def _labels(

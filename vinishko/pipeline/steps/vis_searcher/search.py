@@ -101,6 +101,10 @@ class VisSearcher:
             raise RuntimeError(
                 f"коллекция {info.name} построена со входом {info.input_size}, у модели {files.input_size}"
             )
+        if info.encoder_input != self.cfg.encoder_input:
+            raise RuntimeError(
+                f"коллекция {info.name} собрана по {info.encoder_input}, а в конфиге encoder_input={self.cfg.encoder_input}: пересоберите коллекцию либо верните значение"
+            )
         return info
 
     def _check_store(self) -> None:
@@ -122,7 +126,7 @@ class VisSearcher:
         """Ответ по каждому кропу, в порядке кропов: результатов ровно столько, сколько кропов."""
         if not crops:
             return []
-        vectors = self.encoder([crop.crop for crop in crops])
+        vectors = self.encoder([getattr(crop, self.cfg.encoder_input) for crop in crops])
         hits_by_crop = search_many(self.client, self.collection, vectors, self.cfg.top_k)
         results = [
             self._search(crop, hits)
@@ -239,7 +243,9 @@ class VisSearcher:
             Image.fromarray(crop.crop).save(
                 out / f"q{n}_query_{crop.uuid[:8]}.jpg", quality=95
             )
-            Image.fromarray(crop.box_crop).save(out / f"q{n}_query_{crop.uuid[:8]}_box.jpg", quality=95)
+            Image.fromarray(crop.box_crop).save(
+                out / f"q{n}_query_{crop.uuid[:8]}_box.jpg", quality=95
+            )
             for rank, c in enumerate(candidates, 1):
                 parts = [
                     f"q{n}",
@@ -264,6 +270,7 @@ class VisSearcher:
                             "group": c.group,
                             "score": c.score,
                             "retrieved": c.retrieved,
+                            "group_slugs": c.payload.get(FIELD_GROUP_SLUGS, []),
                         }
                         for c in candidates
                     ],

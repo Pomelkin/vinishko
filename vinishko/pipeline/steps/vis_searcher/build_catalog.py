@@ -39,6 +39,7 @@ from vinishko.pipeline.steps.vis_searcher.catalog import (
     FIELD_GROUP,
     FIELD_GROUP_SLUGS,
     FIELD_IMAGE,
+    FIELD_ENCODER_INPUT,
     FIELD_INPUT_SIZE,
     FIELD_MODEL,
     FIELD_REVISION,
@@ -166,9 +167,7 @@ def single_crop(norm: Normalizer, images: Path, row: Row) -> BottleCrop:
     return crops[0]
 
 
-def make_payload(
-    row: Row, crop: BottleCrop, image: str, files: ModelFiles, device: Device
-) -> dict:
+def make_payload(row: Row, crop: BottleCrop, image: str, files: ModelFiles, device: Device, encoder_input: str) -> dict:
     """Метаданные точки; список позиций группы дописывается, когда известно, кто из группы попал в коллекцию."""
     return {
         FIELD_SLUG: row.slug,
@@ -183,6 +182,7 @@ def make_payload(
         FIELD_MODEL: files.repo,
         FIELD_REVISION: files.revision,
         FIELD_INPUT_SIZE: list(files.input_size),
+        FIELD_ENCODER_INPUT: encoder_input,
         "precision": device.precision,
         "built_at": datetime.now(tz=UTC).isoformat(timespec="seconds"),
     }
@@ -232,7 +232,17 @@ class Build:
         ]
 
 
-def build(rows: list[Row], images: Path, norm: Normalizer, encoder: Encoder, store: ImageStore, fmt: str, quality: int, skip_failures: bool) -> Build:
+def build(
+    rows: list[Row],
+    images: Path,
+    norm: Normalizer,
+    encoder: Encoder,
+    store: ImageStore,
+    fmt: str,
+    quality: int,
+    skip_failures: bool,
+    encoder_input: str,
+) -> Build:
     """Фото → кроп → хранилище и вектор, пачками по батчу энкодера.
 
     Без skip_failures первая же ошибка останавливает сборку с именем фото и slug в тексте; с ним фото пропускается, а причина
@@ -253,12 +263,12 @@ def build(rows: list[Row], images: Path, norm: Normalizer, encoder: Encoder, sto
                     state.failures.append(Failure(row.slug, row.photo, str(error)))
                 except Exception as error:  # битая картинка не должна ронять сборку на час, отчёт о ней будет в конце
                     state.failures.append(Failure(row.slug, row.photo, f"{row.photo} ({row.slug}): {error!r}"))
-            vectors = encoder([crop.crop for _, crop in crops])
+            vectors = encoder([getattr(crop, encoder_input) for _, crop in crops])
             for (row, crop), vector in zip(crops, vectors, strict=True):
                 name = f"{row.slug}.{fmt}"
                 store.put(name, crop.box_crop, fmt, quality)  # вектор — с кропа поиска, а в каталог идёт вся бутылка для второго уровня
                 state.vectors[row.slug] = vector
-                state.payloads[row.slug] = make_payload(row, crop, name, encoder.files, encoder.device)
+                state.payloads[row.slug] = make_payload(row, crop, name, encoder.files, encoder.device, encoder_input)
             bar.update(task, advance=len(batch))
     return state
 
@@ -363,13 +373,13 @@ def main(
     store.ensure_available()
     norm = Normalizer(load_norm_config(norm_config, list(overrides)), norm_config.resolve().parent)
     logger.info(
-        f"конфиг {config_path}: модель {cfg.model}, коллекция {collection}; каталог: {len(rows)} строк с фото; "
+        f"конфиг {config_path}: модель {cfg.model}, вход энкодера {cfg.encoder_input}, коллекция {collection}; каталог: {len(rows)} строк с фото; "
         f"группы: {'колонка ' + group_column if has_group else 'нет, позиция = группа'}; кропы: {store.description}; нормализация на {norm.device}"
     )
     encoder = Encoder(files, device, cfg.batch_size, cfg.cache_dir, cfg.cpu_batch_size)
     logger.info(f"энкодер: {encoder.description}")
     create_collection(client, collection, encoder.embed_dim)
-    state = build(rows, images, norm, encoder, store, fmt, quality, skip_failures=on_failure == "skip")
+    state = build(rows, images, norm, encoder, store, fmt, quality, skip_failures=on_failure == "skip", encoder_input=cfg.encoder_input)
     upsert(client, collection, state.points())
     report(state, rows, len(without_photo), has_group, collection, report_path)
 

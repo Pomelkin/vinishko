@@ -3,6 +3,9 @@
 import csv
 import os
 import tempfile
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 import unittest
 from io import BytesIO
 from pathlib import Path
@@ -13,7 +16,8 @@ import numpy as np
 from PIL import Image
 
 from vinishko.pipeline.steps.near_duplicates import predictor
-from vinishko.pipeline.steps.near_duplicates.rerank import CSV_FIELDS, NearDuplicateError, NearDuplicateReranker, candidate_card, load_cards
+from vinishko.pipeline.steps.near_duplicates.configs import DEFAULT_CONFIG, load_config as load_ndr_config
+from vinishko.pipeline.steps.near_duplicates.rerank import CSV_FIELDS, NDR_CONCURRENCY, NearDuplicateError, NearDuplicateReranker, candidate_card, load_cards
 from vinishko.pipeline.steps.vis_searcher.storage import S3Store
 from vinishko.pipeline.steps.vis_searcher.catalog import CollectionInfo
 from vinishko.pipeline.steps.vis_searcher.configs import load_config
@@ -24,8 +28,8 @@ from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate, U
 
 def crop() -> BottleCrop:
     """Минимальная бутылка с валидным RGB-кропом."""
-    image = np.zeros((4, 4, 3), dtype=np.uint8)
-    return BottleCrop(1, 0.9, [], [], 0.0, image, {}, image, {})
+    rgb = np.zeros((4, 4, 3), dtype=np.uint8)
+    return BottleCrop(1, 0.9, [], [], 0.0, rgb, {}, rgb.copy(), {})
 
 
 def candidate(bottle: BottleCrop, slug: str, group: str, members: list[str]) -> Candidate:
@@ -63,6 +67,26 @@ class FakeStore:
 
 
 class NearDuplicateRerankerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        env = patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-only"})
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_settings_are_loaded_from_yaml(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "config.yaml"
+            path.write_text(
+                DEFAULT_CONFIG.read_text(encoding="utf-8").replace(
+                    "model: deepseek/deepseek-v4.1-flash", "model: test/model",
+                ),
+                encoding="utf-8",
+            )
+            settings = load_ndr_config(path)
+        self.assertEqual(settings.openrouter.model, "test/model")
+        self.assertEqual(settings.openrouter.routing.only, ("together",))
+        self.assertEqual(settings.generation.max_completion_tokens, 4096)
+        self.assertEqual(NearDuplicateReranker(settings=settings).settings, settings)
+
     def test_local_catalog_supplies_full_v5_card(self) -> None:
         bottle = crop()
         position = candidate(bottle, "first", "group", ["first", "second"])
@@ -80,6 +104,15 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         self.assertEqual(card["grapes"], "")
         self.assertEqual(store.names, ["original.webp"])
 
+    def test_new_catalog_uses_box_crop_for_vlm(self) -> None:
+        bottle = crop()
+        position = candidate(bottle, "first", "first", ["first"])
+        position.payload["image_crop"] = "bottle_box"
+        store = FakeStore()
+        card = candidate_card(position, store)
+        self.assertTrue(card["reference_image_bytes"].startswith(b"\x89PNG"))
+        self.assertEqual(store.names, [])
+
     def test_query_only_search_uses_local_source_image_without_s3(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -88,7 +121,7 @@ class NearDuplicateRerankerTests(unittest.TestCase):
             cfg.images = None
             cfg.reference_images.dir = root
             files = SimpleNamespace(repo=cfg.model, revision="revision", embed_dim=4, input_size=(512, 512))
-            info = CollectionInfo(cfg.qdrant.collection, 4, 1, cfg.model, "revision", (512, 512))
+            info = CollectionInfo(cfg.qdrant.collection, 4, 1, cfg.model, "revision", (512, 512), "crop")
             payload = {"slug": "first", "group": "first", "source_image": "source.png"}
             with (
                 patch("vinishko.pipeline.steps.vis_searcher.search.fetch_model", return_value=files),
@@ -162,14 +195,16 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         top = candidate(bottle, "one", "one", ["one"])
         store = FakeStore()
         with patch("vinishko.pipeline.steps.near_duplicates.rerank.predict") as model:
-            result = NearDuplicateReranker(reference_store=store)([BottleCandidates(bottle, [top])])[0]
+            result = NearDuplicateReranker(reference_store=store).call([BottleCandidates(bottle, [top])])[0]
         self.assertEqual([c.slug for c in result.candidates], ["one"])
         self.assertEqual(result.selection["source"], "vector")
         self.assertEqual(store.names, [])
         model.assert_not_called()
 
-    def test_group_uses_all_members_and_returns_selected_slug(self) -> None:
-        bottle = crop()
+    def test_group_sends_box_crop_and_returns_selected_slug(self) -> None:
+        base = crop()
+        base.box_crop[:] = 177
+        bottle = BottleCrop(base.index, base.score, base.bottle, base.label, base.angle, base.crop, base.crop_info, base.box_crop, base.box_info, original=np.full((6, 7, 3), 222, np.uint8))
         top = candidate(bottle, "first", "group", ["first", "second"])
         second = candidate(bottle, "second", "group", ["first", "second"])
         outsider = candidate(bottle, "outsider", "other", ["outsider"])
@@ -184,6 +219,62 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         self.assertEqual(request["group"]["candidates"][0]["grapes"], "Пино нуар")
         self.assertTrue(request["group"]["candidates"][0]["reference_image_bytes"].startswith(b"RIFF"))
         self.assertTrue(request["query"]["image_bytes"].startswith(b"\x89PNG"))
+        with Image.open(BytesIO(request["query"]["image_bytes"])) as query:
+            self.assertEqual(query.size, (4, 4))
+            self.assertEqual(query.getpixel((0, 0)), (177, 177, 177))
+
+    def test_ndr_requests_run_concurrently_with_limit_32_and_keep_order(self) -> None:
+        lock = threading.Lock()
+        active = peak = 0
+
+        def model(_request: dict) -> dict:
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+            time.sleep(0.02)
+            with lock:
+                active -= 1
+            return model_response("first")
+
+        found = []
+        for index in range(NDR_CONCURRENCY + 8):
+            bottle = crop()
+            bottle = BottleCrop(index, bottle.score, bottle.bottle, bottle.label, bottle.angle, bottle.crop, bottle.crop_info, bottle.box_crop, bottle.box_info)
+            found.append(BottleCandidates(bottle, [
+                candidate(bottle, slug, "group", ["first", "second"])
+                for slug in ("first", "second")
+            ]))
+        with patch("vinishko.pipeline.steps.near_duplicates.rerank.predict", side_effect=model):
+            resolved = NearDuplicateReranker()(found)
+        self.assertEqual([result.crop.index for result in resolved], list(range(len(found))))
+        self.assertEqual([result.candidates[0].slug for result in resolved], ["first"] * len(found))
+        self.assertGreater(peak, 1)
+        self.assertLessEqual(peak, 32)
+
+    def test_semaphore_limits_separate_single_bottle_calls(self) -> None:
+        lock = threading.Lock()
+        active = peak = 0
+
+        def model(_request: dict) -> dict:
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+            time.sleep(0.08)
+            with lock:
+                active -= 1
+            return model_response("first")
+
+        reranker = NearDuplicateReranker()
+        bottle = crop()
+        row = BottleCandidates(bottle, [candidate(bottle, slug, "group", ["first", "second"]) for slug in ("first", "second")])
+        with patch("vinishko.pipeline.steps.near_duplicates.rerank.predict", side_effect=model):
+            with ThreadPoolExecutor(max_workers=NDR_CONCURRENCY + 8) as executor:
+                resolved = list(executor.map(reranker, [[row]] * (NDR_CONCURRENCY + 8)))
+        self.assertEqual(len(resolved), NDR_CONCURRENCY + 8)
+        self.assertGreater(peak, 1)
+        self.assertLessEqual(peak, 32)
 
     def test_not_found_becomes_rejected_bottle(self) -> None:
         bottle = crop()
@@ -210,6 +301,21 @@ class NearDuplicateRerankerTests(unittest.TestCase):
         with patch("vinishko.pipeline.steps.near_duplicates.rerank.predict") as model, self.assertRaises(NearDuplicateError):
             NearDuplicateReranker()([BottleCandidates(bottle, [top])])
         model.assert_not_called()
+
+    def test_missing_openrouter_key_reports_env_file(self) -> None:
+        bottle = crop()
+        candidates = [candidate(bottle, slug, "group", ["first", "second"]) for slug in ("first", "second")]
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(predictor, "PROJECT_ROOT", Path(temp)), patch.dict(os.environ, {}, clear=True):
+                with self.assertRaisesRegex(NearDuplicateError, r"OPENROUTER_API_KEY.*\.env"):
+                    NearDuplicateReranker().call([BottleCandidates(bottle, candidates)])
+
+    def test_openrouter_key_is_loaded_from_project_env(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            (Path(temp) / ".env").write_text("OPENROUTER_API_KEY=test-only\n", encoding="utf-8")
+            with patch.object(predictor, "PROJECT_ROOT", Path(temp)), patch.dict(os.environ, {}, clear=True):
+                predictor.load_openrouter_env()
+                self.assertEqual(os.environ["OPENROUTER_API_KEY"], "test-only")
 
     def test_v5_predictor_accepts_images_in_memory_with_strict_slug_enum(self) -> None:
         bottle = crop()

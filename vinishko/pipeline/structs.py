@@ -81,16 +81,15 @@ class BottleCrop:
     crop: np.ndarray
     """RGB-кроп для визуального поиска: поворот на angle, окно вокруг основной этикетки с запасом в пределах маски бутылки, фон вне маски залит; см. render_bottle."""
     crop_info: dict
-    """Как crop получен из оригинала — угол, запас, матрицы matrix_src_to_dst и matrix_dst_to_src; см. render_bottle."""
+    """Как кроп получен из оригинала — угол, запас, матрицы matrix_src_to_dst и matrix_dst_to_src; см. render_bottle."""
     box_crop: np.ndarray
-    """RGB-кроп всей бутылки как на обычном фото: тот же поворот, bbox маски с небольшим запасом, фон не тронут; см. render_bottle_box.
-
-    Идёт дальше по пайплайну, во второй уровень: VLM выбирает среди кандидатов по привычному фото. В каталоге позиции хранятся такими же кропами.
-    """
+    """RGB-кроп всей бутылки с обычным фоном для NDR/VLM, сохранения и каталога."""
     box_info: dict
-    """Как box_crop получен из оригинала: угол, запас в пикселях, матрицы; см. render_bottle_box."""
+    """Геометрия box_crop относительно исходного фото."""
     uuid: str = field(default_factory=new_uuid)
     """Идентификатор бутылки; по нему возможный RejectedBottle связан с этим кропом."""
+    original: np.ndarray | None = None
+    """Необязательное исходное RGB-фото после EXIF-поворота; NDR получает box_crop, поиск — crop."""
 
     def reject(self, reason: Reason, detail: str) -> RejectedBottle:
         """Отказ по этой бутылке на более позднем шаге пайплайна: те же маски, скор и uuid."""

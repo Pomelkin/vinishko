@@ -6,6 +6,7 @@
 
 import csv
 import json
+import shutil
 import statistics
 import time
 from collections.abc import Iterable
@@ -21,12 +22,12 @@ from rich.table import Table
 
 from vinishko.pipeline.pipeline import Pipeline, PipelineResult
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
-from vinishko.pipeline.steps.normalization.normalize import Normalizer
+from vinishko.pipeline.steps.normalization.normalize import Normalizer, polys_box
 from vinishko.pipeline.steps.normalization.normalize import load_config as load_norm_config
 from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS, FIELD_SLUG
 from vinishko.pipeline.steps.vis_searcher.configs import DEFAULT_CONFIG, load_config
 from vinishko.pipeline.steps.vis_searcher.search import VisSearcher
-from vinishko.pipeline.structs import BottleCandidates, RejectedBottle, UnmatchedBottle
+from vinishko.pipeline.structs import BottleCandidates, BottleCrop, RejectedBottle, UnmatchedBottle
 
 KS = (1, 3, 5)
 DUMPS = ("misses", "all", "none")
@@ -128,10 +129,16 @@ def quantiles(values: list[float]) -> dict[str, float] | None:
 
 
 def metrics(rows: list[Row]) -> dict:
-    """Recall@k и качество отказа: фото с ответом в каталоге отдельно от фото без ответа."""
+    """Recall@k и качество отказа.
+
+    with_answer — slug есть в коллекции, по ним recall. without_answer — slug пустой, по ним отказ: correct_reject и false_accept.
+    answer_not_indexed — slug задан, но в коллекции его нет (фото каталога не прошло нормализацию либо позиции нет в CSV): такие фото
+    ни в recall, ни в отказ не идут, для них отдельно not_indexed_accepted — доля, где поиск всё же выдал кандидатов, обычно соседей по группе.
+    """
     with_answer = [r for r in rows if r.in_catalog]
-    without = [r for r in rows if not r.in_catalog]
-    out: dict = {"images": len(rows), "with_answer": len(with_answer), "without_answer": len(without)}
+    without = [r for r in rows if not r.slug]
+    unindexed = [r for r in rows if r.slug and not r.in_catalog]
+    out: dict = {"images": len(rows), "with_answer": len(with_answer), "without_answer": len(without), "answer_not_indexed": len(unindexed)}
     for k in KS:
         out[f"recall@{k}"] = share(r.rank is not None and r.rank <= k for r in with_answer)
     for k in KS:
@@ -140,6 +147,7 @@ def metrics(rows: list[Row]) -> dict:
     out["false_reject"] = share(r.status == "no_match" for r in with_answer)
     out["correct_reject"] = share(r.status == "no_match" for r in without)
     out["false_accept"] = share(r.status == "candidates" for r in without)
+    out["not_indexed_accepted"] = share(r.status == "candidates" for r in unindexed)
     out["no_bottle"] = share(r.status == "no_bottle" for r in rows)
     out["seconds_per_image"] = round(statistics.mean(r.seconds for r in rows), 3) if rows else None
     out["top1_cos"] = {
@@ -148,6 +156,22 @@ def metrics(rows: list[Row]) -> dict:
         "false_accept": quantiles([r.top1_score for r in without if r.top1_score is not None]),
     }
     return out
+
+
+def dump_image(out: Path, path: Path, result: PipelineResult, searcher: VisSearcher) -> None:
+    """Папка одного фото: копия исходника, normalization.json со всеми бутылками и причинами отказов, дамп поиска, если он был."""
+    out.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(path, out / f"source{path.suffix.lower()}")
+    bottles = []
+    for item in result.normalization:
+        entry = {"uuid": item.uuid, "score": item.score, "bottle_box": polys_box(item.bottle)}
+        if isinstance(item, BottleCrop):
+            bottles.append({"status": "ok", "index": item.index, **entry})
+        else:
+            bottles.append({"status": "rejected", "reason": item.reason, "title": item.reason.title, "message": item.message, **entry})
+    (out / "normalization.json").write_text(json.dumps({"bottles": bottles, "timings_s": {k: round(v, 3) for k, v in result.timings.items()}}, ensure_ascii=False, indent=1), encoding="utf-8")
+    if result.search:
+        searcher.dump(result.search, out)
 
 
 def is_miss(row: Row) -> bool:
@@ -161,7 +185,11 @@ def print_metrics(report: dict) -> None:
     table.add_column("метрика")
     table.add_column("значение", justify="right")
     m = report["metrics"]
-    for name in ("images", "with_answer", "without_answer", *(f"recall@{k}" for k in KS), "group_recall", "recall@1_any_bottle", "false_reject", "correct_reject", "false_accept", "no_bottle", "seconds_per_image"):
+    for name in (
+        "images",
+        "with_answer",
+        "without_answer",
+        "answer_not_indexed", *(f"recall@{k}" for k in KS), "group_recall", "recall@1_any_bottle", "false_reject", "correct_reject", "false_accept", "not_indexed_accepted", "no_bottle", "seconds_per_image"):
         value = m[name]
         table.add_row(name, "—" if value is None else (f"{value:.1%}" if isinstance(value, float) and name != "seconds_per_image" else str(value)))
     for name, q in m["top1_cos"].items():
@@ -182,7 +210,7 @@ def progress() -> Progress:
 @click.option("-c", "--norm-config", type=click.Path(exists=True, dir_okay=False, path_type=Path), default=NORM_DIR / "normalize.toml", show_default=True)
 @click.option("--set", "overrides", multiple=True, metavar="секция.ключ=значение", help="Переопределить параметр конфига нормализации")
 @click.option("--limit", type=click.IntRange(min=1), default=None, help="Первые N фото")
-@click.option("--dump", type=click.Choice(DUMPS), default="misses", show_default=True, help="Разбор поиска картинками в <out>/dumps/<фото>: только промахи, все либо ничего")
+@click.option("--dump", type=click.Choice(DUMPS), default="all", show_default=True, help="Папка на фото в <out>/dumps/<фото>: исходник, normalization.json с бутылками и причинами отказов, дамп поиска; все фото, только промахи либо ничего",)
 @click.option("-o", "--out", type=click.Path(file_okay=False, path_type=Path), default=None, help="Куда писать report.json, per_image.csv и дампы; по умолчанию reports/vis_searcher/<время>")
 def main(test_dir: Path, csv_path: Path | None, images: Path | None, config_path: Path, norm_config: Path, overrides: tuple[str, ...], limit: int | None, dump: str, out: Path | None) -> None:
     """Прогнать тестовый набор через нормализацию и поиск, посчитать recall@k и качество отказа.
@@ -209,8 +237,8 @@ def main(test_dir: Path, csv_path: Path | None, images: Path | None, config_path
         for name, slug in pairs:
             row, result = evaluate_image(pipeline, images / name, slug, known)
             rows.append(row)
-            if result.search and (dump == "all" or (dump == "misses" and is_miss(row))):
-                searcher.dump(result.search, out / "dumps" / Path(name).stem)
+            if dump == "all" or (dump == "misses" and is_miss(row)):
+                dump_image(out / "dumps" / Path(name).stem, images / name, result, searcher)
             bar.update(task, advance=1)
     report = {
         "collection": searcher.info.name,

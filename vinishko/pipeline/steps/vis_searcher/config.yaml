@@ -1,9 +1,10 @@
 # Визуальный поиск: настройки по умолчанию. Относительные пути считаются от этого файла, ../../../../ — корень репозитория.
-model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-1024 # репозиторий Hugging Face с экспортом DinoV3ForWine
+model: pomelk1n/qwopus-twinturbo-gguf-umer-vitl16-1024 # модель текущей коллекции DINOv3
 revision: null # ревизия репозитория; коллекция помнит свою и с другой не работает
 device: auto # auto | cpu | cuda:<индекс>; переменная VIS_SEARCHER_DEV перекрывает; auto — cuda:0 при доступной CUDA, иначе cpu
+encoder_input: crop                                     # crop — окно этикетки с залитым фоном (вход обучения DINO); box_crop — вся бутылка как на фото (для TULIP); коллекцию собирать тем же значением
 batch_size: 16 # потолок батча энкодера, для TensorRT — профиль engine
-cpu_batch_size: 1 # безопасный потолок на машине с 16 ГБ ОЗУ; 2 быстрее при достаточной свободной памяти
+cpu_batch_size: 2
 top_k: 1 # ближайшая позиция задаёт группу для NDR
 
 qdrant:
@@ -25,7 +26,7 @@ images: null # запрос читает локальные оригиналы �
 # bucket: vino, prefix: catalog (под секцией images)
 
 reference_images:
-  kind: local # оригинальные Эталоны для поиска и NDR v5
+  kind: local # резервные оригинальные Эталоны для старых записей Qdrant без image_crop=bottle_box
   dir: ../../../../datasets/local/catalog/images
 catalog_csv: ../../../../datasets/local/catalog/catalog.csv # полные карточки для NDR v5
 

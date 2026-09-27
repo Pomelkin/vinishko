@@ -10,6 +10,7 @@ from typing import Literal
 import cv2
 import numpy as np
 from huggingface_hub import snapshot_download
+from PIL import Image
 
 from vinishko.pipeline.steps.vis_searcher.backends import OpenVinoRunner, Runner, TensorRTRunner
 from vinishko.pipeline.steps.vis_searcher.device import Device, Precision
@@ -17,6 +18,10 @@ from vinishko.pipeline.steps.vis_searcher.device import Device, Precision
 ONNX_FP32, PREPROCESS_NAME, CONFIG_NAME = "model.onnx", "preprocess.json", "config.json"
 Resize = Literal["pad", "squash"]
 """pad — вписать с сохранением пропорций и дополнить полями (DINOv3 для вина); squash — растянуть до размера входа без полей (TULIP, SigLIP)."""
+Interpolation = Literal["area_cubic", "bilinear", "bicubic"]
+"""Чем масштабировать: area_cubic — cv2 area при уменьшении и cubic при увеличении, путь обучения DinoV3ForWine; bilinear и bicubic — PIL с антиалиасингом,
+как препроцессоры transformers (SigLIP) и open_clip (TULIP). Для SigLIP2 cv2 area вместо PIL bilinear стоит до 0.03 косинуса, cv2 linear — до 0.08."""
+PIL_RESAMPLING = {"bilinear": Image.Resampling.BILINEAR, "bicubic": Image.Resampling.BICUBIC}
 LOCAL_PREFIX = "local-"
 
 
@@ -36,6 +41,7 @@ class ModelFiles:
     input_size: tuple[int, int]
     pad_color: tuple[int, int, int]
     resize: Resize
+    interpolation: Interpolation
     embed_dim: int
     patch_size: int
 
@@ -60,6 +66,9 @@ def fetch_model(repo: str, precision: Precision, revision: str | None = None) ->
     resize = contract.get("resize", "pad")
     if resize not in ("pad", "squash"):
         raise RuntimeError(f"в {repo} preprocess.json: resize={resize!r}, ожидается pad либо squash")
+    interpolation = contract.get("interpolation", "area_cubic")
+    if interpolation not in PIL_RESAMPLING and interpolation != "area_cubic":
+        raise RuntimeError(f"в {repo} preprocess.json: interpolation={interpolation!r}, ожидается area_cubic, bilinear либо bicubic")
     return ModelFiles(
         repo=repo,
         revision=local_revision(root, onnx_name) if local.is_dir() else root.name,
@@ -69,6 +78,7 @@ def fetch_model(repo: str, precision: Precision, revision: str | None = None) ->
         input_size=(int(contract["input_size"][0]), int(contract["input_size"][1])),
         pad_color=(red, green, blue),
         resize=resize,
+        interpolation=interpolation,
         embed_dim=int(config["embed_dim"]),
         patch_size=int(contract["patch_size"]),
     )
@@ -110,15 +120,17 @@ def fit_size(height: int, width: int, target: tuple[int, int]) -> tuple[int, int
     return min(target[0], max(1, round(height * scale))), min(target[1], max(1, round(width * scale)))
 
 
-def resize_image(image: np.ndarray, height: int, width: int) -> np.ndarray:
-    """Ресайз к размеру: area при уменьшении, cubic при увеличении — как готовился вход на обучении."""
-    interpolation = cv2.INTER_AREA if height < image.shape[0] else cv2.INTER_CUBIC
-    return cv2.resize(image, (width, height), interpolation=interpolation)
+def resize_image(image: np.ndarray, height: int, width: int, interpolation: Interpolation = "area_cubic") -> np.ndarray:
+    """Ресайз к размеру: area_cubic — cv2 area при уменьшении и cubic при увеличении, как готовился вход на обучении; bilinear и bicubic — PIL с антиалиасингом."""
+    if interpolation == "area_cubic":
+        flag = cv2.INTER_AREA if height < image.shape[0] else cv2.INTER_CUBIC
+        return cv2.resize(image, (width, height), interpolation=flag)
+    return np.asarray(Image.fromarray(image).resize((width, height), PIL_RESAMPLING[interpolation]))
 
 
-def resize_to_fit(image: np.ndarray, target: tuple[int, int]) -> np.ndarray:
+def resize_to_fit(image: np.ndarray, target: tuple[int, int], interpolation: Interpolation = "area_cubic") -> np.ndarray:
     """Вписывает картинку в target с сохранением пропорций."""
-    return resize_image(image, *fit_size(image.shape[0], image.shape[1], target))
+    return resize_image(image, *fit_size(image.shape[0], image.shape[1], target), interpolation)
 
 
 class Preprocess:
@@ -127,16 +139,16 @@ class Preprocess:
     resize=pad — кроп вписывается с сохранением пропорций, поля цвета pad_color по центру; squash — растягивается до input_size без полей.
     """
 
-    def __init__(self, input_size: tuple[int, int], pad_color: tuple[int, int, int], resize: Resize = "pad") -> None:
-        self.input_size, self.pad_color, self.resize = input_size, pad_color, resize
+    def __init__(self, input_size: tuple[int, int], pad_color: tuple[int, int, int], resize: Resize = "pad", interpolation: Interpolation = "area_cubic") -> None:
+        self.input_size, self.pad_color, self.resize, self.interpolation = input_size, pad_color, resize, interpolation
 
     def __call__(self, image: np.ndarray) -> np.ndarray:
         """uint8 RGB HWC любого размера → float32 CHW размера входа."""
         if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8:
             raise ValueError(f"ожидается uint8 RGB HWC, пришло {image.dtype} {image.shape}")
         if self.resize == "squash":
-            return resize_image(image, *self.input_size).transpose(2, 0, 1).astype(np.float32)
-        fitted = resize_to_fit(image, self.input_size)
+            return resize_image(image, *self.input_size, self.interpolation).transpose(2, 0, 1).astype(np.float32)
+        fitted = resize_to_fit(image, self.input_size, self.interpolation)
         canvas = np.empty((*self.input_size, 3), np.uint8)
         canvas[:] = self.pad_color
         top = round((self.input_size[0] - fitted.shape[0]) * 0.5)
@@ -152,12 +164,10 @@ class Preprocess:
 class Encoder:
     """Кропы бутылок → L2-нормированные эмбеддинги; бэкенд по устройству, батчи не больше max_batch."""
 
-    def __init__(
-        self, files: ModelFiles, device: Device, max_batch: int, cache_dir: Path, cpu_max_batch: int = 1
-    ) -> None:
+    def __init__(self, files: ModelFiles, device: Device, max_batch: int, cache_dir: Path, cpu_max_batch: int = 1) -> None:
         self.files, self.device = files, device
         self.max_batch = min(max_batch, cpu_max_batch) if device.backend == "openvino" else max_batch
-        self.preprocess = Preprocess(files.input_size, files.pad_color, files.resize)
+        self.preprocess = Preprocess(files.input_size, files.pad_color, files.resize, files.interpolation)
         onnx = download_onnx(files)
         self.runner: Runner
         if device.backend == "tensorrt":
@@ -178,7 +188,7 @@ class Encoder:
     def description(self) -> str:
         """Модель, вход, устройство и бэкенд одной строкой для логов."""
         files = self.files
-        return f"{files.repo}@{files.revision[:14]} {files.onnx_name}, вход {files.input_size[0]}×{files.input_size[1]} {files.resize}, {self.device}, {self.runner.description}, batch≤{self.max_batch}"
+        return f"{files.repo}@{files.revision[:14]} {files.onnx_name}, вход {files.input_size[0]}×{files.input_size[1]} {files.resize} {files.interpolation}, {self.device}, {self.runner.description}, batch≤{self.max_batch}"
 
     def __call__(self, images: Sequence[np.ndarray]) -> np.ndarray:
         """Эмбеддинги float32 (n, embed_dim), L2-нормированные; граф уже нормирует выход, повторная нормировка страхует от численного дрейфа."""
