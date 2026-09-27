@@ -41,6 +41,7 @@ from vinishko.pipeline.structs import (
     BottleCrop,
     Candidate,
     Reason,
+    Rejection,
     UnmatchedBottle,
 )
 
@@ -53,6 +54,7 @@ Hit = tuple[float, dict, dict[str, float]]
 class SearchReason(Reason):
     """Почему визуальный поиск не дал кандидатов."""
 
+    __stage__ = "search"
     NO_MATCH = (
         "no_match",
         "Нет в каталоге",
@@ -67,7 +69,8 @@ class VisSearcher:
     в пространстве каждого входа, выдачи объединяются по slug, скор позиции — среднее косинусов, и порог берётся по нему.
     При создании сначала дешёвые проверки: контракт модели с Hugging Face, коллекция существует и не пуста, построена той же моделью
     и ревизией, размерность векторов, размер входа и набор входов совпадают. Потом скачивается граф и поднимается энкодер, последним
-    хранилище картинок: его manifest.json с тем же отпечатком нормализации, что у коллекции, и картинка первой точки читается.
+    хранилище картинок: его manifest.json с тем же отпечатком нормализации, что у коллекции, локальный кэш картинок S3 от этой же
+    сборки (иначе сбрасывается), и картинка первой точки читается.
     Нормализатор запроса сверяет с манифестом оркестратор через check_normalization. Без cfg — config.yaml рядом с модулем,
     без device — VIS_SEARCHER_DEV либо автоматически. client — готовый клиент qdrant вместо подключения по конфигу, для тестов.
     """
@@ -124,6 +127,9 @@ class VisSearcher:
                 f"картинки в хранилище ({self.store.description}) писала сборка коллекции {manifest['collection']} с нормализацией {manifest['fingerprint']}, "
                 f"а коллекция {self.collection} собрана с {self.info.normalization}: пересоберите {self.collection} либо дайте ей своё хранилище"
             )
+        self.store.sync_cache(
+            manifest
+        )  # локальные копии картинок другой сборки под теми же именами — сброс до первого чтения
         name = sample_payload(self.client, self.collection)[FIELD_IMAGE]
         if not self.store.exists(name):
             raise RuntimeError(
@@ -221,7 +227,7 @@ class VisSearcher:
             if best is not None
             else "выдача коллекции пуста"
         )
-        return UnmatchedBottle(crop, crop.reject(SearchReason.NO_MATCH, detail))
+        return UnmatchedBottle(crop, Rejection(SearchReason.NO_MATCH, detail))
 
     def _top_n(
         self, crop: BottleCrop, hits: list[Hit], mode: TopNSearch
@@ -345,12 +351,7 @@ class VisSearcher:
                 {
                     "query": crop.uuid,
                     "bottle_score": crop.score,
-                    "rejected": {
-                        "reason": result.rejected.reason,
-                        "detail": result.rejected.detail,
-                    }
-                    if isinstance(result, UnmatchedBottle)
-                    else None,
+                    "rejected": {"stage": result.rejection.stage, "reason": result.rejection.reason, "detail": result.rejection.detail} if isinstance(result, UnmatchedBottle) else None,
                     "candidates": [
                         {
                             "slug": c.slug,

@@ -22,7 +22,7 @@ from vinishko.pipeline.steps.normalization.seg import (
     open_image,
 )
 from vinishko.pipeline.device import resolve_torch_device
-from vinishko.pipeline.structs import BottleCrop, Reason, RejectedBottle
+from vinishko.pipeline.structs import BottleCrop, Reason, RejectedBottle, Rejection
 import torch
 
 torch.set_float32_matmul_precision("high")
@@ -475,6 +475,7 @@ def save_image(path: Path, rgb: np.ndarray, fmt: str, quality: int) -> None:
 class NormalizationReason(Reason):
     """Почему нормализация не пропустила бутылку дальше: значение, заголовок для интерфейса, что случилось и каким параметром управляется."""
 
+    __stage__ = "normalization"
     NOT_TARGET = (
         "not_target",
         "Бутылка на фоне",
@@ -602,16 +603,14 @@ class Normalizer:
         main = self.largest_label(cand["label_polys"], ax)
         if stats["cover"] < lb["min_cover"]:
             return RejectedBottle(
-                NormalizationReason.NO_LABEL,
-                f"этикетки закрывают {stats['cover']:.0%} площади бутылки, нужно от {lb['min_cover']:.0%}",
+                Rejection(NormalizationReason.NO_LABEL, f"этикетки закрывают {stats['cover']:.0%} площади бутылки, нужно от {lb['min_cover']:.0%}"),
                 score,
                 cand["polys"],
                 main,
             )
         if main is None:
             return RejectedBottle(
-                NormalizationReason.NOT_A_LABEL,
-                f"все наклейки уже {self.cfg['label_crop']['min_width_frac']:.0%} ширины бутылки",
+                Rejection(NormalizationReason.NOT_A_LABEL, f"все наклейки уже {self.cfg['label_crop']['min_width_frac']:.0%} ширины бутылки"),
                 score,
                 cand["polys"],
                 None,
@@ -643,7 +642,7 @@ class Normalizer:
         ]
         failed = next(((r, d) for r, bad, d in checks if bad), None)
         return (
-            RejectedBottle(failed[0], failed[1], score, cand["polys"], main)
+            RejectedBottle(Rejection(failed[0], failed[1]), score, cand["polys"], main)
             if failed
             else main
         )
@@ -688,8 +687,7 @@ class Normalizer:
         min_px = self.cfg["selection"]["min_bottle_px"]
         if bh < min_px:
             return RejectedBottle(
-                NormalizationReason.BOTTLE_TOO_SMALL,
-                f"высота бутылки {bh:.0f} px, нужно от {min_px} px",
+                Rejection(NormalizationReason.BOTTLE_TOO_SMALL, f"высота бутылки {bh:.0f} px, нужно от {min_px} px"),
                 score,
                 cand["polys"],
                 None,
@@ -725,16 +723,14 @@ class Normalizer:
             score = round(scores[i], 4)
             if scores[i] < self.threshold:
                 item = RejectedBottle(
-                    NormalizationReason.NOT_TARGET,
-                    f"скор отбора {score}, порог {self.threshold:.2f}",
+                    Rejection(NormalizationReason.NOT_TARGET, f"скор отбора {score}, порог {self.threshold:.2f}"),
                     score,
                     c["polys"],
                     None,
                 )
             elif max_bottles and n_valid >= max_bottles:
                 item = RejectedBottle(
-                    NormalizationReason.OVER_LIMIT,
-                    f"годных бутылок уже {max_bottles}",
+                    Rejection(NormalizationReason.OVER_LIMIT, f"годных бутылок уже {max_bottles}"),
                     score,
                     c["polys"],
                     None,
@@ -1124,7 +1120,7 @@ def main(
             items = norm.annotate_image(img)
             names = write_outputs(f, out_dir, np.asarray(img), items, cfg)
             rejected = ", ".join(
-                item.reason for item in items if isinstance(item, RejectedBottle)
+                item.rejection.reason for item in items if isinstance(item, RejectedBottle)
             )
             click.echo(
                 f"{f.name}: бутылок {len(items)}, кропов {len(names)}"

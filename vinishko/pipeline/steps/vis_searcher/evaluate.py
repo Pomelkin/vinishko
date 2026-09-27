@@ -9,7 +9,7 @@ import json
 import shutil
 import statistics
 import time
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, fields
 from datetime import UTC, datetime
 from pathlib import Path
@@ -157,7 +157,7 @@ def evaluate_image(
             in_catalog,
             "no_match",
             bottles,
-            answer.rejected.detail,
+            answer.rejection.detail,
             "",
             None,
             None,
@@ -207,7 +207,7 @@ def quantiles(values: list[float]) -> dict[str, float] | None:
     }
 
 
-def metrics(rows: list[Row]) -> dict:
+def metrics(rows: Sequence[Row]) -> dict:
     """Recall@k и качество отказа.
 
     with_answer — slug есть в коллекции, по ним recall. without_answer — slug пустой, по ним отказ: correct_reject и false_accept.
@@ -281,8 +281,9 @@ def dump_image(
             bottles.append(
                 {
                     "status": "rejected",
-                    "reason": item.reason,
-                    "label": item.reason.label,
+                    "stage": item.rejection.stage,
+                    "reason": item.rejection.reason,
+                    "label": item.rejection.label,
                     "message": item.message,
                     **entry,
                 }

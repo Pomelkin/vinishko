@@ -1,0 +1,41 @@
+# NDR v5. OPENROUTER_MODEL из .env может перекрыть model.
+openrouter:
+  model: deepseek/deepseek-v4.1-flash
+  api_base: https://openrouter.ai/api/v1
+  api_key_env: OPENROUTER_API_KEY
+  http_referer_env: OPENROUTER_SITE_URL
+  app_title_env: OPENROUTER_APP_TITLE
+  user_agent: vinishko-pipeline/1
+  routing:
+    routing_mode: null
+    order: []
+    only: [together]
+    ignore: []
+    allow_fallbacks: false
+    require_parameters: true
+    data_collection: null
+    zdr: null
+    quantizations: []
+    max_price: null
+
+generation:
+  temperature: 0.0
+  top_p: null
+  top_k: null
+  min_p: null
+  frequency_penalty: null
+  presence_penalty: null
+  repetition_penalty: null
+  max_completion_tokens: 4096
+  generations: 1
+  seed: null
+  stop: []
+  image_detail: original
+  reasoning_effort: none
+  reasoning_exclude: false
+
+execution:
+  timeout_seconds: 60.0
+  concurrency: 1
+  candidate_order_seed: 0
+  limit: null

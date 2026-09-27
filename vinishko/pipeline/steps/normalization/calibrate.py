@@ -141,7 +141,7 @@ def label_verdicts(norm: Normalizer, label: dict, seg: dict) -> list[tuple[bool,
         out.append(
             (
                 bool(t.get("label_hidden")),
-                res.reason.value if isinstance(res, RejectedBottle) else "ok",
+                res.rejection.reason.value if isinstance(res, RejectedBottle) else "ok",
             )
         )
     return out

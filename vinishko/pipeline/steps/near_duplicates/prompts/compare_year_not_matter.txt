@@ -1,0 +1,1 @@
+When an ELEMENT has an empty vintage field in CARD_JSON, an exact vintage match is not required. The presence, absence, or difference of a printed year alone must neither reject nor penalize that ELEMENT. Compare it by maker, exact product profile, and packaging identity.

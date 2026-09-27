@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, cast, BinaryIO
 
 import cv2
 import numpy as np
@@ -34,7 +34,7 @@ def to_numpy(x: Tensor | np.ndarray) -> np.ndarray:
     return x.cpu().numpy() if isinstance(x, Tensor) else x
 
 
-def open_image(path: Path | str) -> Image.Image:
+def open_image(path: Path | str | BinaryIO) -> Image.Image:
     """RGB-картинка с явно применённым EXIF-поворотом, иначе координаты разойдутся с тем, как её видит человек.
 
     Прозрачность кладётся на белую подложку: каталожные вырезки почти все RGBA, под прозрачным у них чёрный, а кромка полупрозрачная,

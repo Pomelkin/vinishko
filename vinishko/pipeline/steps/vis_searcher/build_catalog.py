@@ -75,8 +75,10 @@ CSV_FIELDS = {
     "abv": "Крепость, %",
     "sugar": "Сахар",
     "sparkling": "Игристое",
+    "aging_or_reserve": "Выдержка или резерв",
 }
-"""Колонки каталога, которые уходят в метаданные точки под латинскими именами: второму уровню нужны поля, а не весь CSV."""
+"""Колонки каталога, которые уходят в метаданные точки под латинскими именами: второму уровню нужны поля, а не весь CSV.
+aging_or_reserve добавлен 2026-09-28 для карточки NDR; в коллекциях, собранных раньше, поля нет, карточка получает пустую строку."""
 console = Console()
 logger = setup_logger(fmt="detailed")
 
@@ -172,7 +174,7 @@ def single_crop(norm: Normalizer, images: Path, row: Row) -> BottleCrop:
     crops = [item for item in items if isinstance(item, BottleCrop)]
     if len(crops) != 1:
         reasons = ", ".join(
-            item.reason for item in items if not isinstance(item, BottleCrop)
+            item.rejection.reason for item in items if not isinstance(item, BottleCrop)
         )
         raise ValueError(
             f"{row.photo} ({row.slug}): годных бутылок {len(crops)}, нужна ровно одна"

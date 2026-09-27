@@ -1,0 +1,10 @@
+# Конфиг оркестратора. Конфиги шагов лежат рядом с шагами: steps/normalization/normalize.toml, steps/vis_searcher/config.yaml, steps/near_duplicates/config.yaml.
+# Относительные пути считаются от этого файла, ../../ — корень репозитория.
+catalog: # CSV каталога: описание позиции в ответе API и карточки позиций второму уровню
+  kind: local
+  path: ../../datasets/hack-vine/catalog/catalog.csv
+  # kind: s3
+  # endpoint: https://s3.ru-6.storage.selcloud.ru
+  # bucket: vino
+  # key: catalog/catalog.csv
+slug_column: Slug # колонка с идентификатором позиции, он же slug в коллекции поиска

@@ -59,6 +59,10 @@ def build_engine(
     """Сериализованный engine из ONNX для карты device: сеть strongly typed, точность берётся из типов графа, батч динамический до max_batch.
 
     TensorRT собирает engine под текущее устройство CUDA и его тактики, поэтому устройство выставляется здесь, а не только в раннере.
+    Графы экспортированы с opset 23, внимание в них — оператор Attention, у TensorRT это IAttention. Слитое ядро внимания есть не для
+    всех типов и форм: для float32-графа (карты без bfloat16, Turing и старше) его нет, и без разрешения на разложение сборка падает
+    с «Attention operation was not supported by a dedicated kernel». Разрешение только позволяет разложить внимание на matmul и softmax,
+    когда ядра нет: bfloat16 на Ampere с ним так же быстр (18 мс против 17.5 на 3080), float32 собирается и совпадает с OpenVINO.
     """
     torch.cuda.set_device(device)
     trt = load_tensorrt()
@@ -71,6 +75,11 @@ def build_engine(
     if not parser.parse_from_file(str(onnx)):
         errors = [parser.get_error(i).desc() for i in range(parser.num_errors)]
         raise RuntimeError(f"TensorRT не разобрал {onnx}: {errors[:3]}")
+    for i in range(network.num_layers):
+        layer = network.get_layer(i)
+        if layer.type == trt.LayerType.ATTENTION_INPUT:
+            layer.__class__ = trt.IAttentionInputLayer  # у базового ILayer нет доступа к IAttention, приведение — способ из Python API TensorRT
+            layer.attention.decomposable = True
     config = builder.create_builder_config()
     config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, WORKSPACE_BYTES)
     profile = builder.create_optimization_profile()

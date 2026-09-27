@@ -4,6 +4,7 @@
 
 import json
 import os
+import shutil
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Protocol
@@ -11,6 +12,7 @@ from typing import Any, Protocol
 import boto3
 import numpy as np
 from botocore.exceptions import ClientError
+from kostyl.utils import setup_logger
 from PIL import Image
 
 from vinishko.pipeline.steps.vis_searcher.configs import (
@@ -18,6 +20,7 @@ from vinishko.pipeline.steps.vis_searcher.configs import (
     S3ImagesConfig,
 )
 
+logger = setup_logger(fmt="detailed")
 CONTENT_TYPES = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
 PIL_FORMATS = {"jpg": "JPEG", "png": "PNG", "webp": "WEBP"}
 MANIFEST = "manifest.json"
@@ -53,6 +56,10 @@ class ImageStore(Protocol):
     def exists(self, name: str) -> bool: ...
 
     def ensure_available(self) -> None: ...
+
+    def sync_cache(self, manifest: dict) -> None:
+        """Локальные копии картинок соответствуют этой сборке (manifest хранилища); копии другой сборки сбрасываются."""
+        ...
 
 
 def read_manifest(store: ImageStore) -> dict:
@@ -100,6 +107,9 @@ class LocalStore:
         self.root.mkdir(parents=True, exist_ok=True)
         if not os.access(self.root, os.W_OK):
             raise PermissionError(f"нет прав на запись в {self.root}")
+
+    def sync_cache(self, manifest: dict) -> None:
+        """Кэша нет: картинки читаются из директории напрямую."""
 
 
 class S3Store:
@@ -151,13 +161,16 @@ class S3Store:
         return decode_image(cached.read_bytes())
 
     def put_json(self, name: str, data: dict) -> None:
-        """Загрузить JSON в бакет; в кэш не кладётся."""
+        """Загрузить JSON в бакет и положить копию в кэш: у сборщика кэш после сборки свежий, и его штамп — эта сборка."""
+        body = json.dumps(data, ensure_ascii=False, indent=1)
         self.client.put_object(
             Bucket=self.bucket,
             Key=self.key(name),
-            Body=json.dumps(data, ensure_ascii=False, indent=1).encode("utf-8"),
+            Body=body.encode("utf-8"),
             ContentType="application/json; charset=utf-8",
         )
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        (self.cache_dir / name).write_text(body, encoding="utf-8")
 
     def get_json(self, name: str) -> dict:
         """JSON из бакета мимо кэша: манифест нужен свежий, другая сборка могла его переписать."""
@@ -179,6 +192,29 @@ class S3Store:
     def ensure_available(self) -> None:
         """Бакет отвечает под текущими реквизитами; иначе ошибка boto3 как есть."""
         self.client.head_bucket(Bucket=self.bucket)
+
+    def sync_cache(self, manifest: dict) -> None:
+        """Кэш привязан к сборке по built_at манифеста: имена файлов от сборки к сборке те же, а картинки могут отличаться.
+
+        Копия манифеста в кэше — штамп сборки, чьи картинки там лежат. Штампа нет или built_at другой — кэш стирается целиком
+        и штампуется заново, картинки подтянутся из бакета по мере запросов.
+        """
+        stamp = self.cache_dir / MANIFEST
+        if (
+            stamp.is_file()
+            and json.loads(stamp.read_text(encoding="utf-8")).get("built_at")
+            == manifest["built_at"]
+        ):
+            return
+        if self.cache_dir.is_dir():
+            logger.info(
+                f"кэш картинок {self.cache_dir} от другой сборки, сбрасывается: в бакете сборка {manifest['built_at']} для {manifest['collection']}"
+            )
+            shutil.rmtree(self.cache_dir)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        stamp.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
 
 
 def make_store(cfg: LocalImagesConfig | S3ImagesConfig, cache_dir: Path) -> ImageStore:
