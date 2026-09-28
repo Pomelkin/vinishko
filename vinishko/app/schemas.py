@@ -1,11 +1,55 @@
 """Схемы ответов API."""
 
-from pydantic import BaseModel
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, StringConstraints, UUID7
 from pydantic import Field
 
 
 Polygon = list[list[float]]
 """Полигон маски: список точек [x, y] в пикселях исходного фото после EXIF-поворота."""
+
+
+class StrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class UnknownWineOut(StrictModel):
+    category: str
+    brand: str
+
+
+class ServiceErrorOut(BaseModel):
+    status_code: int
+    detail: str
+
+
+CatalogCard = Annotated[dict[str, str | int | float | bool | None], Field(min_length=1)]
+
+
+class OpenSessionRequest(StrictModel):
+    wine: CatalogCard
+    candidates: list[CatalogCard] = Field(max_length=5)
+
+
+class UserMessageRequest(StrictModel):
+    content: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
+
+
+class PublicMessage(StrictModel):
+    role: Literal["user", "assistant"]
+    content: str
+    suggestions: list[str] | None
+
+
+class TurnResponse(StrictModel):
+    session_id: UUID7
+    message: PublicMessage
+
+
+class SessionResponse(StrictModel):
+    session_id: UUID7
+    messages: list[PublicMessage]
 
 
 class RejectionOut(BaseModel):
@@ -72,6 +116,8 @@ class BottleOut(BaseModel):
     match: MatchOut | None = None
     candidates: list[CandidateOut] = Field(default_factory=list)
     rejection: RejectionOut | None = None
+    unknown_wine: UnknownWineOut | None = Field(default=None, description="Категория и винодельня от whatis для отвергнутой бутылки")
+    unknown_wine_error: ServiceErrorOut | None = Field(default=None, description="Ошибка whatis; исход распознавания сохранён")
 
 
 class ImageOut(BaseModel):

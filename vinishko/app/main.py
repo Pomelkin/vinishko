@@ -9,9 +9,11 @@ TensorRT не рассчитаны на параллельные вызовы и
 
 import asyncio
 import threading
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from io import BytesIO
+from pathlib import Path
 from typing import Annotated
 from typing import cast
 
@@ -21,6 +23,9 @@ from fastapi import HTTPException
 from fastapi import Request
 from fastapi import Response
 from fastapi import UploadFile
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+import httpx
 from kostyl.utils import setup_logger
 from PIL import Image
 from PIL import UnidentifiedImageError
@@ -32,6 +37,8 @@ from vinishko.app.schemas import ImageOut
 from vinishko.app.schemas import MatchOut
 from vinishko.app.schemas import RecognizeResponse
 from vinishko.app.schemas import RejectionOut
+from vinishko.app.schemas import ServiceErrorOut
+from vinishko.app.services import SERVICE_TIMEOUT_SECONDS, predict_unknown, router as services_router
 from vinishko.pipeline.catalog import Catalog
 from vinishko.pipeline.pipeline import Pipeline
 from vinishko.pipeline.pipeline import PipelineResult
@@ -47,6 +54,8 @@ from vinishko.pipeline.structs import Candidate
 
 logger = setup_logger(fmt="detailed")
 IMAGE_ROUTE = "/catalog/images/{name}"
+FRONTEND_DIR = Path(__file__).resolve().parent / "frontend" / "static"
+AUTO_WHATIS = False
 
 
 def polygons(polys: list | None) -> list[list[list[float]]] | None:
@@ -125,14 +134,22 @@ def create_app(pipeline: Pipeline | None = None) -> FastAPI:
             pipeline if pipeline is not None else await asyncio.to_thread(Pipeline)
         )
         app.state.lock = threading.Lock()
-        logger.info("приложение готово")
-        yield
+        async with httpx.AsyncClient(timeout=SERVICE_TIMEOUT_SECONDS, trust_env=False) as client:
+            app.state.services = client
+            logger.info("приложение готово")
+            yield
 
     app = FastAPI(
         title="vinishko",
         description="Распознавание вина по фото бутылки",
         lifespan=lifespan,
     )
+    app.include_router(services_router)
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+    @app.get("/", include_in_schema=False)
+    async def frontend() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "index.html")
 
     def current(request: Request) -> Pipeline:
         return cast(Pipeline, request.app.state.pipeline)
@@ -181,7 +198,23 @@ def create_app(pipeline: Pipeline | None = None) -> FastAPI:
                 return pipe(picture)
 
         result = await asyncio.to_thread(run)
-        return recognize_response(picture, result, pipe.catalog)
+        response = recognize_response(picture, result, pipe.catalog)
+        if not AUTO_WHATIS:
+            return response
+        crops = {b.uuid: b.crop for b in result.bottles if b.crop is not None}
+        started = time.perf_counter()
+        for bottle in response.bottles:
+            if bottle.status != "rejected":
+                continue
+            crop = crops[bottle.uuid]
+            try:
+                data = await asyncio.to_thread(encode_image, crop.box_crop, "jpg", 90)
+                bottle.unknown_wine = await predict_unknown(request.app.state.services, data)
+            except HTTPException as error:
+                bottle.unknown_wine_error = ServiceErrorOut(status_code=error.status_code, detail=str(error.detail))
+        if any(b.status == "rejected" for b in response.bottles):
+            response.timings_s["whatis"] = round(time.perf_counter() - started, 3)
+        return response
 
     @app.get(IMAGE_ROUTE)
     async def catalog_image(request: Request, name: str) -> Response:
