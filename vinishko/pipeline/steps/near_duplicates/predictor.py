@@ -19,6 +19,7 @@ from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+from typing import Literal
 
 from dotenv import load_dotenv
 from kostyl.utils import setup_logger
@@ -47,7 +48,10 @@ CARD_FIELDS = (
     "abv",
     "aging_or_reserve",
 )
-TASK_GROUP, TASK_FINAL = "group", "final"
+Task = Literal["group", "final"]
+"""Call task: select within one near-duplicate group, or among the finalists of different groups."""
+TASK_GROUP: Task = "group"
+TASK_FINAL: Task = "final"
 TASK_PROMPTS = {
     TASK_GROUP: "resolve_multiple_same",
     TASK_FINAL: "resolve_finalists",

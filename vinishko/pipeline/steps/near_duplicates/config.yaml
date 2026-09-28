@@ -9,7 +9,7 @@ openrouter:
   routing:
     routing_mode: null
     order: []
-    only: [together]
+    only: [ together ]
     ignore: []
     allow_fallbacks: false
     require_parameters: true
@@ -31,7 +31,10 @@ generation:
   seed: null
   stop: []
   image_detail: original
-  reasoning_effort: none
+  reasoning_effort:
+    # рассуждения модели до ответа по кругам: none | minimal | low | medium | high; кандидатов модель перебирает про себя, но дольше
+    group: none # проба 2026-09-28 на test_000098: low в группе из 2 позиций — 1294 токена рассуждений и 13.9 с, круг групп держит всё фото
+    final: none # там же финал из 2: 263 токена, 2.0 с — около секунды сверху
   reasoning_exclude: false
 
 execution:

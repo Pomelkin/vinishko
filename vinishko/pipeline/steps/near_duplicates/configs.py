@@ -110,6 +110,13 @@ class OpenRouterSettings(StrictSettings):
     routing: ProviderRoutingSettings
 
 
+class ReasoningByTask(StrictSettings):
+    """Reasoning effort per call task; None omits the reasoning parameter."""
+
+    group: ReasoningEffort | None
+    final: ReasoningEffort | None
+
+
 class GenerationSettings(StrictSettings):
     """Parameters applied identically to every comparison and resolver call."""
 
@@ -125,7 +132,8 @@ class GenerationSettings(StrictSettings):
     seed: int | None
     stop: tuple[NonEmptyString, ...] = Field(max_length=4)
     image_detail: ImageDetail
-    reasoning_effort: ReasoningEffort | None
+    reasoning_effort: ReasoningByTask
+    """How much the model reasons before answering, separately for the group round and the final."""
     reasoning_exclude: bool
 
     @field_validator("stop", mode="before")
@@ -134,8 +142,8 @@ class GenerationSettings(StrictSettings):
         """Keep the strict tuple field compatible with YAML sequences."""
         return tuple(value) if isinstance(value, list) else value
 
-    def request_payload(self) -> dict[str, Any]:
-        """Serialize names expected by the OpenAI-compatible request body."""
+    def request_payload(self, task: Literal["group", "final"]) -> dict[str, Any]:
+        """Serialize names expected by the OpenAI-compatible request body for one call task."""
         payload = self.model_dump(
             mode="json",
             exclude={
@@ -150,9 +158,10 @@ class GenerationSettings(StrictSettings):
             payload["n"] = self.generations
         if not payload.get("stop"):
             payload.pop("stop", None)
-        if self.reasoning_effort is not None:
+        effort = getattr(self.reasoning_effort, task)
+        if effort is not None:
             payload["reasoning"] = {
-                "effort": self.reasoning_effort,
+                "effort": effort,
                 "exclude": self.reasoning_exclude,
             }
         return payload

@@ -29,6 +29,7 @@ from .models import NOT_FOUND
 from .predictor import TASK_FINAL
 from .predictor import TASK_GROUP
 from .predictor import TASK_PROMPTS
+from .predictor import Task
 from .predictor import load_openrouter_env
 from .predictor import missing_api_key_message
 from .predictor import predict
@@ -154,8 +155,7 @@ class Call:
     crop: BottleCrop
     query: bytes
     """box_crop бутылки в JPEG."""
-    task: str
-    """TASK_GROUP либо TASK_FINAL."""
+    task: Task
     candidates: list[Candidate]
     trace_name: str
     """group<N> — N-я группа кандидатов бутылки; final."""
@@ -347,7 +347,7 @@ class NearDuplicateResolver:
                 "http_referer_env": provider.http_referer_env,
                 "app_title_env": provider.app_title_env,
                 "user_agent": provider.user_agent,
-                "generation": generation.request_payload(),
+                "generation": generation.request_payload(call.task),
                 "image_detail": generation.image_detail,
                 "provider": provider.routing.request_payload(),
                 "timeout": self.settings.execution.timeout_seconds,
