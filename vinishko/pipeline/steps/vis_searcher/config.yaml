@@ -4,7 +4,7 @@ revision: null # ревизия репозитория; коллекция по�
 device: auto # auto | cpu | cuda:<индекс>; переменная VIS_SEARCHER_DEV перекрывает; auto — cuda:0 при доступной CUDA, иначе cpu
 encoder_input: [ crop, box_crop ] # входы энкодера, по пространству векторов на каждый: crop — окно этикетки с залитым фоном, box_crop — вся бутылка как на фото; два входа — гибрид, скор = среднее косинусов; коллекцию собирать тем же набором
 batch_size: 16 # потолок батча энкодера, для TensorRT — профиль engine
-top_k: 20
+top_k: 10
 
 qdrant:
   collection: catalog_siglip2_hybrid

@@ -1,11 +1,16 @@
 """Офлайн-проверки второго уровня: без qdrant, S3 и модели. Запуск из корня: python -m unittest vinishko.pipeline.steps.near_duplicates.test_resolve -v"""
 
 import csv
+import email.message
+import io
+import json
 import os
 import tempfile
 import threading
 import time
 import unittest
+import urllib.error
+import urllib.response
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
@@ -23,11 +28,13 @@ from vinishko.pipeline.pipeline import Pipeline
 from vinishko.pipeline.pipeline import Searcher
 from vinishko.pipeline.steps.near_duplicates import predictor
 from vinishko.pipeline.steps.near_duplicates.configs import DEFAULT_CONFIG
+from vinishko.pipeline.steps.near_duplicates.models import nearest_output_model
+from vinishko.pipeline.steps.near_duplicates.models import response_format
+from vinishko.pipeline.steps.near_duplicates.models import validate_output
 from vinishko.pipeline.steps.near_duplicates.configs import (
     load_config as load_ndr_config,
 )
 from vinishko.pipeline.steps.near_duplicates.resolve import CSV_FIELDS
-from vinishko.pipeline.steps.near_duplicates.resolve import NDR_CONCURRENCY
 from vinishko.pipeline.steps.near_duplicates.resolve import NearDuplicateError
 from vinishko.pipeline.steps.near_duplicates.resolve import NearDuplicateResolver
 from vinishko.pipeline.steps.near_duplicates.resolve import candidate_card
@@ -43,6 +50,7 @@ from vinishko.pipeline.structs import UnmatchedBottle
 
 
 PREDICT = "vinishko.pipeline.steps.near_duplicates.resolve.predict"
+LIMIT = load_ndr_config().execution.concurrency
 
 
 def crop(index: int = 1) -> BottleCrop:
@@ -79,6 +87,7 @@ def model_response(slug: str) -> dict:
     selected = {
         "slug": slug,
         "checklist": {
+            "differences": {"observation": "none"},
             "maker": {"observation": "совпадает"},
             "profile": {"observation": "совпадает"},
             "year": {"observation": "2023"},
@@ -192,7 +201,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
         card = candidate_card(position, cards)
         self.assertEqual(card["aging_or_reserve"], "резерв")
         self.assertEqual(card["grapes"], "")
-        self.assertTrue(card["reference_image_bytes"].startswith(b"\x89PNG"))
+        self.assertTrue(card["reference_image_bytes"].startswith(b"\xff\xd8\xff"))
 
     def test_payload_card_uses_box_crop_of_position(self) -> None:
         bottle = crop()
@@ -200,7 +209,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
         card = candidate_card(position)
         self.assertEqual(card["grapes"], "Пино нуар")
         self.assertEqual(card["aging_or_reserve"], "")
-        self.assertTrue(card["reference_image_bytes"].startswith(b"\x89PNG"))
+        self.assertTrue(card["reference_image_bytes"].startswith(b"\xff\xd8\xff"))
 
     def test_pipeline_runs_resolver_after_search(self) -> None:
         bottle = crop()
@@ -313,10 +322,11 @@ class NearDuplicateResolverTests(unittest.TestCase):
         requests = [call.args[0] for call in model.call_args_list]
         self.assertEqual(requests[0]["candidates"][0]["grapes"], "Пино нуар")
         self.assertIs(requests[0]["query"]["image_bytes"], requests[1]["query"]["image_bytes"])
-        self.assertTrue(requests[0]["query"]["image_bytes"].startswith(b"\x89PNG"))
+        self.assertTrue(requests[0]["query"]["image_bytes"].startswith(b"\xff\xd8\xff"))
         with Image.open(BytesIO(requests[0]["query"]["image_bytes"])) as query:
-            self.assertEqual(query.size, (4, 4))
-            self.assertEqual(query.getpixel((0, 0)), (177, 177, 177))
+            self.assertEqual((query.format, query.size), ("JPEG", (4, 4)))
+            pixel = cast(tuple[int, int, int], query.getpixel((0, 0)))
+            self.assertTrue(all(abs(value - 177) <= 2 for value in pixel))
 
     def test_single_group_winner_skips_final(self) -> None:
         bottle = crop()
@@ -428,7 +438,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
             return model_response("first")
 
         found = []
-        for index in range(NDR_CONCURRENCY + 8):
+        for index in range(LIMIT + 8):
             bottle = crop(index)
             found.append(
                 BottleCandidates(
@@ -449,7 +459,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
             ["first"] * len(found),
         )
         self.assertGreater(peak, 1)
-        self.assertLessEqual(peak, NDR_CONCURRENCY)
+        self.assertLessEqual(peak, LIMIT)
 
     def test_semaphore_limits_separate_single_bottle_calls(self) -> None:
         lock = threading.Lock()
@@ -476,12 +486,46 @@ class NearDuplicateResolverTests(unittest.TestCase):
         )
         with (
             patch(PREDICT, side_effect=model),
-            ThreadPoolExecutor(max_workers=NDR_CONCURRENCY + 8) as executor,
+            ThreadPoolExecutor(max_workers=LIMIT + 8) as executor,
         ):
-            resolved = list(executor.map(resolver, [[row]] * (NDR_CONCURRENCY + 8)))
-        self.assertEqual(len(resolved), NDR_CONCURRENCY + 8)
+            resolved = list(executor.map(resolver, [[row]] * (LIMIT + 8)))
+        self.assertEqual(len(resolved), LIMIT + 8)
         self.assertGreater(peak, 1)
-        self.assertLessEqual(peak, NDR_CONCURRENCY)
+        self.assertLessEqual(peak, LIMIT)
+
+    def test_concurrency_comes_from_settings(self) -> None:
+        lock = threading.Lock()
+        active = peak = 0
+
+        def model(request: dict) -> dict:
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+            time.sleep(0.03)
+            with lock:
+                active -= 1
+            return model_response(request["candidates"][0]["slug"])
+
+        settings = load_ndr_config()
+        settings = settings.model_copy(
+            update={"execution": settings.execution.model_copy(update={"concurrency": 2})}
+        )
+        bottle = crop()
+        found = [
+            BottleCandidates(
+                bottle,
+                [
+                    *group(bottle, "a", ["a1", "a2"]),
+                    *group(bottle, "b", ["b1", "b2"]),
+                    *group(bottle, "c", ["c1", "c2"]),
+                    *group(bottle, "d", ["d1", "d2"]),
+                ],
+            )
+        ]
+        with patch(PREDICT, side_effect=model):
+            NearDuplicateResolver(settings=settings)(found)
+        self.assertEqual(peak, 2)
 
     def test_not_found_becomes_unmatched_bottle_with_observations(self) -> None:
         bottle = crop()
@@ -612,6 +656,11 @@ class NearDuplicateResolverTests(unittest.TestCase):
         self.assertEqual(
             schema["properties"]["slug"]["enum"], ["first", "second", "not_found"]
         )
+        self.assertEqual(list(schema["properties"]), ["checklist", "slug"])
+        self.assertEqual(
+            list(schema["$defs"]["SelectionChecklist"]["properties"]),
+            ["differences", "maker", "profile", "year"],
+        )
         self.assertEqual(
             len(
                 [
@@ -631,6 +680,8 @@ class NearDuplicateResolverTests(unittest.TestCase):
         )
         group_prompt = call.call_args.kwargs["system_prompt"]
         self.assertIn("complete supplied group", group_prompt)
+        self.assertIn("only then treat it as a redesign of the same product", group_prompt)
+        self.assertIn("a candidate slug requires `none`", group_prompt)
         self.assertIn("ELEMENT 1 (first): an exact match with 2023", group_prompt)
         with (
             patch.dict(os.environ, {"NDR_OFFLINE_TEST_KEY": "test-only"}),
@@ -649,6 +700,8 @@ class NearDuplicateResolverTests(unittest.TestCase):
         self.assertEqual(response["slug"], "second")
         final_prompt = call.call_args.kwargs["system_prompt"]
         self.assertIn("different design family", final_prompt)
+        self.assertNotIn("may refresh the label", final_prompt)
+        self.assertIn("ULTRA CUVEE equals УЛЬТРА КЮВЕ", final_prompt)
         self.assertNotIn("complete supplied group", final_prompt)
         self.assertIn("ELEMENT 2 (second): an exact vintage match is not required", final_prompt)
         self.assertEqual(
@@ -663,6 +716,113 @@ class NearDuplicateResolverTests(unittest.TestCase):
             (unknown["_status"], unknown["_error"]),
             ("predictor_error", "unknown task 'rerank'"),
         )
+
+
+def http_error(code: int, reason: str, retry_after: str | None = None) -> urllib.error.HTTPError:
+    """Ответ OpenRouter с ошибкой, как его отдаёт urllib."""
+    headers = email.message.Message()
+    if retry_after is not None:
+        headers["Retry-After"] = retry_after
+    body = json.dumps({"error": {"code": code, "message": reason}}).encode()
+    return urllib.error.HTTPError(
+        "https://openrouter.ai/api/v1/chat/completions", code, reason, headers, io.BytesIO(body)
+    )
+
+
+def http_ok(payload: dict) -> urllib.response.addinfourl:
+    """Успешный ответ OpenRouter с телом payload."""
+    return urllib.response.addinfourl(
+        io.BytesIO(json.dumps(payload).encode()),
+        email.message.Message(),
+        "https://openrouter.ai/api/v1/chat/completions",
+        200,
+    )
+
+
+def completion(slug: str) -> dict:
+    """Тело chat completion с валидным ответом модели."""
+    content = {
+        "checklist": {
+            key: {"observation": "none" if key == "differences" else "ok"}
+            for key in ("differences", "maker", "profile", "year")
+        },
+        "slug": slug,
+    }
+    return {"choices": [{"index": 0, "finish_reason": "stop", "message": {"content": json.dumps(content)}}]}
+
+
+class RetryTests(unittest.TestCase):
+    """Повторы запроса к модели через tenacity: сеть подменена, паузы не ждём."""
+
+    def call(self, retries: int = 3) -> dict:
+        output = nearest_output_model(["first", "second"])
+        return predictor.call_model(
+            runtime={
+                "api_base": "https://openrouter.ai/api/v1",
+                "model": "test/model",
+                "timeout": 60,
+                "retries": retries,
+                "generation": {},
+                "provider": {},
+            },
+            api_key="test-only",
+            system_prompt="prompt",
+            api_content=[{"type": "text", "text": "query"}],
+            trace_content=[{"type": "text", "text": "query"}],
+            output_format=response_format("ndr_select_group", output),
+            validator=lambda payload: validate_output(payload, output),
+        )
+
+    def test_throttled_and_transient_answers_are_retried(self) -> None:
+        answers = [
+            http_error(429, "Too Many Requests", retry_after="2"),
+            http_error(503, "Service Unavailable"),
+            http_ok(completion("second")),
+        ]
+        with (
+            patch("urllib.request.urlopen", side_effect=answers) as urlopen,
+            patch("time.sleep") as sleep,
+        ):
+            result = self.call()
+        self.assertEqual((result["status"], result["selected"]["slug"]), ("ok", "second"))
+        self.assertEqual(urlopen.call_count, 3)
+        attempts = result["trace"]["retry_attempts"]
+        self.assertEqual([a["response_status"] for a in attempts], [429, 503])
+        self.assertGreaterEqual(sleep.call_args_list[0].args[0], 2.0)
+        self.assertLessEqual(sleep.call_args_list[1].args[0], 2.0)
+
+    def test_retries_stop_after_limit(self) -> None:
+        with (
+            patch(
+                "urllib.request.urlopen",
+                side_effect=lambda *_a, **_k: (_ for _ in ()).throw(http_error(429, "Too Many Requests")),
+            ) as urlopen,
+            patch("time.sleep"),
+        ):
+            result = self.call(retries=2)
+        self.assertEqual(result["status"], "predictor_error")
+        self.assertEqual(result["error"], "HTTPError 429: Too Many Requests; попыток 3")
+        self.assertEqual(urlopen.call_count, 3)
+
+    def test_client_error_is_not_retried(self) -> None:
+        with (
+            patch("urllib.request.urlopen", side_effect=[http_error(400, "Bad Request")]) as urlopen,
+            patch("time.sleep") as sleep,
+        ):
+            result = self.call()
+        self.assertEqual(result["error"], "HTTPError 400: Bad Request")
+        self.assertEqual(urlopen.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_rate_limit_inside_ok_body_is_retried(self) -> None:
+        answers = [
+            http_ok({"error": {"code": 429, "message": "provider rate limited"}}),
+            http_ok(completion("first")),
+        ]
+        with patch("urllib.request.urlopen", side_effect=answers), patch("time.sleep"):
+            result = self.call()
+        self.assertEqual((result["status"], result["selected"]["slug"]), ("ok", "first"))
+        self.assertEqual(len(result["trace"]["retry_attempts"]), 1)
 
 
 if __name__ == "__main__":

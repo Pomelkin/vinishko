@@ -159,10 +159,14 @@ class GenerationSettings(StrictSettings):
 
 
 class ExecutionSettings(StrictSettings):
-    """Controls for the local evaluation runner rather than model sampling."""
+    """Execution limits rather than model sampling."""
 
     timeout_seconds: float = Field(gt=0, le=3600)
+    """Wall-clock limit of one model call including its retries."""
+    retries: int = Field(ge=0, le=10)
+    """Extra attempts after HTTP 429 and 500/502/503/504 with exponential backoff and jitter."""
     concurrency: int = Field(ge=1, le=64)
+    """Simultaneous model calls per resolver; copies made by with_trace_dir share the limit."""
     candidate_order_seed: int
     limit: int | None = Field(ge=1)
 

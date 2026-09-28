@@ -11,7 +11,6 @@ import base64
 import hashlib
 import json
 import os
-import random
 import time
 import urllib.error
 import urllib.parse
@@ -22,6 +21,13 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+from kostyl.utils import setup_logger
+from tenacity import RetryCallState
+from tenacity import Retrying
+from tenacity import retry_if_exception_type
+from tenacity import stop_after_attempt
+from tenacity import stop_before_delay
+from tenacity import wait_exponential_jitter
 
 from .models import ModelContractError
 from .models import nearest_output_model
@@ -48,19 +54,21 @@ TASK_PROMPTS = {
 }
 """Main prompt file of every task."""
 TASK_INSTRUCTIONS = {
-    TASK_GROUP: "Select exactly one nearest ELEMENT for QUERY from the complete group, "
+    TASK_GROUP: "Compare the printed product words, then select exactly one nearest ELEMENT for QUERY from the complete group, "
     "or return not_found when every ELEMENT has a confident product-identity "
     "conflict. Return only JSON matching the structured output schema.",
-    TASK_FINAL: "Select the one ELEMENT that is the same product as QUERY, "
+    TASK_FINAL: "Compare the printed product words, then select the one ELEMENT that is the same product as QUERY, "
     "or return not_found when every ELEMENT has a confident product-identity "
     "conflict. Return only JSON matching the structured output schema.",
 }
 """Closing instruction after the images of every task."""
-HTTP_TOO_MANY_REQUESTS = 429
-MAX_429_RETRIES = 0
-RETRY_BASE_DELAY_SECONDS = 1.0
+RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+"""HTTP answers repeated within the call deadline: rate limiting and transient provider failures."""
+RETRY_WAIT_INITIAL_SECONDS, RETRY_WAIT_MAX_SECONDS = 0.5, 4.0
+"""Backoff between attempts: 0.5, 1, 2, 4 s plus up to 1 s of jitter; a longer Retry-After from the server wins."""
 RESPONSE_READ_CHUNK_BYTES = 64 * 1024
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
+logger = setup_logger(fmt="detailed")
 
 
 def load_openrouter_env() -> None:
@@ -71,6 +79,23 @@ def load_openrouter_env() -> None:
 def missing_api_key_message(api_key_env: str) -> str:
     """Explain where to set the missing OpenRouter key."""
     return f"{api_key_env} не задан: добавьте ключ в .env в корне проекта или задайте переменную окружения"
+
+
+class RetryableHTTPError(Exception):
+    """A throttled or transient answer worth another attempt within the call deadline."""
+
+    def __init__(self, code: int, reason: str, retry_after: float | None) -> None:
+        super().__init__(f"HTTPError {code}: {reason}")
+        self.code = code
+        self.retry_after = retry_after
+
+
+def retry_after_seconds(headers: Mapping[str, str]) -> float | None:
+    """Seconds from a numeric Retry-After header; the HTTP-date form is ignored."""
+    value = next(
+        (v for k, v in headers.items() if k.lower() == "retry-after"), ""
+    ).strip()
+    return float(value) if value.replace(".", "", 1).isdigit() else None
 
 
 class ModelCallTimeoutError(TimeoutError):
@@ -483,107 +508,138 @@ def call_model(  # noqa: C901 - сохранён контракт и обраб�
         headers["X-Title"] = app_title
 
     timeout_seconds = float(runtime.get("timeout", 120))
+    retries = int(runtime["retries"])
     deadline = time.monotonic() + timeout_seconds
-    try:
-        for retry_number in range(MAX_429_RETRIES + 1):
-            http_request = urllib.request.Request(  # noqa: S310 - endpoint_url проверяет схему.
-                endpoint,
-                data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-                headers=headers,
-                method="POST",
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+    def attempt() -> dict[str, Any]:
+        """One POST: the decoded response, or RetryableHTTPError for throttling and transient failures."""
+        http_request = urllib.request.Request(  # noqa: S310 - endpoint_url проверяет схему.
+            endpoint,
+            data=body,
+            headers=headers,
+            method="POST",
+        )
+        try:
+            response_context = urllib.request.urlopen(  # noqa: S310 - endpoint_url проверяет схему.
+                http_request,
+                timeout=remaining_seconds(deadline, timeout_seconds),
             )
-            try:
-                response_context = urllib.request.urlopen(  # noqa: S310 - endpoint_url проверяет схему.
-                    http_request,
-                    timeout=remaining_seconds(deadline, timeout_seconds),
-                )
-                with response_context as response:
-                    trace["response_status"] = response.status
-                    trace["response_headers"] = dict(response.headers.items())
-                    raw_body = read_response_bytes(
-                        response,
-                        deadline=deadline,
-                        timeout_seconds=timeout_seconds,
-                    )
-                    raw_text = raw_body.decode("utf-8", errors="replace")
-                    trace["raw_response_text"] = raw_text
-            except urllib.error.HTTPError as error:
-                trace["response_status"] = error.code
-                trace["response_headers"] = (
-                    dict(error.headers.items()) if error.headers else {}
-                )
+            with response_context as response:
+                trace["response_status"] = response.status
+                trace["response_headers"] = dict(response.headers.items())
                 raw_body = read_response_bytes(
-                    error,
+                    response,
                     deadline=deadline,
                     timeout_seconds=timeout_seconds,
                 )
-                raw_text = raw_body.decode("utf-8", errors="replace")
-                trace["raw_response_text"] = raw_text
-                try:
-                    trace["raw_response"] = json.loads(raw_text)
-                except json.JSONDecodeError:
-                    trace["raw_response"] = None
-
-                if (
-                    error.code == HTTP_TOO_MANY_REQUESTS
-                    and retry_number < MAX_429_RETRIES
-                ):
-                    requested_delay = random.uniform(
-                        0.0,
-                        RETRY_BASE_DELAY_SECONDS * (2**retry_number),
-                    )
-                    remaining = remaining_seconds(deadline, timeout_seconds)
-                    actual_delay = min(requested_delay, remaining)
-                    trace["retry_attempts"].append(
-                        {
-                            "attempt": retry_number + 1,
-                            "response_status": error.code,
-                            "response_headers": trace["response_headers"],
-                            "raw_response": trace["raw_response"],
-                            "raw_response_text": raw_text,
-                            "delay_seconds": actual_delay,
-                        },
-                    )
-                    time.sleep(actual_delay)
-                    if actual_delay < requested_delay:
-                        raise ModelCallTimeoutError(timeout_seconds) from error
-                    continue
-
-                return {
-                    "status": "predictor_error",
-                    "error": f"HTTPError {error.code}: {error.reason}",
-                    "selected": None,
-                    "trace": trace,
-                }
-
-            raw_response = json.loads(raw_text)
-            trace["raw_response"] = raw_response
-            provider_error = raw_response.get("error")
-            if provider_error is not None:
-                trace["provider_error"] = provider_error
-                return {
-                    "status": "predictor_error",
-                    "error": provider_error_description(provider_error),
-                    "selected": None,
-                    "trace": trace,
-                }
-
-            records, selected_index, selected = generation_records(
-                raw_response, validator
+        except urllib.error.HTTPError as error:
+            trace["response_status"] = error.code
+            trace["response_headers"] = (
+                dict(error.headers.items()) if error.headers else {}
             )
-            trace["generations"] = records
-            trace["selected_generation_ordinal"] = selected_index
-            if selected is None:
-                return {
-                    "status": "contract_error",
-                    "error": "no generation satisfied this stage response contract",
-                    "selected": None,
-                    "trace": trace,
-                }
-            return {"status": "ok", "error": None, "selected": selected, "trace": trace}
-        return {  # недостижимо: последняя попытка выше всегда возвращает или бросает; здесь для полноты путей возврата
+            raw_text = read_response_bytes(
+                error,
+                deadline=deadline,
+                timeout_seconds=timeout_seconds,
+            ).decode("utf-8", errors="replace")
+            trace["raw_response_text"] = raw_text
+            try:
+                trace["raw_response"] = json.loads(raw_text)
+            except json.JSONDecodeError:
+                trace["raw_response"] = None
+            if error.code in RETRYABLE_STATUS:
+                raise RetryableHTTPError(
+                    error.code,
+                    str(error.reason),
+                    retry_after_seconds(trace["response_headers"]),
+                ) from error
+            raise
+        raw_text = raw_body.decode("utf-8", errors="replace")
+        trace["raw_response_text"] = raw_text
+        raw_response = json.loads(raw_text)
+        trace["raw_response"] = raw_response
+        provider_error = raw_response.get("error")
+        if (
+            isinstance(provider_error, Mapping)
+            and provider_error.get("code") in RETRYABLE_STATUS
+        ):
+            raise RetryableHTTPError(
+                int(provider_error["code"]),
+                str(provider_error.get("message", "provider error")),
+                None,
+            )
+        return raw_response
+
+    backoff = wait_exponential_jitter(
+        initial=RETRY_WAIT_INITIAL_SECONDS, max=RETRY_WAIT_MAX_SECONDS
+    )
+
+    def wait(state: RetryCallState) -> float:
+        error = state.outcome.exception() if state.outcome is not None else None
+        hinted = error.retry_after if isinstance(error, RetryableHTTPError) else None
+        return max(backoff(state), hinted or 0.0)
+
+    def before_sleep(state: RetryCallState) -> None:
+        error = state.outcome.exception() if state.outcome is not None else None
+        code = error.code if isinstance(error, RetryableHTTPError) else None
+        trace["retry_attempts"].append(
+            {
+                "attempt": state.attempt_number,
+                "response_status": code,
+                "response_headers": trace["response_headers"],
+                "raw_response": trace["raw_response"],
+                "raw_response_text": trace["raw_response_text"],
+                "delay_seconds": state.upcoming_sleep,
+            },
+        )
+        logger.warning(
+            f"OpenRouter ответил {code}: повтор через {state.upcoming_sleep:.1f} с, попытка {state.attempt_number + 1} из {retries + 1}"
+        )
+
+    retrying = Retrying(
+        retry=retry_if_exception_type(RetryableHTTPError),
+        wait=wait,
+        stop=stop_after_attempt(retries + 1) | stop_before_delay(timeout_seconds),
+        before_sleep=before_sleep,
+        reraise=True,
+    )
+    try:
+        raw_response = retrying(attempt)
+        provider_error = raw_response.get("error")
+        if provider_error is not None:
+            trace["provider_error"] = provider_error
+            return {
+                "status": "predictor_error",
+                "error": provider_error_description(provider_error),
+                "selected": None,
+                "trace": trace,
+            }
+
+        records, selected_index, selected = generation_records(
+            raw_response, validator
+        )
+        trace["generations"] = records
+        trace["selected_generation_ordinal"] = selected_index
+        if selected is None:
+            return {
+                "status": "contract_error",
+                "error": "no generation satisfied this stage response contract",
+                "selected": None,
+                "trace": trace,
+            }
+        return {"status": "ok", "error": None, "selected": selected, "trace": trace}
+    except RetryableHTTPError as error:
+        return {
             "status": "predictor_error",
-            "error": f"повторы после HTTP 429 исчерпаны, MAX_429_RETRIES={MAX_429_RETRIES}",
+            "error": f"{error}; попыток {len(trace['retry_attempts']) + 1}",
+            "selected": None,
+            "trace": trace,
+        }
+    except urllib.error.HTTPError as error:
+        return {
+            "status": "predictor_error",
+            "error": f"HTTPError {error.code}: {error.reason}",
             "selected": None,
             "trace": trace,
         }
