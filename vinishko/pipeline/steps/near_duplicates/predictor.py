@@ -1,4 +1,9 @@
-"""One-shot OpenRouter-compatible candidate-or-not-found predictor from NDR v5."""
+"""One-call OpenRouter-compatible candidate-or-not-found predictor from NDR v5.
+
+A call has a task: `group` selects within one near-duplicate group, `final` selects among the finalists of different groups
+or verifies a single candidate. Both share the output contract and the vintage policy; they differ in the main prompt and the
+closing instruction.
+"""
 
 from __future__ import annotations
 
@@ -36,6 +41,21 @@ CARD_FIELDS = (
     "abv",
     "aging_or_reserve",
 )
+TASK_GROUP, TASK_FINAL = "group", "final"
+TASK_PROMPTS = {
+    TASK_GROUP: "resolve_multiple_same",
+    TASK_FINAL: "resolve_finalists",
+}
+"""Main prompt file of every task."""
+TASK_INSTRUCTIONS = {
+    TASK_GROUP: "Select exactly one nearest ELEMENT for QUERY from the complete group, "
+    "or return not_found when every ELEMENT has a confident product-identity "
+    "conflict. Return only JSON matching the structured output schema.",
+    TASK_FINAL: "Select the one ELEMENT that is the same product as QUERY, "
+    "or return not_found when every ELEMENT has a confident product-identity "
+    "conflict. Return only JSON matching the structured output schema.",
+}
+"""Closing instruction after the images of every task."""
 HTTP_TOO_MANY_REQUESTS = 429
 MAX_429_RETRIES = 0
 RETRY_BASE_DELAY_SECONDS = 1.0
@@ -219,9 +239,10 @@ def add_image(
 def selection_content(
     query_image: str | bytes,
     candidates: list[Mapping[str, Any]],
+    instruction: str,
     image_detail: str = "original",
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Build the QUERY-versus-entire-group multimodal message."""
+    """Build the QUERY-versus-all-candidates multimodal message."""
     api_content: list[dict[str, Any]] = []
     trace_content: list[dict[str, Any]] = []
     add_text(api_content, trace_content, "=== QUERY ===")
@@ -241,21 +262,16 @@ def selection_content(
             ),
             image_detail,
         )
-    add_text(
-        api_content,
-        trace_content,
-        "Select exactly one nearest ELEMENT for QUERY from the complete group, "
-        "or return not_found when every ELEMENT has a confident product-identity "
-        "conflict. Return only JSON matching the structured output schema.",
-    )
+    add_text(api_content, trace_content, instruction)
     return api_content, trace_content
 
 
 def selection_system_prompt(
     prompts: Mapping[str, Any],
     candidates: list[Mapping[str, Any]],
+    main_prompt: str,
 ) -> tuple[str, list[dict[str, Any]]]:
-    """Add the exact per-element vintage policy to the selection prompt."""
+    """Add the exact per-element vintage policy to the task's main prompt."""
     policies = []
     for number, candidate in enumerate(candidates, start=1):
         vintage = str(candidate.get("vintage", "")).strip()
@@ -268,7 +284,7 @@ def selection_system_prompt(
             },
         )
 
-    prompt_parts = [prompts["resolve_multiple_same"]["content"].rstrip()]
+    prompt_parts = [prompts[main_prompt]["content"].rstrip()]
     if any(policy["exact_year_required"] for policy in policies):
         prompt_parts.append(prompts["compare_year_matters"]["content"].strip())
     if any(not policy["exact_year_required"] for policy in policies):
@@ -618,8 +634,9 @@ def failure(status: str, error: str, trace: dict[str, Any]) -> dict[str, Any]:
 
 
 def predict(request: dict[str, Any]) -> dict[str, Any]:
-    """Choose the nearest candidate or not_found in one complete-group call."""
+    """Choose one of the request candidates or not_found in one call of the request task."""
     load_openrouter_env()
+    task = request["task"]
     runtime = request["runtime"]
     model = runtime.get("model") or os.environ.get("OPENROUTER_MODEL")
     api_key_env = runtime.get("api_key_env", "OPENROUTER_API_KEY")
@@ -627,12 +644,15 @@ def predict(request: dict[str, Any]) -> dict[str, Any]:
     runtime = {**runtime, "model": model}
     trace: dict[str, Any] = {
         "pipeline": "select_nearest_once",
+        "task": task,
         "provider": "openrouter_compatible",
         "model": model,
         "comparison_calls": [],
         "candidate_slugs": [],
         "year_policies": [],
     }
+    if task not in TASK_PROMPTS:
+        return failure("predictor_error", f"unknown task {task!r}", trace)
     if not model:
         return failure(
             "predictor_error",
@@ -651,7 +671,7 @@ def predict(request: dict[str, Any]) -> dict[str, Any]:
         query["image_bytes"] if "image_bytes" in query else query["image_path"]
     )
     image_detail: str = runtime.get("image_detail") or "original"
-    candidates = list(request["group"]["candidates"])
+    candidates = list(request["candidates"])
     allowed_slugs = [candidate["slug"] for candidate in candidates]
     trace["candidate_slugs"] = allowed_slugs
     try:
@@ -662,11 +682,13 @@ def predict(request: dict[str, Any]) -> dict[str, Any]:
     system_prompt, year_policies = selection_system_prompt(
         request["prompts"],
         candidates,
+        TASK_PROMPTS[task],
     )
     trace["year_policies"] = year_policies
     api_content, trace_content = selection_content(
         query_image,
         candidates,
+        TASK_INSTRUCTIONS[task],
         image_detail,
     )
     result = call_model(
@@ -675,12 +697,12 @@ def predict(request: dict[str, Any]) -> dict[str, Any]:
         system_prompt=system_prompt,
         api_content=api_content,
         trace_content=trace_content,
-        output_format=response_format("ndr_select_nearest", output_model),
+        output_format=response_format(f"ndr_select_{task}", output_model),
         validator=lambda payload: validate_output(payload, output_model),
     )
     trace["comparison_calls"].append(
         {
-            "stage": "select_nearest",
+            "stage": task,
             "candidate_slugs": allowed_slugs,
             **result,
         },

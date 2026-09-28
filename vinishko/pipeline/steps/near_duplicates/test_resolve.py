@@ -6,11 +6,13 @@ import tempfile
 import threading
 import time
 import unittest
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
 from typing import ClassVar
 from typing import cast
+from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import numpy as np
@@ -88,6 +90,29 @@ def model_response(slug: str) -> dict:
         "_error": None,
         "_trace": {"comparison_calls": [{"selected": selected}]},
     }
+
+
+def model_by_task(choose: Callable[[str, list[str]], str]) -> Callable[[dict], dict]:
+    """Подменённый predict: ответ по задаче вызова и slug его позиций."""
+
+    def model(request: dict) -> dict:
+        slugs = [card["slug"] for card in request["candidates"]]
+        return model_response(choose(request["task"], slugs))
+
+    return model
+
+
+def group(bottle: BottleCrop, name: str, slugs: list[str]) -> list[Candidate]:
+    """Все позиции одной группы кандидатов."""
+    return [candidate(bottle, slug, name, slugs) for slug in slugs]
+
+
+def calls(model: MagicMock) -> list[tuple[str, list[str]]]:
+    """Вызовы подменённого predict: задача и slug позиций, по порядку."""
+    return [
+        (call.args[0]["task"], [card["slug"] for card in call.args[0]["candidates"]])
+        for call in model.call_args_list
+    ]
 
 
 class NormalizerStub:
@@ -186,12 +211,12 @@ class NearDuplicateResolverTests(unittest.TestCase):
             resolver=NearDuplicateResolver(),
             catalog=Catalog({}, "тест"),
         )
-        with patch(PREDICT) as model:
+        with patch(PREDICT, return_value=model_response("one")) as model:
             result = pipeline("image")
         answer = cast(MatchedBottle, result.resolution[0])
         self.assertIsInstance(answer, MatchedBottle)
         self.assertEqual(answer.candidate.slug, "one")
-        self.assertEqual(answer.source, "vector")
+        self.assertEqual(answer.source, "final")
         self.assertEqual([m.candidate.slug for m in result.matched], ["one"])
         self.assertEqual(result.crops, [bottle])
         outcome = result.bottles[0]
@@ -201,7 +226,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
         )
         self.assertIs(outcome.match, answer)
         self.assertIn("resolve", result.timings)
-        model.assert_not_called()
+        self.assertEqual(calls(model), [("final", ["one"])])
 
     def test_pipeline_keeps_search_rejections_and_order(self) -> None:
         bottle = crop()
@@ -247,46 +272,146 @@ class NearDuplicateResolverTests(unittest.TestCase):
         self.assertNotIn("resolve", result.timings)
         model.assert_not_called()
 
-    def test_singleton_group_returns_top_without_model(self) -> None:
+    def test_lone_singleton_is_verified_by_final_call(self) -> None:
         bottle = crop()
-        top = candidate(bottle, "one", "one", ["one"])
-        with patch(PREDICT) as model:
-            answer = cast(
-                MatchedBottle,
-                NearDuplicateResolver()([BottleCandidates(bottle, [top])])[0],
-            )
+        found = [BottleCandidates(bottle, [candidate(bottle, "one", "one", ["one"])])]
+        with patch(PREDICT, return_value=model_response("one")) as model:
+            answer = cast(MatchedBottle, NearDuplicateResolver()(found)[0])
         self.assertIsInstance(answer, MatchedBottle)
         self.assertEqual(answer.candidate.slug, "one")
-        self.assertEqual(answer.source, "vector")
-        self.assertEqual(answer.checklist, {})
-        model.assert_not_called()
+        self.assertEqual(answer.source, "final")
+        self.assertEqual(answer.checklist["year"]["observation"], "2023")
+        self.assertEqual(calls(model), [("final", ["one"])])
+        with patch(PREDICT, return_value=model_response("not_found")):
+            rejected = cast(UnmatchedBottle, NearDuplicateResolver()(found)[0])
+        self.assertIsInstance(rejected, UnmatchedBottle)
+        self.assertEqual(rejected.rejection.stage, "resolve")
+        self.assertIn("финалистов one", rejected.rejection.detail)
 
-    def test_group_sends_box_crop_and_returns_selected_slug(self) -> None:
+    def test_group_winner_meets_singleton_in_final(self) -> None:
         bottle = crop()
         bottle.box_crop[:] = 177
-        top = candidate(bottle, "first", "group", ["first", "second"])
-        second = candidate(bottle, "second", "group", ["first", "second"])
+        members = group(bottle, "group", ["first", "second"])
         outsider = candidate(bottle, "outsider", "other", ["outsider"])
-        with patch(PREDICT, return_value=model_response("second")) as model:
+        with patch(
+            PREDICT, side_effect=model_by_task(lambda task, slugs: "second")
+        ) as model:
             answer = cast(
                 MatchedBottle,
-                NearDuplicateResolver()(
-                    [BottleCandidates(bottle, [top, second, outsider])]
-                )[0],
+                NearDuplicateResolver()([BottleCandidates(bottle, [*members, outsider])])[
+                    0
+                ],
             )
         self.assertIsInstance(answer, MatchedBottle)
         self.assertEqual(answer.candidate.slug, "second")
-        self.assertEqual(answer.source, "ndr_v5")
-        self.assertEqual(answer.checklist["year"]["observation"], "2023")
-        request = model.call_args.args[0]
+        self.assertIs(answer.candidate, members[1])
+        self.assertEqual(answer.source, "final")
         self.assertEqual(
-            [c["slug"] for c in request["group"]["candidates"]], ["first", "second"]
+            calls(model),
+            [("group", ["first", "second"]), ("final", ["second", "outsider"])],
         )
-        self.assertEqual(request["group"]["candidates"][0]["grapes"], "Пино нуар")
-        self.assertTrue(request["query"]["image_bytes"].startswith(b"\x89PNG"))
-        with Image.open(BytesIO(request["query"]["image_bytes"])) as query:
+        requests = [call.args[0] for call in model.call_args_list]
+        self.assertEqual(requests[0]["candidates"][0]["grapes"], "Пино нуар")
+        self.assertIs(requests[0]["query"]["image_bytes"], requests[1]["query"]["image_bytes"])
+        self.assertTrue(requests[0]["query"]["image_bytes"].startswith(b"\x89PNG"))
+        with Image.open(BytesIO(requests[0]["query"]["image_bytes"])) as query:
             self.assertEqual(query.size, (4, 4))
             self.assertEqual(query.getpixel((0, 0)), (177, 177, 177))
+
+    def test_single_group_winner_skips_final(self) -> None:
+        bottle = crop()
+        members = group(bottle, "group", ["first", "second"])
+        with patch(PREDICT, return_value=model_response("second")) as model:
+            answer = cast(
+                MatchedBottle,
+                NearDuplicateResolver()([BottleCandidates(bottle, members)])[0],
+            )
+        self.assertEqual(answer.candidate.slug, "second")
+        self.assertEqual(answer.source, "group")
+        self.assertEqual(answer.checklist["year"]["observation"], "2023")
+        self.assertEqual(calls(model), [("group", ["first", "second"])])
+
+    def test_final_chooses_among_winners_of_every_group(self) -> None:
+        bottle = crop()
+        first = group(bottle, "a", ["a1", "a2"])
+        second = group(bottle, "b", ["b1", "b2"])
+        rejected = group(bottle, "c", ["c1", "c2"])
+        picks = {"a1": "a1", "b1": "b2", "c1": "not_found", "a1+b2": "b2"}
+        with (
+            tempfile.TemporaryDirectory() as temp,
+            patch(
+                PREDICT,
+                side_effect=model_by_task(
+                    lambda task, slugs: picks["+".join(slugs) if task == "final" else slugs[0]]
+                ),
+            ) as model,
+        ):
+            answer = cast(
+                MatchedBottle,
+                NearDuplicateResolver(trace_dir=Path(temp))(
+                    [BottleCandidates(bottle, [*first, *second, *rejected])]
+                )[0],
+            )
+            traces = sorted(p.name for p in (Path(temp) / bottle.uuid).iterdir())
+        self.assertEqual(answer.candidate.slug, "b2")
+        self.assertEqual(answer.source, "final")
+        self.assertEqual(
+            sorted(calls(model)),
+            [
+                ("final", ["a1", "b2"]),
+                ("group", ["a1", "a2"]),
+                ("group", ["b1", "b2"]),
+                ("group", ["c1", "c2"]),
+            ],
+        )
+        self.assertEqual(calls(model)[-1], ("final", ["a1", "b2"]))
+        self.assertEqual(traces, ["final.json", "group1.json", "group2.json", "group3.json"])
+
+    def test_groups_rejected_by_model_leave_no_final(self) -> None:
+        bottle = crop()
+        first = group(bottle, "a", ["a1", "a2"])
+        second = group(bottle, "b", ["b1", "b2"])
+        with patch(
+            PREDICT,
+            side_effect=model_by_task(
+                lambda task, slugs: "b1" if slugs[0] == "b1" else "not_found"
+            ),
+        ) as model:
+            answer = cast(
+                MatchedBottle,
+                NearDuplicateResolver()([BottleCandidates(bottle, [*first, *second])])[0],
+            )
+        self.assertEqual(answer.candidate.slug, "b1")
+        self.assertEqual(answer.source, "group")
+        self.assertEqual(len(calls(model)), 2)
+        with patch(PREDICT, return_value=model_response("not_found")) as model:
+            rejected = cast(
+                UnmatchedBottle,
+                NearDuplicateResolver()([BottleCandidates(bottle, [*first, *second])])[0],
+            )
+        self.assertIsInstance(rejected, UnmatchedBottle)
+        self.assertIn("каждой из 2 групп", rejected.rejection.detail)
+        self.assertEqual(sorted(task for task, _ in calls(model)), ["group", "group"])
+
+    def test_final_not_found_rejects_bottle(self) -> None:
+        bottle = crop()
+        members = group(bottle, "group", ["first", "second"])
+        outsider = candidate(bottle, "outsider", "other", ["outsider"])
+        with patch(
+            PREDICT,
+            side_effect=model_by_task(
+                lambda task, slugs: "not_found" if task == "final" else "first"
+            ),
+        ):
+            answer = cast(
+                UnmatchedBottle,
+                NearDuplicateResolver()([BottleCandidates(bottle, [*members, outsider])])[
+                    0
+                ],
+            )
+        self.assertIsInstance(answer, UnmatchedBottle)
+        self.assertEqual(answer.rejection.reason, "near_duplicate_not_found")
+        self.assertIn("финалистов first, outsider", answer.rejection.detail)
 
     def test_requests_run_concurrently_with_limit_and_keep_order(self) -> None:
         lock = threading.Lock()
@@ -396,7 +521,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
                 NearDuplicateResolver(trace_dir=trace_dir)(
                     [BottleCandidates(bottle, candidates)]
                 )
-            self.assertTrue((trace_dir / f"{bottle.uuid}.json").is_file())
+            self.assertTrue((trace_dir / bottle.uuid / "group1.json").is_file())
 
     def test_incomplete_group_fails_before_model_call(self) -> None:
         bottle = crop()
@@ -406,6 +531,14 @@ class NearDuplicateResolverTests(unittest.TestCase):
             self.assertRaisesRegex(NearDuplicateError, "groups"),
         ):
             NearDuplicateResolver()([BottleCandidates(bottle, [top])])
+        model.assert_not_called()
+        lower = candidate(bottle, "b1", "b", ["b1", "b2"])
+        complete = group(bottle, "a", ["a1", "a2"])
+        with (
+            patch(PREDICT) as model,
+            self.assertRaisesRegex(NearDuplicateError, "группа b"),
+        ):
+            NearDuplicateResolver()([BottleCandidates(bottle, [*complete, lower])])
         model.assert_not_called()
 
     def test_missing_openrouter_key_reports_env_file(self) -> None:
@@ -437,21 +570,20 @@ class NearDuplicateResolverTests(unittest.TestCase):
     def test_predictor_accepts_images_in_memory_with_strict_slug_enum(self) -> None:
         resolver = NearDuplicateResolver()
         request = {
+            "task": "group",
             "query": {"image_bytes": b"\x89PNG\r\n\x1a\nquery"},
-            "group": {
-                "candidates": [
-                    {
-                        "slug": "first",
-                        "vintage": "2023",
-                        "reference_image_bytes": b"\x89PNG\r\n\x1a\nfirst",
-                    },
-                    {
-                        "slug": "second",
-                        "vintage": "",
-                        "reference_image_bytes": b"\x89PNG\r\n\x1a\nsecond",
-                    },
-                ]
-            },
+            "candidates": [
+                {
+                    "slug": "first",
+                    "vintage": "2023",
+                    "reference_image_bytes": b"\x89PNG\r\n\x1a\nfirst",
+                },
+                {
+                    "slug": "second",
+                    "vintage": "",
+                    "reference_image_bytes": b"\x89PNG\r\n\x1a\nsecond",
+                },
+            ],
             "prompts": resolver.prompts,
             "runtime": {
                 "model": "test/model",
@@ -496,6 +628,40 @@ class NearDuplicateResolverTests(unittest.TestCase):
                 for part in call.call_args.kwargs["trace_content"]
                 if part["type"] == "image_url"
             )
+        )
+        group_prompt = call.call_args.kwargs["system_prompt"]
+        self.assertIn("complete supplied group", group_prompt)
+        self.assertIn("ELEMENT 1 (first): an exact match with 2023", group_prompt)
+        with (
+            patch.dict(os.environ, {"NDR_OFFLINE_TEST_KEY": "test-only"}),
+            patch.object(
+                predictor,
+                "call_model",
+                return_value={
+                    "status": "ok",
+                    "error": None,
+                    "selected": selected,
+                    "trace": {},
+                },
+            ) as call,
+        ):
+            response = predictor.predict(request | {"task": "final"})
+        self.assertEqual(response["slug"], "second")
+        final_prompt = call.call_args.kwargs["system_prompt"]
+        self.assertIn("different design family", final_prompt)
+        self.assertNotIn("complete supplied group", final_prompt)
+        self.assertIn("ELEMENT 2 (second): an exact vintage match is not required", final_prompt)
+        self.assertEqual(
+            call.call_args.kwargs["output_format"]["json_schema"]["name"],
+            "ndr_select_final",
+        )
+        self.assertIn(
+            "same product as QUERY", call.call_args.kwargs["api_content"][-1]["text"]
+        )
+        unknown = predictor.predict(request | {"task": "rerank"})
+        self.assertEqual(
+            (unknown["_status"], unknown["_error"]),
+            ("predictor_error", "unknown task 'rerank'"),
         )
 
 

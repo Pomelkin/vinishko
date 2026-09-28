@@ -267,7 +267,10 @@ class VisSearcher:
     def _by_groups(
         self, crop: BottleCrop, hits: list[Hit], mode: GroupSearch
     ) -> BottleCandidates | UnmatchedBottle:
-        """Группы по лучшему скору своих позиций; кандидаты — все позиции прошедших групп: пришедшие со своим скором, остальные со скором группы."""
+        """Группы по лучшему скору своих позиций; кандидаты — все позиции прошедших групп: пришедшие со своим скором, остальные со скором группы.
+
+        Группа проходит, если она среди top_groups лучших, её скор не ниже group_threshold и, при group_margin, не дальше него от лучшей.
+        """
         group_score: dict[str, float] = {}
         members: dict[str, list[str]] = {}
         by_slug: dict[str, Hit] = {}
@@ -291,6 +294,9 @@ class VisSearcher:
                 mode.group_threshold,
                 "группы",
             )
+        if mode.group_margin is not None:
+            floor = group_score[chosen[0]] - mode.group_margin
+            chosen = [g for g in chosen if group_score[g] >= floor]
         absent = [slug for g in chosen for slug in members[g] if slug not in by_slug]
         payloads = retrieve(self.client, self.collection, absent)
         out: list[Candidate] = []
