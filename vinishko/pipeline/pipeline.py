@@ -18,7 +18,6 @@ from vinishko.pipeline.steps.vis_searcher.configs import TopNSearch, VisSearcher
 from vinishko.pipeline.steps.near_duplicates.rerank import NDR_CONCURRENCY
 from vinishko.pipeline.structs import BottleCandidates, BottleCrop, RejectedBottle, UnmatchedBottle
 
-
 class Searcher(Protocol):
     """Визуальный поиск: кропы бутылок → ответ на каждый, в том же порядке: BottleCandidates с кандидатами каталога либо UnmatchedBottle с отказом и причиной."""
 
@@ -74,7 +73,7 @@ class Pipeline:
             raise ValueError(f"MATCH_MODE должен быть groups или vanilla_vlm, получено {mode!r}")
         cfg = getattr(searcher, "cfg", None)
         if mode == "vanilla_vlm" and isinstance(cfg, VisSearcherConfig):
-            cfg.top_k = 3
+            cfg.top_k = cfg.vanilla_top_k
             cfg.search = TopNSearch(mode="top_n", cosine_threshold=-1.0)
         self.reranker = reranker if enable_rerank else None
         if enable_rerank and self.reranker is None and searcher is not None:

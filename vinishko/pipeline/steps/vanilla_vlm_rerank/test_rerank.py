@@ -54,11 +54,12 @@ class VanillaVlmTests(unittest.TestCase):
 
     def test_mode_and_sdk_proxy(self) -> None:
         cfg = load_config()
+        self.assertEqual(cfg.top_k, 1)
         cfg.reference_images = None
         cfg.catalog_csv = None
         with patch.dict(os.environ, {"MATCH_MODE": "vanilla_vlm", "OPENROUTER_API_KEY": "offline", "openrouter_http_proxy": "http://127.0.0.1:8080"}):
             pipeline = Pipeline(normalizer=object(), searcher=SimpleNamespace(cfg=cfg))
-        self.assertEqual(cfg.top_k, 3)
+        self.assertEqual(cfg.top_k, 5)
         self.assertEqual(cfg.search.mode, "top_n")
         self.assertIsInstance(pipeline.reranker, VanillaVlmReranker)
 

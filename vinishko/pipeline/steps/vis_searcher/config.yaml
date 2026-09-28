@@ -6,6 +6,7 @@ encoder_input: crop                                     # crop — окно эт
 batch_size: 16 # потолок батча энкодера, для TensorRT — профиль engine
 cpu_batch_size: 2
 top_k: 1 # ближайшая позиция задаёт группу для NDR
+vanilla_top_k: 5 # top-N кандидатов для MATCH_MODE=vanilla_vlm; не влияет на groups
 
 qdrant:
   collection: catalog_vitl16_1024

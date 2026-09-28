@@ -80,6 +80,8 @@ class VisSearcherConfig(StrictModel):
     """Дополнительный потолок батча OpenVINO, чтобы ограничить расход ОЗУ."""
     top_k: int = Field(default=10, gt=0)
     """Сколько ближайших векторов брать из коллекции."""
+    vanilla_top_k: int = Field(default=3, gt=0)
+    """Сколько кандидатов передавать vanilla VLM; не влияет на групповой поиск."""
     qdrant: QdrantConfig
     search: Annotated[TopNSearch | GroupSearch, Field(discriminator="mode")]
     images: Annotated[LocalImagesConfig | S3ImagesConfig, Field(discriminator="kind")] | None = None

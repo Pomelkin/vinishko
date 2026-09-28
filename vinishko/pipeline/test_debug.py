@@ -20,6 +20,17 @@ from vinishko.pipeline.structs import BottleCandidates, BottleCrop, Candidate, U
 
 
 class DebugCliTests(unittest.TestCase):
+    def test_full_metrics_accept_normalization_only_result(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            image = root / "photo.jpg"
+            output = root / "runs"
+            run_dir = output / "photo"
+            run_dir.mkdir(parents=True)
+            (run_dir / "result.json").write_text(json.dumps({"bottles": [{"status": "rejected", "step": "normalization", "uuid": "b1"}], "timings_s": {"normalization_cached": 0.1}}), encoding="utf-8")
+            metrics = debug.write_metrics([image], output, "full", {image.name: "wine"}, known={"wine"})
+            self.assertEqual(metrics["ndr"]["no_bottle"], 1)
+
     def test_indexed_slugs_reads_all_qdrant_pages(self) -> None:
         client = Mock()
         client.scroll.side_effect = [

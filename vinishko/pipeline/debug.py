@@ -507,6 +507,8 @@ def write_metrics(images: list[Path], output_dir: Path, stage: str, truth: dict[
             queries = []
         elif search_file.is_file():
             queries = json.loads(search_file.read_text(encoding="utf-8"))["queries"]
+        elif all(bottle.get("step") == "normalization" for bottle in report["bottles"]):
+            queries = []
         elif stage == "search":
             queries = [{"query": bottle.get("uuid"), "candidates": bottle.get("candidates", []), "rejected": bottle.get("status") != "candidates"} for bottle in report["bottles"] if bottle.get("step") != "normalization"]
         else:

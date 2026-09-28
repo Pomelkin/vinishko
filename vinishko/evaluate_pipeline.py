@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 TEST_CSV = Path("datasets/local/test/test.csv")
-RUNS_DIR = Path("datasets/local/no_norm_dropna")
+RUNS_DIR = Path("datasets/local/runs_vanilla")
 KS = (1, 2, 3)
 
 
@@ -59,8 +59,10 @@ def main() -> None:
 
     retrieval = []
     final = []
-    for filename, slug in truth.items():
+    for index, (filename, slug) in enumerate(truth.items(), 1):
         run_dir = RUNS_DIR / Path(filename).stem
+        if not (run_dir / "result.json").is_file():
+            run_dir = RUNS_DIR / f"{index:05d}_{Path(filename).stem}"
         result_file = run_dir / "result.json"
         if not result_file.is_file():
             continue
@@ -68,6 +70,8 @@ def main() -> None:
         retrieval.append((slug, retrieval_slugs(run_dir, result)))
         final.append((slug, final_slugs(result)))
 
+    if not final:
+        raise FileNotFoundError(f"в {RUNS_DIR} не найдено ни одного result.json для {TEST_CSV}")
     print(f"Оценено {len(final)}/{len(truth)} фото; отсутствующих прогонов: {len(truth) - len(final)}")
     for stage, rows in (("retrieval", retrieval), ("final", final)):
         print(f"{stage}: {sum(bool(slug) for slug, _ in rows)} positive, {sum(not slug for slug, _ in rows)} negative")
