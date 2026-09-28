@@ -173,6 +173,24 @@ class NearDuplicateResolverTests(unittest.TestCase):
         self.assertEqual(settings.openrouter.model, "test/model")
         self.assertEqual(settings.openrouter.routing.only, ("together",))
         self.assertEqual(settings.generation.max_completion_tokens, 4096)
+        self.assertEqual(
+            (settings.generation.reasoning_effort.group, settings.generation.reasoning_effort.final),
+            ("none", "low"),
+        )
+
+    def test_reasoning_effort_is_set_per_round(self) -> None:
+        settings = load_ndr_config()
+        generation = settings.generation.model_copy(
+            update={
+                "reasoning_effort": settings.generation.reasoning_effort.model_copy(
+                    update={"group": None, "final": "low"}
+                )
+            }
+        )
+        self.assertNotIn("reasoning", generation.request_payload("group"))
+        self.assertEqual(
+            generation.request_payload("final")["reasoning"], {"effort": "low", "exclude": False}
+        )
         self.assertEqual(NearDuplicateResolver(settings=settings).settings, settings)
 
     def test_local_catalog_supplies_full_card(self) -> None:
