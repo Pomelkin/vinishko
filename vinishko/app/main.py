@@ -35,6 +35,7 @@ from vinishko.app.schemas import RejectionOut
 from vinishko.pipeline.catalog import Catalog
 from vinishko.pipeline.pipeline import Pipeline
 from vinishko.pipeline.pipeline import PipelineResult
+from vinishko.pipeline.steps.filter import FilterResolver
 from vinishko.pipeline.steps.near_duplicates import NearDuplicateResolver
 from vinishko.pipeline.steps.normalization.seg import open_image
 from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_IMAGE
@@ -142,7 +143,7 @@ def create_app(pipeline: Pipeline | None = None) -> FastAPI:
         pipe = current(request)
         searcher = pipe.searcher if isinstance(pipe.searcher, VisSearcher) else None
         resolver = (
-            pipe.resolver if isinstance(pipe.resolver, NearDuplicateResolver) else None
+            pipe.resolver if isinstance(pipe.resolver, (NearDuplicateResolver, FilterResolver)) else None
         )
         return HealthResponse(
             status="ok",

@@ -26,6 +26,8 @@ from rich.table import Table
 
 from vinishko.pipeline.pipeline import Pipeline
 from vinishko.pipeline.pipeline import PipelineResult
+from vinishko.pipeline.steps.filter import FilterResolver
+from vinishko.pipeline.steps.filter.resolve import SOURCE_MODEL as FILTER_SOURCE_MODEL
 from vinishko.pipeline.steps.near_duplicates import NearDuplicateResolver
 from vinishko.pipeline.steps.near_duplicates.resolve import SOURCE_MODEL
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
@@ -71,7 +73,7 @@ class Row(SearchRow):
     answer: str
     """Итоговый slug; пусто — отказ."""
     answer_source: str
-    """vector — в группе одна позиция; ndr_v5 — выбрала модель; search_top1 — без второго уровня; пусто — отказ."""
+    """filter_v1 — модель выбрала среди top_n; ndr_v5 — среди группы; vector — singleton группы; search_top1 — без второго уровня; пусто — отказ."""
     final: str
     """Одно из FINAL."""
     correct: bool | None
@@ -182,7 +184,7 @@ def e2e_metrics(rows: list[Row], timings: list[dict[str, float]]) -> dict:
         "correct_reject_resolve": share(r.final == "rejected_resolve" for r in without),
         "false_accept": share(r.final == "matched" for r in without),
         "resolved_by_model": sum(
-            r.answer_source == SOURCE_MODEL or r.final == "rejected_resolve"
+            r.answer_source in {SOURCE_MODEL, FILTER_SOURCE_MODEL} or r.final == "rejected_resolve"
             for r in rows
         ),
         "seconds_per_image": round(statistics.mean(r.seconds for r in rows), 3)
@@ -481,16 +483,13 @@ def main(
     cfg = load_config(config_path)
     cfg.debug_path = None
     searcher = VisSearcher(cfg) if not no_search else None
-    resolver = (
-        NearDuplicateResolver() if searcher is not None and not no_resolve else None
-    )
     pipeline = Pipeline(
         Normalizer(norm_cfg, norm_config.resolve().parent),
         searcher,
-        resolver,
         search=not no_search,
         resolve=not no_resolve,
     )
+    resolver = pipeline.resolver
     known = catalog_slugs(searcher) if searcher is not None and image is None else set()
     if image is None:
         logger.info(
@@ -548,7 +547,7 @@ def main(
     )
 
 
-def resolver_name(resolver: NearDuplicateResolver) -> str:
+def resolver_name(resolver: NearDuplicateResolver | FilterResolver) -> str:
     """Модель второго уровня для отчёта."""
     return resolver.settings.openrouter.model or "модель из OPENROUTER_MODEL"
 
@@ -567,7 +566,7 @@ def run(
     searcher = pipeline.searcher if isinstance(pipeline.searcher, VisSearcher) else None
     resolver = (
         pipeline.resolver
-        if isinstance(pipeline.resolver, NearDuplicateResolver)
+        if isinstance(pipeline.resolver, (NearDuplicateResolver, FilterResolver))
         else None
     )
     rows: list[Row] = []

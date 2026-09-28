@@ -54,12 +54,14 @@ def connect(cfg: QdrantConfig) -> QdrantClient:
     """Клиент qdrant: встроенный по пути либо сервер."""
     if cfg.path is not None:
         return QdrantClient(path=str(cfg.path))
+    host = "127.0.0.1" if cfg.host == "localhost" else cfg.host
     return QdrantClient(
-        host=cfg.host,
+        host=host,
         port=cfg.port,
         https=cfg.https,
         api_key=os.environ.get("QDRANT_API_KEY"),
         timeout=int(cfg.timeout),
+        trust_env=host not in {"127.0.0.1", "::1"},
     )
 
 

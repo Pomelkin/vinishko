@@ -45,7 +45,7 @@ class MatchOut(CandidateOut):
     """Выбранная позиция каталога."""
 
     source: str = Field(
-        description="vector — в группе одна позиция, модель не вызывалась; ndr_v5 — выбрала модель"
+        description="filter_v1 — модель выбрала среди top_n; ndr_v5 — среди группы; vector — в группе одна позиция, модель не вызывалась"
     )
     checklist: dict = Field(
         default_factory=dict,

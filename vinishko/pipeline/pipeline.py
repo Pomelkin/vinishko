@@ -1,4 +1,4 @@
-"""Оркестратор пайплайна: нормализация → визуальный поиск → выбор позиции внутри группы. Шаги не знают друг о друге, их выходы связывает этот модуль."""
+"""Оркестратор пайплайна: нормализация → визуальный поиск → выбор позиции либо отказ. Шаги не знают друг о друге, их выходы связывает этот модуль."""
 
 import time
 from dataclasses import dataclass
@@ -11,10 +11,13 @@ from PIL import Image
 from vinishko.pipeline.catalog import Catalog
 from vinishko.pipeline.catalog import load_catalog
 from vinishko.pipeline.configs import load_config
+from vinishko.pipeline.steps.filter import FilterResolver
+from vinishko.pipeline.steps.filter.resolve import cards_from_rows as filter_cards_from_rows
 from vinishko.pipeline.steps.near_duplicates import NearDuplicateResolver
 from vinishko.pipeline.steps.near_duplicates.resolve import cards_from_rows
 from vinishko.pipeline.steps.normalization.normalize import Normalizer
 from vinishko.pipeline.steps.vis_searcher import VisSearcher
+from vinishko.pipeline.steps.vis_searcher.configs import TopNSearch
 from vinishko.pipeline.structs import BottleCandidates
 from vinishko.pipeline.structs import BottleCrop
 from vinishko.pipeline.structs import BottleOutcome
@@ -142,9 +145,9 @@ class PipelineResult:
 
 
 class Pipeline:
-    """Оркестратор: нормализация → визуальный поиск → выбор позиции внутри группы.
+    """Оркестратор: нормализация → визуальный поиск → выбор позиции либо отказ.
 
-    Pipeline() поднимает всё с конфигами по умолчанию: Normalizer(), VisSearcher(), NearDuplicateResolver() с карточками позиций
+    Pipeline() поднимает Normalizer(), VisSearcher() и второй уровень: FilterResolver для top_n, NearDuplicateResolver для groups, с карточками позиций
     из каталога, сам каталог — по config.yaml рядом с модулем (CSV локально либо в S3). Свой экземпляр шага или каталога передаётся
     аргументом. search=False — только нормализация, resolve=False — нормализация и поиск без второго уровня. С поиском при создании
     сверяется нормализатор: часть его конфига, определяющая пиксели кропов (Normalizer.crop_config), должна совпадать с той, что
@@ -171,9 +174,12 @@ class Pipeline:
         self.searcher: Searcher | None = (searcher or VisSearcher()) if search else None
         self.resolver: Resolver | None = None
         if search and resolve:
-            self.resolver = resolver or NearDuplicateResolver(
-                cards=cards_from_rows(catalog.rows, catalog.description)
-            )
+            if resolver is not None:
+                self.resolver = resolver
+            elif isinstance(self.searcher, VisSearcher) and isinstance(self.searcher.cfg.search, TopNSearch):
+                self.resolver = FilterResolver(cards=filter_cards_from_rows(catalog.rows, catalog.description))
+            else:
+                self.resolver = NearDuplicateResolver(cards=cards_from_rows(catalog.rows, catalog.description))
         if self.searcher is not None:
             self.searcher.check_normalization(self.normalizer.crop_config)
             missing = sorted(self.searcher.slugs() - catalog.rows.keys())

@@ -2,7 +2,7 @@
 # Относительные пути считаются от этого файла, ../../ — корень репозитория.
 catalog: # CSV каталога: описание позиции в ответе API и карточки позиций второму уровню
   kind: local
-  path: ../app/catalog.csv # копия datasets/hack-vine/catalog/catalog.csv, едет вместе с кодом приложения
+  path: ../../datasets/local/catalog/catalog.csv
   # kind: s3
   # endpoint: https://s3.ru-6.storage.selcloud.ru
   # bucket: vino

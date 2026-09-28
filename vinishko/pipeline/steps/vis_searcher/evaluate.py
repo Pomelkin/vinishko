@@ -1,6 +1,7 @@
 """Оценка пайплайна на тестовом наборе: нормализация и поиск на каждом фото, recall@k по slug и качество отказа.
 
-Запуск из корня: python -m vinishko.pipeline.steps.vis_searcher.evaluate --test-dir datasets/hack-vine/test
+Запуск из корня: python -m vinishko.pipeline.steps.vis_searcher.evaluate
+Тестовый набор задаётся переменной TEST_DIR ниже: фотографии в images/, разметка в test.csv.
 Разметка — CSV с колонками image_filename и slug; пустой slug значит, что ответа в каталоге нет и верный ответ — отказ.
 """
 
@@ -48,6 +49,9 @@ from vinishko.pipeline.structs import BottleCrop
 from vinishko.pipeline.structs import RejectedBottle
 from vinishko.pipeline.structs import UnmatchedBottle
 
+
+TEST_DIR = Path(__file__).resolve().parents[4] / "datasets/local/test"
+# Фото: TEST_DIR / "images"; разметка: TEST_DIR / "test.csv".
 
 KS = (1, 3, 5)
 DUMPS = ("misses", "all", "none")
@@ -376,7 +380,7 @@ def progress() -> Progress:
 @click.option(
     "--test-dir",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
-    default=Path("datasets/hack-vine/test"),
+    default=TEST_DIR,
     show_default=True,
     help="Директория с test.csv и images/",
 )

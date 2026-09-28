@@ -1,7 +1,9 @@
 # Пайплайн
 
 Оркестратор `vinishko/pipeline/pipeline.py` связывает шаги, которые друг о друге не знают: нормализация (`steps/normalization`) →
-визуальный поиск (`steps/vis_searcher`) → выбор позиции внутри группы (`steps/near_duplicates`). Общие структуры — `structs.py`: `BottleCrop` и `RejectedBottle` от
+визуальный поиск (`steps/vis_searcher`) → выбор позиции либо отказ. Для `search.mode: top_n` автоматически подключается `steps/filter`,
+для `groups` — прежний `steps/near_duplicates`. По умолчанию `top_k: 5`, `top_n`: фильтр сравнивает всех кандидатов, даже единственного.
+Промпты прежние; настройки фильтра — в `steps/filter/config.yaml`. Общие структуры — `structs.py`: `BottleCrop` и `RejectedBottle` от
 нормализации, `Candidate`, `BottleCandidates` и `UnmatchedBottle` от поиска, `MatchedBottle` от второго уровня, `Rejection` и `BottleOutcome` общие; причины отказов у каждого шага свои, наследник `Reason` со своим `stage`. HTTP-приложение — `vinishko/app`.
 
 ```python
@@ -9,7 +11,7 @@ from vinishko.pipeline.pipeline import Pipeline
 
 result = Pipeline()(
     photo
-)  # шаги и каталог с конфигами по умолчанию: Normalizer(), VisSearcher(), NearDuplicateResolver(); свой шаг или Catalog — аргументом, search=False / resolve=False — без шага
+)  # Normalizer(), VisSearcher(), второй уровень по режиму поиска; свой шаг или Catalog — аргументом, search=False / resolve=False — без шага
 result.normalization  # разметка нормализации как есть
 result.search  # BottleCandidates | UnmatchedBottle на каждую годную бутылку, в том же порядке
 result.resolution  # MatchedBottle | UnmatchedBottle на каждый ответ поиска; пусто без resolver
@@ -57,7 +59,7 @@ python -m vinishko.pipeline.evaluate_pipeline --image photo.jpg -o runs/        
 | `source.<ext>`               | копия исходника                                                                                              |
 | `normalization/`             | на каждую годную бутылку `photo_bN.jpg` (кроп поиска), `photo_bN_box.jpg` (вся бутылка для второго уровня), маски и json, как у CLI нормализации; `markup.json` — все бутылки, отказы с шагом и причиной |
 | `search/`                    | разбор поиска как при `debug_path`: `q<N>_query_<uuid>.jpg` и `_box.jpg`, `q<N>_<ранг>_<группа>_<slug>_<скор>[_bygroup].jpg`, `results.json` с косинусами по входам |
-| `resolve/`                   | trace ответа модели второго уровня по uuid бутылки; нет, если в группе одна позиция и модель не вызывалась     |
+| `resolve/`                   | trace модели по uuid бутылки; filter пишет даже для одного кандидата, near_duplicates пропускает singleton группы |
 | `result.json`                | итог по каждой бутылке: выбранная позиция с источником и наблюдениями модели, кандидаты либо отказ с шагом и причиной, время шагов |
 
 По тестовому набору ещё `report.json` и `per_image.csv`. В `report.json` два блока метрик. `search` — как у `vis_searcher.evaluate`: recall@1/3/5,

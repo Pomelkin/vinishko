@@ -129,7 +129,7 @@ def metrics(rows: list[Row]) -> dict:
         },
         "no_bottle": sum(r.status == "no_bottle" for r in rows),
         "resolved_by_model": sum(
-            r.source == "ndr_v5" or r.stage == "resolve" for r in rows
+            r.source in {"ndr_v5", "filter_v1"} or r.stage == "resolve" for r in rows
         ),
         "seconds": {
             "mean": round(statistics.mean(seconds), 3),

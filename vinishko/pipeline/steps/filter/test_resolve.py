@@ -1,4 +1,4 @@
-"""Офлайн-проверки второго уровня: без qdrant, S3 и модели. Запуск из корня: python -m unittest vinishko.pipeline.steps.near_duplicates.test_resolve -v"""
+"""Офлайн-проверки второго уровня: без qdrant, S3 и модели. Запуск из корня: python -m unittest vinishko.pipeline.steps.filter.test_resolve -v"""
 
 import csv
 import os
@@ -11,6 +11,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import ClassVar
 from typing import cast
+from unittest.mock import Mock
 from unittest.mock import patch
 
 import numpy as np
@@ -19,19 +20,25 @@ from PIL import Image
 from vinishko.pipeline.catalog import Catalog
 from vinishko.pipeline.pipeline import Pipeline
 from vinishko.pipeline.pipeline import Searcher
-from vinishko.pipeline.steps.near_duplicates import predictor
-from vinishko.pipeline.steps.near_duplicates.configs import DEFAULT_CONFIG
-from vinishko.pipeline.steps.near_duplicates.configs import (
+from vinishko.pipeline.steps.filter import predictor
+from vinishko.pipeline.steps.filter.configs import DEFAULT_CONFIG
+from vinishko.pipeline.steps.filter.configs import (
     load_config as load_ndr_config,
 )
-from vinishko.pipeline.steps.near_duplicates.resolve import CSV_FIELDS
-from vinishko.pipeline.steps.near_duplicates.resolve import NDR_CONCURRENCY
-from vinishko.pipeline.steps.near_duplicates.resolve import NearDuplicateError
-from vinishko.pipeline.steps.near_duplicates.resolve import NearDuplicateResolver
-from vinishko.pipeline.steps.near_duplicates.resolve import candidate_card
-from vinishko.pipeline.steps.near_duplicates.resolve import load_cards
+from vinishko.pipeline.steps.filter.resolve import CSV_FIELDS
+from vinishko.pipeline.steps.filter.resolve import NDR_CONCURRENCY
+from vinishko.pipeline.steps.filter.resolve import FilterError
+from vinishko.pipeline.steps.filter.resolve import FilterResolver
+from vinishko.pipeline.steps.filter.resolve import candidate_card
+from vinishko.pipeline.steps.filter.resolve import load_cards
 from vinishko.pipeline.steps.normalization.normalize import Normalizer
 from vinishko.pipeline.steps.vis_searcher.search import SearchReason
+from vinishko.pipeline.steps.vis_searcher.search import VisSearcher
+from vinishko.pipeline.steps.vis_searcher.configs import load_config as load_search_config
+from vinishko.pipeline.steps.vis_searcher.configs import GroupSearch
+from vinishko.pipeline.evaluate_pipeline import e2e_row, e2e_metrics, run
+from vinishko.pipeline.steps.vis_searcher.evaluate import Row as SearchRow
+from vinishko.pipeline.pipeline import PipelineResult
 from vinishko.pipeline.structs import BottleCandidates
 from vinishko.pipeline.structs import BottleCrop
 from vinishko.pipeline.structs import Candidate
@@ -39,7 +46,7 @@ from vinishko.pipeline.structs import MatchedBottle
 from vinishko.pipeline.structs import Rejection
 from vinishko.pipeline.structs import UnmatchedBottle
 
-PREDICT = "vinishko.pipeline.steps.near_duplicates.resolve.predict"
+PREDICT = "vinishko.pipeline.steps.filter.resolve.predict"
 
 
 def crop(index: int = 1) -> BottleCrop:
@@ -61,8 +68,6 @@ def candidate(
         retrieved=True,
         payload={
             "slug": slug,
-            "group": group,
-            "group_slugs": members,
             "source_image": f"{slug}.webp",
             "grape": "Пино нуар",
             "vintage": "2023",
@@ -119,7 +124,7 @@ class SearcherStub:
         return set()
 
 
-class NearDuplicateResolverTests(unittest.TestCase):
+class FilterResolverTests(unittest.TestCase):
     def setUp(self) -> None:
         env = patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-only"})
         env.start()
@@ -138,7 +143,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
         self.assertEqual(settings.openrouter.model, "test/model")
         self.assertEqual(settings.openrouter.routing.only, ("together",))
         self.assertEqual(settings.generation.max_completion_tokens, 4096)
-        self.assertEqual(NearDuplicateResolver(settings=settings).settings, settings)
+        self.assertEqual(FilterResolver(settings=settings).settings, settings)
 
     def test_local_catalog_supplies_full_card(self) -> None:
         bottle = crop()
@@ -147,8 +152,6 @@ class NearDuplicateResolverTests(unittest.TestCase):
             path = Path(temp) / "catalog.csv"
             columns = [
                 "Slug",
-                "image_filename",
-                "near_duplicate_group_slug",
                 *CSV_FIELDS.values(),
             ]
             with path.open("w", encoding="utf-8", newline="") as file:
@@ -157,8 +160,6 @@ class NearDuplicateResolverTests(unittest.TestCase):
                 writer.writerow(
                     {
                         "Slug": "first",
-                        "image_filename": "original.webp",
-                        "near_duplicate_group_slug": "group",
                         "Выдержка или резерв": "резерв",
                     }
                 )
@@ -173,7 +174,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
         candidates = [candidate(bottle, slug, "group", ["first", "second"])
                       for slug in ("first", "second")]
         with patch(PREDICT, return_value=model_response("first")) as model:
-            NearDuplicateResolver()([BottleCandidates(bottle, candidates)])
+            FilterResolver()([BottleCandidates(bottle, candidates)])
         runtime = model.call_args.args[0]["runtime"]
         self.assertEqual(runtime["extra_body"], {"reasoning": {"enabled": False}})
         arguments = dict(system_prompt="test", api_content=[], output_format={"type": "json_schema"})
@@ -202,29 +203,21 @@ class NearDuplicateResolverTests(unittest.TestCase):
 
     def test_pipeline_runs_resolver_after_search(self) -> None:
         bottle = crop()
-        top = candidate(bottle, "one", "one", ["one"])
+        top = candidate(bottle, "one", "", [])
         pipeline = Pipeline(
             normalizer=cast(Normalizer, NormalizerStub(bottle)),
             searcher=cast(Searcher, SearcherStub([BottleCandidates(bottle, [top])])),
-            resolver=NearDuplicateResolver(),
-            catalog=Catalog({}, "тест"),
+            resolver=FilterResolver(),
+            catalog=Catalog({}, "test"),
         )
-        with patch(PREDICT) as model:
+        with patch(PREDICT, return_value=model_response("one")) as model:
             result = pipeline("image")
         answer = cast(MatchedBottle, result.resolution[0])
-        self.assertIsInstance(answer, MatchedBottle)
         self.assertEqual(answer.candidate.slug, "one")
-        self.assertEqual(answer.source, "vector")
-        self.assertEqual([m.candidate.slug for m in result.matched], ["one"])
-        self.assertEqual(result.crops, [bottle])
-        outcome = result.bottles[0]
-        self.assertEqual(
-            (outcome.status, outcome.uuid, outcome.crop),
-            ("matched", bottle.uuid, bottle),
-        )
-        self.assertIs(outcome.match, answer)
+        self.assertEqual(answer.source, "filter_v1")
+        self.assertEqual(result.bottles[0].status, "matched")
         self.assertIn("resolve", result.timings)
-        model.assert_not_called()
+        model.assert_called_once()
 
     def test_pipeline_keeps_search_rejections_and_order(self) -> None:
         bottle = crop()
@@ -234,7 +227,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
         pipeline = Pipeline(
             normalizer=cast(Normalizer, NormalizerStub(bottle)),
             searcher=cast(Searcher, SearcherStub([rejected])),
-            resolver=NearDuplicateResolver(),
+            resolver=FilterResolver(),
             catalog=Catalog({}, "тест"),
         )
         with patch(PREDICT) as model:
@@ -270,45 +263,33 @@ class NearDuplicateResolverTests(unittest.TestCase):
         self.assertNotIn("resolve", result.timings)
         model.assert_not_called()
 
-    def test_singleton_group_returns_top_without_model(self) -> None:
+    def test_single_candidate_is_checked_by_model(self) -> None:
         bottle = crop()
-        top = candidate(bottle, "one", "one", ["one"])
-        with patch(PREDICT) as model:
-            answer = cast(
-                MatchedBottle,
-                NearDuplicateResolver()([BottleCandidates(bottle, [top])])[0],
-            )
-        self.assertIsInstance(answer, MatchedBottle)
-        self.assertEqual(answer.candidate.slug, "one")
-        self.assertEqual(answer.source, "vector")
-        self.assertEqual(answer.checklist, {})
-        model.assert_not_called()
+        top = candidate(bottle, "one", "", [])
+        for slug in ("one", "not_found"):
+            with self.subTest(slug=slug), patch(PREDICT, return_value=model_response(slug)) as model:
+                answer = FilterResolver()([BottleCandidates(bottle, [top])])[0]
+            model.assert_called_once()
+            self.assertEqual(len(model.call_args.args[0]["candidates"]), 1)
+            if slug == "one":
+                self.assertEqual(answer.candidate.slug, "one")
+                self.assertEqual(answer.source, "filter_v1")
+            else:
+                self.assertIsInstance(answer, UnmatchedBottle)
 
-    def test_group_sends_box_crop_and_returns_selected_slug(self) -> None:
+    def test_all_five_candidates_are_sent_without_group_expansion(self) -> None:
         bottle = crop()
         bottle.box_crop[:] = 177
-        top = candidate(bottle, "first", "group", ["first", "second"])
-        second = candidate(bottle, "second", "group", ["first", "second"])
-        outsider = candidate(bottle, "outsider", "other", ["outsider"])
-        with patch(PREDICT, return_value=model_response("second")) as model:
-            answer = cast(
-                MatchedBottle,
-                NearDuplicateResolver()(
-                    [BottleCandidates(bottle, [top, second, outsider])]
-                )[0],
-            )
-        self.assertIsInstance(answer, MatchedBottle)
-        self.assertEqual(answer.candidate.slug, "second")
-        self.assertEqual(answer.source, "ndr_v5")
-        self.assertEqual(answer.checklist["year"]["observation"], "2023")
+        candidates = [candidate(bottle, str(i), str(i), []) for i in range(5)]
+        candidates[0].payload["group_slugs"] = ["0", "not_retrieved"]
+        with patch(PREDICT, return_value=model_response("4")) as model:
+            answer = FilterResolver()([BottleCandidates(bottle, candidates)])[0]
+        self.assertIs(answer.candidate, candidates[4])
+        self.assertEqual(answer.source, "filter_v1")
         request = model.call_args.args[0]
-        self.assertEqual(
-            [c["slug"] for c in request["group"]["candidates"]], ["first", "second"]
-        )
-        self.assertEqual(request["group"]["candidates"][0]["grapes"], "Пино нуар")
-        self.assertTrue(request["query"]["image_bytes"].startswith(b"\x89PNG"))
+        self.assertEqual([c["slug"] for c in request["candidates"]], [str(i) for i in range(5)])
+        self.assertNotIn("group", request)
         with Image.open(BytesIO(request["query"]["image_bytes"])) as query:
-            self.assertEqual(query.size, (4, 4))
             self.assertEqual(query.getpixel((0, 0)), (177, 177, 177))
 
     def test_requests_run_concurrently_with_limit_and_keep_order(self) -> None:
@@ -338,7 +319,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
                 )
             )
         with patch(PREDICT, side_effect=model):
-            resolved = NearDuplicateResolver()(found)
+            resolved = FilterResolver()(found)
         self.assertEqual(
             [answer.crop.index for answer in resolved], list(range(len(found)))
         )
@@ -363,7 +344,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
                 active -= 1
             return model_response("first")
 
-        resolver = NearDuplicateResolver()
+        resolver = FilterResolver()
         bottle = crop()
         row = BottleCandidates(
             bottle,
@@ -390,11 +371,11 @@ class NearDuplicateResolverTests(unittest.TestCase):
         with patch(PREDICT, return_value=model_response("not_found")):
             answer = cast(
                 UnmatchedBottle,
-                NearDuplicateResolver()([BottleCandidates(bottle, candidates)])[0],
+                FilterResolver()([BottleCandidates(bottle, candidates)])[0],
             )
         self.assertIsInstance(answer, UnmatchedBottle)
         self.assertIs(answer.crop, bottle)
-        self.assertEqual(answer.rejection.reason, "near_duplicate_not_found")
+        self.assertEqual(answer.rejection.reason, "filter_not_found")
         self.assertEqual(answer.rejection.stage, "resolve")
         self.assertIn("year: 2023", answer.rejection.detail)
 
@@ -415,21 +396,20 @@ class NearDuplicateResolverTests(unittest.TestCase):
             patch(PREDICT, return_value=failure),
         ):
             trace_dir = Path(temp)
-            with self.assertRaisesRegex(NearDuplicateError, "contract_error"):
-                NearDuplicateResolver(trace_dir=trace_dir)(
+            with self.assertRaisesRegex(FilterError, "contract_error"):
+                FilterResolver(trace_dir=trace_dir)(
                     [BottleCandidates(bottle, candidates)]
                 )
             self.assertTrue((trace_dir / f"{bottle.uuid}.json").is_file())
 
-    def test_incomplete_group_fails_before_model_call(self) -> None:
+    def test_duplicate_and_foreign_slugs_are_rejected(self) -> None:
         bottle = crop()
-        top = candidate(bottle, "first", "group", ["first", "second"])
-        with (
-            patch(PREDICT) as model,
-            self.assertRaisesRegex(NearDuplicateError, "groups"),
-        ):
-            NearDuplicateResolver()([BottleCandidates(bottle, [top])])
+        top = candidate(bottle, "first", "", [])
+        with patch(PREDICT) as model, self.assertRaises(FilterError):
+            FilterResolver()([BottleCandidates(bottle, [top, top])])
         model.assert_not_called()
+        with patch(PREDICT, return_value=model_response("foreign")), self.assertRaises(FilterError):
+            FilterResolver()([BottleCandidates(bottle, [top])])
 
     def test_missing_openrouter_key_reports_env_file(self) -> None:
         bottle = crop()
@@ -441,9 +421,9 @@ class NearDuplicateResolverTests(unittest.TestCase):
             tempfile.TemporaryDirectory() as temp,
             patch.object(predictor, "PROJECT_ROOT", Path(temp)),
             patch.dict(os.environ, {}, clear=True),
-            self.assertRaisesRegex(NearDuplicateError, r"OPENROUTER_API_KEY.*\.env"),
+            self.assertRaisesRegex(FilterError, r"OPENROUTER_API_KEY.*\.env"),
         ):
-            NearDuplicateResolver()([BottleCandidates(bottle, candidates)])
+            FilterResolver()([BottleCandidates(bottle, candidates)])
 
     def test_openrouter_key_is_loaded_from_project_env(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -458,11 +438,10 @@ class NearDuplicateResolverTests(unittest.TestCase):
                 self.assertEqual(os.environ["OPENROUTER_API_KEY"], "test-only")
 
     def test_predictor_accepts_images_in_memory_with_strict_slug_enum(self) -> None:
-        resolver = NearDuplicateResolver()
+        resolver = FilterResolver()
         request = {
             "query": {"image_bytes": b"\x89PNG\r\n\x1a\nquery"},
-            "group": {
-                "candidates": [
+            "candidates": [
                     {
                         "slug": "first",
                         "vintage": "2023",
@@ -473,8 +452,7 @@ class NearDuplicateResolverTests(unittest.TestCase):
                         "vintage": "",
                         "reference_image_bytes": b"\x89PNG\r\n\x1a\nsecond",
                     },
-                ]
-            },
+                ],
             "prompts": resolver.prompts,
             "runtime": {
                 "model": "test/model",
@@ -520,6 +498,101 @@ class NearDuplicateResolverTests(unittest.TestCase):
                 if part["type"] == "image_url"
             )
         )
+
+
+    def test_pipeline_selects_second_level_from_search_mode(self) -> None:
+        for grouped in (False, True):
+            with self.subTest(grouped=grouped):
+                searcher = Mock(spec=VisSearcher)
+                searcher.cfg = load_search_config()
+                if grouped:
+                    searcher.cfg.search = GroupSearch(mode="groups", top_groups=5, group_threshold=0.7)
+                searcher.slugs.return_value = set()
+                pipeline = Pipeline(
+                    normalizer=cast(Normalizer, NormalizerStub(crop())),
+                    searcher=searcher,
+                    catalog=Catalog({}, "test"),
+                )
+                if grouped:
+                    from vinishko.pipeline.steps.near_duplicates import NearDuplicateResolver
+                    self.assertIsInstance(pipeline.resolver, NearDuplicateResolver)
+                else:
+                    self.assertIsInstance(pipeline.resolver, FilterResolver)
+                disabled = Pipeline(
+                    normalizer=cast(Normalizer, NormalizerStub(crop())),
+                    searcher=searcher,
+                    catalog=Catalog({}, "test"),
+                    resolve=False,
+                )
+                self.assertIsNone(disabled.resolver)
+
+    def test_search_top_n_passes_five_candidates_and_checks_best_score(self) -> None:
+        searcher = object.__new__(VisSearcher)
+        searcher.cfg = load_search_config()
+        self.assertEqual(searcher.cfg.top_k, 5)
+        self.assertEqual(searcher.cfg.search.mode, "top_n")
+        searcher.measure = "cosine"
+        bottle = crop()
+        candidates = [candidate(bottle, str(i), str(i), []) for i in range(5)]
+        hits = [(0.8 - i * 0.1, {"slug": str(i)}, {}) for i in range(5)]
+        with patch.object(searcher, "_hits", return_value=hits), patch.object(searcher, "_candidate", side_effect=candidates):
+            result = searcher._search(bottle, {})
+        self.assertEqual(result.candidates, candidates)
+        self.assertIsInstance(searcher._top_n(bottle, [(0.69, {}, {})], searcher.cfg.search), UnmatchedBottle)
+
+    def test_final_metrics_use_exact_slug_and_count_filter_calls(self) -> None:
+        bottle = crop()
+        chosen = candidate(bottle, "chosen", "shared", ["chosen", "expected"])
+        chosen.payload["group_slugs"] = ["chosen", "expected"]
+        found = BottleCandidates(bottle, [chosen])
+        verdict = MatchedBottle(bottle, chosen, "filter_v1", {})
+        result = PipelineResult([bottle], search=[found], resolution=[verdict])
+        rows = []
+        for expected in ("chosen", "expected", ""):
+            search_row = SearchRow("test.jpg", expected, bool(expected), "candidates", 1, "", "chosen", 0.8, 1, 1, True, 0.1)
+            row = e2e_row(search_row, result)
+            self.assertEqual(row.correct, expected == "chosen")
+            if expected:
+                self.assertTrue(row.group_correct)
+            rows.append(row)
+        rejected = UnmatchedBottle(bottle, Rejection(SearchReason.NO_MATCH, "test"))
+        result.resolution = [rejected]
+        empty = SearchRow("empty.jpg", "", False, "no_match", 1, "", "", None, None, None, False, 0.1)
+        self.assertTrue(e2e_row(empty, result).correct)
+        self.assertEqual(e2e_metrics(rows, [])["resolved_by_model"], 3)
+
+    def test_evaluator_keeps_filter_trace(self) -> None:
+        bottle = crop()
+        search_row = SearchRow("test.jpg", "one", True, "candidates", 1, "", "one", 0.8, 1, 1, False, 0.1)
+        result = PipelineResult([bottle], search=[BottleCandidates(bottle, [candidate(bottle, "one", "", [])])])
+        pipeline = Mock()
+        pipeline.searcher = None
+        pipeline.resolver = FilterResolver()
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch("vinishko.pipeline.evaluate_pipeline.evaluate_image", return_value=(search_row, result)),
+            patch("vinishko.pipeline.evaluate_pipeline.dump_image"),
+        ):
+            run(pipeline, [("test.jpg", "one")], Path(directory), Path(directory), {"one"}, {}, "all", False)
+            self.assertEqual(pipeline.resolver.trace_dir, Path(directory) / "dumps/test/resolve")
+
+    def test_api_health_and_metrics_recognize_filter(self) -> None:
+        from fastapi.testclient import TestClient
+        from vinishko.app.main import create_app
+        from vinishko.e2e import row_of, metrics
+
+        pipeline = Mock()
+        pipeline.searcher = None
+        pipeline.resolver = FilterResolver()
+        pipeline.catalog = Catalog({}, "test")
+        with TestClient(create_app(pipeline)) as client:
+            response = client.get("/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["resolver"], pipeline.resolver.settings.openrouter.model)
+        body = {"bottles": [{"status": "matched", "match": {"slug": "chosen", "source": "filter_v1"}}]}
+        row = row_of("test.jpg", "chosen", 200, body, 0.1)
+        self.assertTrue(row.correct)
+        self.assertEqual(metrics([row])["resolved_by_model"], 1)
 
 
 class OpenRouterProxyTests(unittest.TestCase):

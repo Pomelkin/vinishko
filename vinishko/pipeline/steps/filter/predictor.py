@@ -632,7 +632,7 @@ def failure(status: str, error: str, trace: dict[str, Any]) -> dict[str, Any]:
 
 
 def predict(request: dict[str, Any]) -> dict[str, Any]:
-    """Choose the nearest candidate or not_found in one complete-group call."""
+    """Choose one supplied candidate or not_found in one model call."""
     load_openrouter_env()
     runtime = request["runtime"]
     model = runtime.get("model") or os.environ.get("OPENROUTER_MODEL")
@@ -665,7 +665,7 @@ def predict(request: dict[str, Any]) -> dict[str, Any]:
         query["image_bytes"] if "image_bytes" in query else query["image_path"]
     )
     image_detail: str = runtime.get("image_detail") or "original"
-    candidates = list(request["group"]["candidates"])
+    candidates = list(request["candidates"])
     allowed_slugs = [candidate["slug"] for candidate in candidates]
     trace["candidate_slugs"] = allowed_slugs
     try:

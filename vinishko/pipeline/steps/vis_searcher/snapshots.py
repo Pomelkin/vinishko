@@ -270,7 +270,10 @@ def download_snapshot(
     dest.parent.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256()
     with (
-        httpx.stream("GET", url, headers=auth_headers(), timeout=timeout) as response,
+        httpx.stream(
+            "GET", url, headers=auth_headers(), timeout=timeout,
+            trust_env=cfg.host not in {"localhost", "127.0.0.1", "::1"},
+        ) as response,
         transfer_progress() as bar,
     ):
         if response.is_error:
@@ -301,6 +304,7 @@ def upload_snapshot(
                 files={"snapshot": (path.name, f, "application/octet-stream")},
                 headers=auth_headers(),
                 timeout=timeout,
+                trust_env=cfg.host not in {"localhost", "127.0.0.1", "::1"},
             )
     if response.is_error:
         raise RuntimeError(

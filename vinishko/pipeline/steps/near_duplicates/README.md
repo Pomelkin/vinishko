@@ -40,6 +40,28 @@ top-1 вместо ответа не подставляется; полный о
 свой файл — `NearDuplicateResolver(settings=load_config(Path(...)))`. Ключ — `OPENROUTER_API_KEY` из `.env` в корне проекта или из окружения,
 без него вызов завершается ошибкой с подсказкой; `OPENROUTER_MODEL` перекрывает модель из конфига.
 
+Дополнительные поля JSON-запроса задаются в `openrouter.extra_body`:
+
+```yaml
+openrouter:
+  extra_body:
+    reasoning:
+      enabled: false
+```
+
+Поля добавляются на верхний уровень рядом с `messages`, без обёртки `extra_body`, и перекрывают одноимённые поля из `generation` целиком.
+`model`, `messages`, `provider` и `response_format` подменять нельзя. `extra_body: {}` оставляет параметры генерации без изменений.
+Отключение reasoning уже задано в конфиге; поддержка зависит от модели. См. [документацию OpenRouter](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
+
+Для HTTP-прокси запросов NDR добавьте в `.env`:
+
+```dotenv
+openrouter_http_proxy=http://127.0.0.1:8080
+```
+
+Укажите адрес и порт своего прокси. Настройка действует на вызовы NDR к OpenRouter; без неё используются стандартные настройки `urllib`.
+Окружение процесса имеет приоритет над `.env`. После изменения перезапустите evaluate или API-сервис.
+
 ## Прогон и проверки
 
 ```bash
