@@ -111,7 +111,7 @@ Multipart-поле `image`: jpeg, png, webp, heic. Ответ — бутылки
 
 ```dotenv
 OPENROUTER_API_KEY=ваш_ключ
-SOMMELIER_DATA_DIR=.services/sessions
+SOMMELIER_DATA_DIR=vinishko/app/sommelier/data/sessions
 ```
 
 Если для OpenRouter нужен proxy, задайте `openrouter_http_proxy` в корневом `.env`.
@@ -142,7 +142,7 @@ python -m uvicorn vinishko.app.whatis.main:app --env-file .env --host 127.0.0.1 
 Оставьте все три процесса работающими; Ctrl+C останавливает процесс в соответствующем терминале.
 Если порт занят, остановите прежний процесс этого сервиса перед повторным запуском.
 Проверка микросервисов: `http://127.0.0.1:8805/health` и `http://127.0.0.1:8810/health`.
-При указанном `SOMMELIER_DATA_DIR` сохраняется доступ к прежним диалогам в `.services/sessions/`;
+При указанном `SOMMELIER_DATA_DIR` диалоги сохраняются в `vinishko/app/sommelier/data/sessions/`;
 без этой настройки сомелье использует `data/sessions/`. Для сомелье оставьте один worker.
 
 Параметры подключения находятся в начале `services.py`: `SOMMELIER_URL`, `WHATIS_URL`,

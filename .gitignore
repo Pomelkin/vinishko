@@ -150,7 +150,7 @@ activemq-data/
 
 # Environments
 .env
-.services/
+vinishko/app/sommelier/data/
 .envrc
 .venv
 env/

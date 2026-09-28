@@ -2,7 +2,7 @@
 
 Код сервиса из ветки `ai-somelier-service` (коммит `04bf9af`) перенесён в этот пакет; импорты адаптированы к `vinishko.app.sommelier`.
 
-Из корня проекта, в активированном Python-окружении. Сначала настройте корневой `.env` по [инструкции запуска](../README.md#запуск-всего-приложения): ключ, proxy при необходимости и `SOMMELIER_DATA_DIR=.services/sessions`.
+Из корня проекта, в активированном Python-окружении. Сначала настройте корневой `.env` по [инструкции запуска](../README.md#запуск-всего-приложения): ключ, proxy при необходимости и `SOMMELIER_DATA_DIR=vinishko/app/sommelier/data/sessions`.
 
 ```powershell
 python -m uvicorn vinishko.app.sommelier.main:app --env-file .env --host 127.0.0.1 --port 8805 --workers 1
