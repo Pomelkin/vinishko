@@ -35,11 +35,11 @@ from .predictor import predict
 
 
 HERE = Path(__file__).resolve().parent
-NDR_CONCURRENCY = 32
-NDR_SEMAPHORE = BoundedSemaphore(NDR_CONCURRENCY)
-NDR_EXECUTOR = ThreadPoolExecutor(max_workers=NDR_CONCURRENCY)
 QUERY_MAX_SIDE = 1600
 """Кроп запроса крупнее этой стороны уменьшается перед отправкой модели."""
+IMAGE_QUALITY = 92
+"""JPEG-качество картинок для модели, запроса и позиций: в 4 раза легче PNG при том же разрешении и числе токенов, надписи читаются.
+Замер 2026-09-28 на 60 картинках: медиана 303 КБ в PNG против 73 КБ, тело запроса в среднем 2.8 МБ вместо ~0.7."""
 SOURCE_GROUP, SOURCE_FINAL = TASK_GROUP, TASK_FINAL
 """MatchedBottle.source — вызов, который выбрал позицию: group — модель выбрала её внутри группы, других финалистов не было;
 final — модель выбрала её среди финалистов групп либо подтвердила единственную позицию-одиночку."""
@@ -125,7 +125,7 @@ def candidate_card(candidate: Candidate, cards: dict[str, dict] | None = None) -
         raise NearDuplicateError(
             f"группа {candidate.slug} в локальном каталоге и в коллекции не совпадает"
         )
-    image_bytes = encode_image(candidate.image, "png", 95)
+    image_bytes = encode_image(candidate.image, "jpg", IMAGE_QUALITY)
     if card is not None:
         return {
             key: value
@@ -153,7 +153,7 @@ class Call:
 
     crop: BottleCrop
     query: bytes
-    """box_crop бутылки в PNG."""
+    """box_crop бутылки в JPEG."""
     task: str
     """TASK_GROUP либо TASK_FINAL."""
     candidates: list[Candidate]
@@ -194,14 +194,14 @@ def split_groups(result: BottleCandidates) -> list[list[Candidate]]:
     return list(groups.values())
 
 
-def query_png(crop: BottleCrop) -> bytes:
-    """box_crop бутылки для модели: не крупнее QUERY_MAX_SIDE по большей стороне, PNG."""
+def query_jpeg(crop: BottleCrop) -> bytes:
+    """box_crop бутылки для модели: не крупнее QUERY_MAX_SIDE по большей стороне, JPEG."""
     image = crop.box_crop
     if max(image.shape[:2]) > QUERY_MAX_SIDE:
         resized = Image.fromarray(image)
         resized.thumbnail((QUERY_MAX_SIDE, QUERY_MAX_SIDE), Image.Resampling.LANCZOS)
         image = np.asarray(resized)
-    return encode_image(image, "png", 95)
+    return encode_image(image, "jpg", IMAGE_QUALITY)
 
 
 def observations(checklist: dict) -> str:
@@ -221,8 +221,8 @@ class NearDuplicateResolver:
     Круг групп: по каждой группе из нескольких позиций один вызов модели — лучшая позиция группы либо not_found; позиция без группы
     (группа из одной) проходит дальше без вызова. Финал: финалисты — выбранные в группах и одиночки, в порядке поиска; один вызов модели
     выбирает среди них позицию либо not_found, с одним финалистом-одиночкой это проверка. Финал не нужен, если финалист один и его уже
-    выбрала модель в своей группе; финалистов нет — отказ. Вызовы одного круга идут параллельно по всем бутылкам, не больше NDR_CONCURRENCY
-    разом. QUERY — box_crop бутылки, ELEMENT — картинка и карточка позиции; ответ строго ограничен slug позиций вызова либо not_found.
+    выбрала модель в своей группе; финалистов нет — отказ. Вызовы одного круга идут параллельно по всем бутылкам, не больше
+    execution.concurrency разом на резолвер: лимит общий для всех вызовов экземпляра и его копий with_trace_dir, в том числе из разных потоков. QUERY — box_crop бутылки, ELEMENT — картинка и карточка позиции; ответ строго ограничен slug позиций вызова либо not_found.
     Ошибка API или контракта — NearDuplicateError, top-1 вместо ответа не подставляется.
     Без settings — config.yaml рядом с модулем; trace_dir — куда писать полный ответ модели на каждый вызов: <uuid бутылки>/group<N>.json
     и final.json; cards — карточки позиций из каталога (cards_from_rows по строкам CSV, Pipeline берёт их из своего каталога) вместо
@@ -238,6 +238,9 @@ class NearDuplicateResolver:
         self.settings = settings if settings is not None else load_config()
         self.trace_dir = trace_dir
         self.cards = cards
+        limit = self.settings.execution.concurrency
+        self.semaphore = BoundedSemaphore(limit)
+        self.executor = ThreadPoolExecutor(max_workers=limit)
         self.prompts = {
             name: {
                 "content": (HERE / "prompts" / f"{name}.txt").read_text(
@@ -252,7 +255,7 @@ class NearDuplicateResolver:
     ) -> list[MatchedBottle | UnmatchedBottle]:
         """Ответ по каждой бутылке, в том же порядке: круг групп по всем бутылкам, потом финал по всем бутылкам."""
         groups = [split_groups(result) for result in found]
-        queries = [query_png(result.crop) for result in found]
+        queries = [query_jpeg(result.crop) for result in found]
         group_calls = {
             (i, rank): Call(
                 result.crop, queries[i], TASK_GROUP, members, f"group{rank}"
@@ -321,7 +324,7 @@ class NearDuplicateResolver:
         """Вызовы параллельно, ответы в том же порядке."""
         if len(calls) < 2:
             return [self._ask(call) for call in calls]
-        return list(NDR_EXECUTOR.map(self._ask, calls))
+        return list(self.executor.map(self._ask, calls))
 
     def _ask(self, call: Call) -> Pick:
         """Один вызов модели; ответ вне контракта либо ошибка API — NearDuplicateError после записи trace."""
@@ -348,9 +351,10 @@ class NearDuplicateResolver:
                 "image_detail": generation.image_detail,
                 "provider": provider.routing.request_payload(),
                 "timeout": self.settings.execution.timeout_seconds,
+                "retries": self.settings.execution.retries,
             },
         }
-        with NDR_SEMAPHORE:
+        with self.semaphore:
             response = predict(request)
         self._write_trace(call, response)
         slugs = [candidate.slug for candidate in call.candidates]

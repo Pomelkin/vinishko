@@ -93,7 +93,7 @@ class MatchOut(CandidateOut):
     )
     checklist: dict = Field(
         default_factory=dict,
-        description="Наблюдения модели второго уровня по производителю, профилю и году из вызова, который выбрал позицию",
+        description="Наблюдения модели второго уровня из вызова, который выбрал позицию: differences — отличия надписей запроса и позиции (none, если нет), maker, profile, year",
     )
 
 

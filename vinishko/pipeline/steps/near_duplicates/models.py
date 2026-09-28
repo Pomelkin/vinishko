@@ -37,8 +37,13 @@ class SelectionObservation(StrictOutput):
 
 
 class SelectionChecklist(StrictOutput):
-    """Required evidence for the candidate or no-match decision."""
+    """Required evidence for the candidate or no-match decision.
 
+    ``differences`` comes first so the model lists printed product words that differ between QUERY and the
+    ELEMENT before it writes the rest and the slug.
+    """
+
+    differences: SelectionObservation
     maker: SelectionObservation
     profile: SelectionObservation
     year: SelectionObservation
