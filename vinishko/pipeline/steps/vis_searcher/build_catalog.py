@@ -531,6 +531,11 @@ def main(
     )
     upsert(client, collection, state.points())
     report(state, rows, len(without_photo), has_group, collection, report_path)
+    if cfg.snapshots is not None:
+        logger.info(
+            f"снапшот в хранилище снапшотов сам не обновляется; чтобы пустой qdrant поднимал эту сборку: "
+            f"python -m vinishko.pipeline.steps.vis_searcher.dump_collection --config {config_path}"
+        )
 
 
 if __name__ == "__main__":

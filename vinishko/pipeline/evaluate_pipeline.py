@@ -440,7 +440,7 @@ def is_e2e_miss(row: Row) -> bool:
     "--out",
     type=click.Path(file_okay=False, path_type=Path),
     default=None,
-    help="Куда писать report.json, per_image.csv и дампы; по умолчанию reports/e2e/<время>, для --image — runs/",
+    help="Куда писать report.json, per_image.csv и дампы; по умолчанию reports/pipeline/<время>, для --image — runs/",
 )
 def main(
     test_dir: Path,

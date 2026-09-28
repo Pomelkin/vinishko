@@ -1,7 +1,7 @@
 """FastAPI поверх пайплайна.
 
 POST /recognize принимает фото и отдаёт список бутылок, дошедших до поиска: маска на исходном фото, скор отбора и исход — выбранная
-позиция каталога (slug, скор, строка каталога, картинка из коллекции) либо отказ поиска или второго уровня с причиной. Объекты, отброшенные
+позиция каталога (slug, скор, строка каталога, картинка из коллекции; то же у каждого кандидата, когда второй уровень выключен) либо отказ поиска или второго уровня с причиной. Объекты, отброшенные
 нормализацией (не целевая бутылка, нет читаемой этикетки), в список не входят, только их число. GET /catalog/images/<имя> отдаёт картинку позиции,
 GET /health — состояние. Пайплайн поднимается при старте приложения; запросы к нему идут по одному, под замком: SAM3 и engine
 TensorRT не рассчитаны на параллельные вызовы из одного процесса. Запуск: python -m vinishko.app.
@@ -41,6 +41,7 @@ from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_IMAGE
 from vinishko.pipeline.steps.vis_searcher.search import VisSearcher
 from vinishko.pipeline.steps.vis_searcher.storage import encode_image
 from vinishko.pipeline.structs import BottleOutcome
+from vinishko.pipeline.structs import Candidate
 
 
 logger = setup_logger(fmt="detailed")
@@ -54,22 +55,24 @@ def polygons(polys: list | None) -> list[list[list[float]]] | None:
     return [[[float(x), float(y)] for x, y in poly] for poly in polys]
 
 
+def candidate_out(candidate: Candidate, catalog: Catalog) -> CandidateOut:
+    """Позиция в ответе: скор поиска, картинка из коллекции и строка каталога; что все позиции коллекции есть в каталоге, Pipeline проверил при старте."""
+    return CandidateOut(
+        slug=candidate.slug,
+        score=candidate.score,
+        group=candidate.group,
+        image_url=IMAGE_ROUTE.format(name=candidate.payload[FIELD_IMAGE]),
+        catalog=catalog.get(candidate.slug),
+    )
+
+
 def bottle_out(bottle: BottleOutcome, catalog: Catalog) -> BottleOut:
     """Ответ по одной бутылке из итога пайплайна."""
     match = None
     if bottle.match is not None:
-        position = bottle.match.candidate
-        if position.slug not in catalog:
-            logger.warning(
-                f"позиции {position.slug} нет в каталоге ({catalog.description}): коллекция и каталог из разных выгрузок"
-            )
         match = MatchOut(
-            slug=position.slug,
-            score=position.score,
+            **candidate_out(bottle.match.candidate, catalog).model_dump(),
             source=bottle.match.source,
-            group=position.group,
-            image_url=IMAGE_ROUTE.format(name=position.payload[FIELD_IMAGE]),
-            catalog=catalog.rows.get(position.slug, {}),
             checklist=bottle.match.checklist,
         )
     rejection = None
@@ -94,10 +97,7 @@ def bottle_out(bottle: BottleOutcome, catalog: Catalog) -> BottleOut:
         bbox=bottle.bbox,
         status=bottle.status,
         match=match,
-        candidates=[
-            CandidateOut(slug=c.slug, score=c.score, group=c.group)
-            for c in bottle.candidates
-        ],
+        candidates=[candidate_out(c, catalog) for c in bottle.candidates],
         rejection=rejection,
     )
 

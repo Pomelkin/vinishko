@@ -15,7 +15,7 @@ qdrant:
 
 search:
   mode: groups # группы одинакового дизайна: скор группы — лучший скор её позиций из top_k; второму уровню нужна группа целиком, поэтому режим по умолчанию этот
-  top_groups: 3
+  top_groups: 5
   group_threshold: 0.7 # если лучший скор группы ниже, кандидатов нет. Гибрид SigLIP2 на тесте 2026-09-27: 0.70 — ни одного ложного отказа, 23% чужих режется сразу, остальных отсеивает второй уровень; без него максимум точности при 0.77 (recall@1 85.6%, ложных 5.6%, верных отказов 70%); 0.5 — выключить отказ для замеров
   # mode: top_n # просто top_k позиций без групп: для замеров поиска, второй уровень с ним не работает
   # cosine_threshold: 0.7
@@ -28,5 +28,14 @@ images:
   bucket: vino
   prefix: catalog
 
-cache_dir: ~/.cache/vino # engine TensorRT и картинки из S3
+snapshots:
+  # снапшоты коллекций qdrant: нет коллекции в qdrant — поиск при старте восстанавливает её отсюда, нет и снапшота — ошибка; снять снапшот — dump_collection
+  # kind: local
+  # dir: ../../../../datasets/snapshots
+  kind: s3
+  endpoint: https://s3.ru-6.storage.selcloud.ru
+  bucket: vino
+  prefix: qdrant-snapshots
+
+cache_dir: ~/.cache/vino # engine TensorRT, картинки и снапшоты из S3
 debug_path: null # директория для разбора глазами: на каждый вызов поддиректория с меткой времени

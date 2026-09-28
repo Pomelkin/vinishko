@@ -16,6 +16,7 @@ from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS
 from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_IMAGE
 from vinishko.pipeline.steps.vis_searcher.catalog import FIELD_SLUG
 from vinishko.pipeline.steps.vis_searcher.catalog import CollectionInfo
+from vinishko.pipeline.steps.vis_searcher.catalog import collection_slugs
 from vinishko.pipeline.steps.vis_searcher.catalog import connect
 from vinishko.pipeline.steps.vis_searcher.catalog import fetch_vectors
 from vinishko.pipeline.steps.vis_searcher.catalog import inspect
@@ -30,6 +31,8 @@ from vinishko.pipeline.steps.vis_searcher.device import Device
 from vinishko.pipeline.steps.vis_searcher.device import resolve_device
 from vinishko.pipeline.steps.vis_searcher.model import Encoder
 from vinishko.pipeline.steps.vis_searcher.model import fetch_model
+from vinishko.pipeline.steps.vis_searcher.snapshots import make_snapshot_store
+from vinishko.pipeline.steps.vis_searcher.snapshots import restore_collection
 from vinishko.pipeline.steps.vis_searcher.storage import ImageStore
 from vinishko.pipeline.steps.vis_searcher.storage import make_store
 from vinishko.pipeline.steps.vis_searcher.storage import read_manifest
@@ -63,7 +66,8 @@ class VisSearcher:
 
     Входы энкодера — encoder_input конфига: один кроп либо гибрид crop+box_crop, тогда каждый кроп кодируется отдельно, поиск идёт
     в пространстве каждого входа, выдачи объединяются по slug, скор позиции — среднее косинусов, и порог берётся по нему.
-    При создании сначала дешёвые проверки: контракт модели с Hugging Face, коллекция существует и не пуста, построена той же моделью
+    Если коллекции в qdrant нет, она восстанавливается из хранилища snapshots конфига (снапшот кладёт туда dump_collection); нет и снапшота —
+    ошибка. При создании сначала дешёвые проверки: контракт модели с Hugging Face, коллекция существует и не пуста, построена той же моделью
     и ревизией, размерность векторов, размер входа и набор входов совпадают. Потом скачивается граф и поднимается энкодер, последним
     хранилище картинок: его manifest.json с тем же отпечатком нормализации, что у коллекции, локальный кэш картинок S3 от этой же
     сборки (иначе сбрасывается), и картинка первой точки читается.
@@ -84,6 +88,8 @@ class VisSearcher:
         self.files = fetch_model(cfg.model, self.device.precision, cfg.revision)
         self.client = client or connect(cfg.qdrant)
         self.collection = cfg.qdrant.collection
+        if not self.client.collection_exists(self.collection):
+            self._restore()
         self.info = self._check_collection(inspect(self.client, self.collection))
         self.using = {inp: (inp if self.info.named else None) for inp in self.inputs}
         self.encoder = Encoder(self.files, self.device, cfg.batch_size, cfg.cache_dir)
@@ -92,6 +98,20 @@ class VisSearcher:
         logger.info(
             f"поиск готов: {self.encoder.description}; коллекция {self.info.name}, {self.info.count} точек ×{self.info.size}, "
             f"входы {'+'.join(self.inputs)}; картинки: {self.store.description}; режим {cfg.search.mode}"
+        )
+
+    def _restore(self) -> None:
+        snapshots = self.cfg.snapshots
+        if snapshots is None:
+            raise RuntimeError(
+                f"в qdrant нет коллекции {self.collection}, а snapshots в конфиге не задан: восстановить её неоткуда"
+            )
+        restore_collection(
+            self.client,
+            self.cfg.qdrant,
+            self.collection,
+            make_snapshot_store(snapshots, self.cfg.cache_dir),
+            snapshots.timeout,
         )
 
     def _check_collection(self, info: CollectionInfo) -> CollectionInfo:
@@ -133,6 +153,10 @@ class VisSearcher:
             )
         self.store.get(name)
         return manifest
+
+    def slugs(self) -> set[str]:
+        """Все позиции коллекции: оркестратор сверяет их с каталогом при старте."""
+        return collection_slugs(self.client, self.collection)
 
     def check_normalization(self, normalization: dict) -> None:
         """Нормализатор запроса вырезает кропы так же, как при сборке коллекции: normalization — Normalizer.crop_config; иначе ошибка с перечнем расхождений."""

@@ -25,33 +25,32 @@ class RejectionOut(BaseModel):
     message: str = Field(description="label и detail одной строкой")
 
 
-class MatchOut(BaseModel):
-    """Выбранная позиция каталога."""
+class CandidateOut(BaseModel):
+    """Позиция каталога с визуальным скором: кандидат поиска, когда второй уровень выключен; от неё же MatchOut."""
 
     slug: str
     score: float = Field(
         description="Скор визуального поиска: среднее косинусов по входам энкодера"
     )
-    source: str = Field(
-        description="vector — в группе одна позиция, модель не вызывалась; ndr_v5 — выбрала модель; search_top1 — второй уровень выключен"
-    )
     group: str = Field(description="Группа одинакового дизайна")
     image_url: str = Field(
         description="Картинка позиции из коллекции, относительный путь на этом же сервере"
     )
-    catalog: dict[str, str] = Field(description="Строка каталога: все колонки CSV")
+    catalog: dict[str, str] = Field(
+        description="Строка каталога, прочитанного при старте: все колонки CSV, ключи — заголовки"
+    )
+
+
+class MatchOut(CandidateOut):
+    """Выбранная позиция каталога."""
+
+    source: str = Field(
+        description="vector — в группе одна позиция, модель не вызывалась; ndr_v5 — выбрала модель"
+    )
     checklist: dict = Field(
         default_factory=dict,
         description="Наблюдения модели второго уровня по производителю, профилю и году; пусто без модели",
     )
-
-
-class CandidateOut(BaseModel):
-    """Кандидат поиска, когда второй уровень выключен."""
-
-    slug: str
-    score: float
-    group: str
 
 
 class BottleOut(BaseModel):

@@ -116,6 +116,9 @@ class SearcherStub:
     def check_normalization(self, normalization: dict) -> None:
         return None
 
+    def slugs(self) -> set[str]:
+        return set()
+
 
 class NearDuplicateResolverTests(unittest.TestCase):
     def setUp(self) -> None:

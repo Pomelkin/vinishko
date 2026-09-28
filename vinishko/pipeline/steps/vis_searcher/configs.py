@@ -69,6 +69,26 @@ class S3ImagesConfig(StrictModel):
     prefix: str = ""
 
 
+class LocalSnapshotsConfig(StrictModel):
+    """Снапшоты коллекций лежат в директории: <коллекция>.snapshot и паспорт <коллекция>.json."""
+
+    kind: Literal["local"]
+    dir: Path
+    timeout: float = Field(default=600.0, gt=0)
+    """Секунды на скачивание снапшота с qdrant и на загрузку в qdrant вместе с восстановлением."""
+
+
+class S3SnapshotsConfig(StrictModel):
+    """Снапшоты коллекций лежат в S3-совместимом хранилище под prefix; скачанный снапшот оседает в cache_dir. Реквизиты — как у boto3: окружение или ~/.aws."""
+
+    kind: Literal["s3"]
+    endpoint: str
+    bucket: str
+    prefix: str = ""
+    timeout: float = Field(default=600.0, gt=0)
+    """Секунды на скачивание снапшота с qdrant и на загрузку в qdrant вместе с восстановлением."""
+
+
 class VisSearcherConfig(StrictModel):
     """Настройки визуального поиска."""
 
@@ -90,6 +110,11 @@ class VisSearcherConfig(StrictModel):
     qdrant: QdrantConfig
     search: Annotated[TopNSearch | GroupSearch, Field(discriminator="mode")]
     images: Annotated[LocalImagesConfig | S3ImagesConfig, Field(discriminator="kind")]
+    snapshots: (
+        Annotated[LocalSnapshotsConfig | S3SnapshotsConfig, Field(discriminator="kind")]
+        | None
+    ) = None
+    """Откуда поиск восстанавливает коллекцию, если в qdrant её нет; кладёт туда dump_collection. Без него коллекция берётся только из qdrant."""
     cache_dir: Path = Path("~/.cache/vino")
     """Кэш engine TensorRT и картинок из S3."""
     debug_path: Path | None = None
@@ -124,6 +149,8 @@ def load_config(path: Path | None = None) -> VisSearcherConfig:
         cfg.qdrant.path = resolve_path(cfg.qdrant.path, base)
     if isinstance(cfg.images, LocalImagesConfig):
         cfg.images.dir = resolve_path(cfg.images.dir, base)
+    if isinstance(cfg.snapshots, LocalSnapshotsConfig):
+        cfg.snapshots.dir = resolve_path(cfg.snapshots.dir, base)
     if (
         resolve_path(Path(cfg.model), base).is_dir()
     ):  # локальная директория экспорта вместо репозитория HF: путь от файла конфига

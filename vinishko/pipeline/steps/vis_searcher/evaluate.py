@@ -466,7 +466,8 @@ def main(
             load_norm_config(norm_config, list(overrides)), norm_config.resolve().parent
         ),
         searcher,
-    )
+        resolve=False,
+    )  # замер первого уровня: второй уровень здесь только тратил бы вызовы модели и время
     logger.info(
         f"тест: {len(pairs)} фото, с ответом в коллекции {sum(slug in known for _, slug in pairs)}, без ответа {sum(not slug for _, slug in pairs)}; коллекция {searcher.info.count} позиций"
     )

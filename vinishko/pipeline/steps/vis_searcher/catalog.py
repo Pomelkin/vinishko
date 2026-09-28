@@ -93,6 +93,23 @@ def sample_payload(client: QdrantClient, name: str) -> dict:
     return points[0].payload
 
 
+def collection_slugs(client: QdrantClient, name: str) -> set[str]:
+    """Все slug коллекции: постраничный обход с одним полем метаданных."""
+    slugs: set[str] = set()
+    offset = None
+    while True:
+        points, offset = client.scroll(
+            name,
+            limit=1024,
+            offset=offset,
+            with_payload=[FIELD_SLUG],
+            with_vectors=False,
+        )
+        slugs.update((p.payload or {})[FIELD_SLUG] for p in points)
+        if offset is None:
+            return slugs
+
+
 def encoder_inputs(payload: dict) -> list[str]:
     """Входы энкодера из метаданных точки: список; у сборок до 2026-09-27 строка, а без поля — crop."""
     raw = payload.get(FIELD_ENCODER_INPUT, "crop")
