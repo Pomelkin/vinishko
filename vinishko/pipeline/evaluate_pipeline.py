@@ -11,6 +11,7 @@ import csv
 import json
 import shutil
 import statistics
+from collections import Counter
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import fields
@@ -27,7 +28,6 @@ from rich.table import Table
 from vinishko.pipeline.pipeline import Pipeline
 from vinishko.pipeline.pipeline import PipelineResult
 from vinishko.pipeline.steps.near_duplicates import NearDuplicateResolver
-from vinishko.pipeline.steps.near_duplicates.resolve import SOURCE_MODEL
 from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
 from vinishko.pipeline.steps.normalization.normalize import Normalizer
 from vinishko.pipeline.steps.normalization.normalize import (
@@ -71,7 +71,9 @@ class Row(SearchRow):
     answer: str
     """Итоговый slug; пусто — отказ."""
     answer_source: str
-    """vector — в группе одна позиция; ndr_v5 — выбрала модель; search_top1 — без второго уровня; пусто — отказ."""
+    """group — модель выбрала внутри группы, других финалистов не было; final — выбрала в финале; search_top1 — без второго уровня; пусто — отказ."""
+    model_calls: int
+    """Вызовов модели второго уровня на фото, по всем бутылкам: файлов trace в resolve/."""
     final: str
     """Одно из FINAL."""
     correct: bool | None
@@ -103,7 +105,7 @@ def decide(result: PipelineResult) -> tuple[str, str, str, list[str]]:
     return f"rejected_{verdict.rejection.stage}", "", "", []
 
 
-def e2e_row(search_row: SearchRow, result: PipelineResult) -> Row:
+def e2e_row(search_row: SearchRow, result: PipelineResult, model_calls: int) -> Row:
     """Строка отчёта: поля поиска плюс итог."""
     final, answer, source, group = decide(result)
     if search_row.in_catalog:
@@ -119,6 +121,7 @@ def e2e_row(search_row: SearchRow, result: PipelineResult) -> Row:
         **asdict(search_row),
         answer=answer,
         answer_source=source,
+        model_calls=model_calls,
         final=final,
         correct=correct,
         group_correct=group_correct,
@@ -132,7 +135,7 @@ def e2e_metrics(rows: list[Row], timings: list[dict[str, float]]) -> dict:
     верными по построению); accuracy_all_images — то же, но такие фото считаются ошибкой, это честный счёт на тесте. precision — доля
     верных среди выданных ответов, recall — доля верных среди фото с ответом, f1 — их гармоническое среднее; confusion — исходы в штуках.
     По фото с ответом: group_of_answer, wrong_slug, ложные отказы по шагам. По фото без ответа: correct_reject по шагам и false_accept.
-    resolved_by_model — сколько раз звали модель.
+    model_calls — вызовов модели второго уровня всего и на фото, answers_by_source — кто выбрал выданные ответы.
     """
     with_answer = [r for r in rows if r.in_catalog]
     without = [r for r in rows if not r.slug]
@@ -181,10 +184,11 @@ def e2e_metrics(rows: list[Row], timings: list[dict[str, float]]) -> dict:
         "correct_reject_search": share(r.final == "rejected_search" for r in without),
         "correct_reject_resolve": share(r.final == "rejected_resolve" for r in without),
         "false_accept": share(r.final == "matched" for r in without),
-        "resolved_by_model": sum(
-            r.answer_source == SOURCE_MODEL or r.final == "rejected_resolve"
-            for r in rows
-        ),
+        "model_calls": sum(r.model_calls for r in rows),
+        "model_calls_per_image": round(statistics.mean(r.model_calls for r in rows), 3)
+        if rows
+        else None,
+        "answers_by_source": dict(Counter(r.answer_source for r in answered)),
         "seconds_per_image": round(statistics.mean(r.seconds for r in rows), 3)
         if rows
         else None,
@@ -459,8 +463,8 @@ def main(
     """Прогнать фото через весь пайплайн и разложить выходы шагов по папкам.
 
     На фото: normalization/ — кропы годных бутылок, маски и json как у CLI нормализации плюс markup.json со всеми бутылками и причинами
-    отказов; search/ — разбор поиска: кропы запроса, картинки кандидатов со скором и группой в имени, results.json; resolve/ — trace ответа
-    модели второго уровня по uuid бутылки; result.json — итог по каждой бутылке и время шагов. По тестовому набору сверх того report.json
+    отказов; search/ — разбор поиска: кропы запроса, картинки кандидатов со скором и группой в имени, results.json; resolve/<uuid бутылки>/ —
+    ответ модели второго уровня на каждый вызов: group<N>.json по группам, final.json; result.json — итог по каждой бутылке и время шагов. По тестовому набору сверх того report.json
     с метриками поиска и итогового ответа и per_image.csv. Устройства — NORMALIZER_DEV и VIS_SEARCHER_DEV, ключ модели — OPENROUTER_API_KEY.
     """
     if image is not None:
@@ -582,7 +586,8 @@ def run(
             if resolver is not None:
                 pipeline.resolver = resolver.with_trace_dir(dump_dir / "resolve")
             search_row, result = evaluate_image(pipeline, path, slug, known)
-            row = e2e_row(search_row, result)
+            calls = len(list((dump_dir / "resolve").glob("*/*.json")))
+            row = e2e_row(search_row, result, calls)
             rows.append(row)
             timings.append(result.timings)
             if dump == "all" or (dump == "misses" and is_e2e_miss(row)):

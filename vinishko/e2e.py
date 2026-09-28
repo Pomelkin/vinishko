@@ -9,6 +9,7 @@ import csv
 import json
 import statistics
 import time
+from collections import Counter
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import fields
@@ -49,6 +50,7 @@ class Row:
     """Шаг отказа первой бутылки; пусто, если ответ есть."""
     reason: str
     source: str
+    """Кто выбрал ответ: group, final; пусто, если отказ."""
     correct: bool
     """Верный slug либо отказ на фото без ответа; ошибка сервиса — неверно."""
     seconds: float
@@ -128,9 +130,7 @@ def metrics(rows: list[Row]) -> dict:
             for stage in ("normalization", "search", "resolve")
         },
         "no_bottle": sum(r.status == "no_bottle" for r in rows),
-        "resolved_by_model": sum(
-            r.source == "ndr_v5" or r.stage == "resolve" for r in rows
-        ),
+        "answers_by_source": dict(Counter(r.source for r in answered)),
         "seconds": {
             "mean": round(statistics.mean(seconds), 3),
             "p50": round(statistics.median(seconds), 3),

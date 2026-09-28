@@ -60,7 +60,7 @@ Multipart-поле `image`: jpeg, png, webp, heic. Ответ — бутылки
       "status": "matched",
       "match": {"slug": "…", "score": 0.83, "group": "…",
                 "image_url": "/catalog/images/<slug>.jpg", "catalog": {"Название вина": "…", "Винодельня": "…", …},
-                "source": "ndr_v5", "checklist": {"maker": {"observation": "…"}, "profile": {…}, "year": {…}}},
+                "source": "final", "checklist": {"maker": {"observation": "…"}, "profile": {…}, "year": {…}}},
       "candidates": [], "rejection": null
     },
     {
@@ -75,10 +75,10 @@ Multipart-поле `image`: jpeg, png, webp, heic. Ответ — бутылки
 }
 ```
 
-`status`: `matched` — выбрана одна позиция, `match.catalog` — строка каталога целиком, `match.source` —
-`ndr_v5` (модель выбрала среди группы) либо `vector` (в группе одна позиция). Используется групповой пайплайн с `NearDuplicateResolver`.
-`rejected` — отказ, `rejection.stage` говорит, какой шаг: `search` (нет похожих в каталоге) либо `resolve`
-(модель не нашла точного совпадения в группе); `candidates` — сервис поднят с `--no-resolve`, кандидаты поиска как есть, у каждого те же
+`status`: `matched` — выбрана одна позиция, `match.catalog` — строка каталога целиком, `match.source` — `group` (модель выбрала позицию
+внутри её группы, других финалистов не было) либо `final` (модель выбрала её среди лучших позиций групп и одиночек либо подтвердила
+единственную позицию); `rejected` — отказ, `rejection.stage` говорит, какой шаг: `search` (нет похожих в каталоге) либо `resolve`
+(модель не нашла точного совпадения среди кандидатов); `candidates` — сервис поднят с `--no-resolve`, кандидаты поиска как есть, у каждого те же
 `slug`, `score`, `group`, `image_url` и `catalog`, что у `match`, без `source` и `checklist`. Фото, где ни одна
 бутылка не дошла до поиска, — пустой список и `ignored` со счётом. Файл, который не читается как изображение, — 400.
 
