@@ -57,7 +57,7 @@ Multipart-поле `image`: jpeg, png, webp, heic. Ответ — бутылки
 
 ## Признаки вина вне каталога в ответе `/recognize`
 
-`AUTO_WHATIS = False` в начале `router.py` отключает вызовы whatis из `POST /recognize`. При `AUTO_WHATIS = True` (после перезапуска)
+`AUTO_WHATIS=false` в окружении (по умолчанию) отключает автоматические вызовы whatis. При `AUTO_WHATIS=true` (после перезапуска)
 `POST /recognize` отправляет в whatis JPEG-кроп **всей бутылки** (`box_crop`) по каждой бутылке с отказом поиска или второго уровня,
 по очереди. Для найденных позиций, кандидатов без второго уровня и объектов, отброшенных нормализацией, whatis не вызывается.
 Каждый вызов расходует токены OpenRouter и увеличивает время ответа. Исходные `status`, `rejection` и `match` сохраняются, у бутылки
@@ -73,3 +73,7 @@ Multipart-поле `image`: jpeg, png, webp, heic. Ответ — бутылки
 Если whatis ответил ошибкой, распознавание всё равно возвращает HTTP 200 с исходным результатом, `unknown_wine` — `null`,
 `unknown_wine_error` — код и `detail`, например `{"status_code": 502, "detail": "Recognition is temporarily unavailable"}`.
 У остальных бутылок оба поля `null`. Общее время вызовов whatis — `timings_s.whatis`.
+
+## Контракт интерфейса
+
+`/api/recognize` использует тот же пайплайн, нормализует маски и добавляет до пяти похожих кандидатов. `/api/wines` и `/api/wines/{slug}` предоставляют каталог; `/api/catalog/images/{name}` — изображения. Полный контракт — [frontend/API.md](../../frontend/API.md). Исходный `/recognize` сохранён. Лимит фото — 20 МиБ/80 МП, число бутылок задаётся `MAX_BOTTLES` (по умолчанию 10) или `--max-bottles`.

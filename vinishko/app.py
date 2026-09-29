@@ -18,6 +18,9 @@ from pathlib import Path
 import rich_click as click
 import uvicorn
 from fastapi import FastAPI
+from fastapi import HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from kostyl.utils import setup_logger
 
 from vinishko.pred.pipeline.catalog import load_catalog
@@ -38,6 +41,8 @@ from vinishko.pred.pipeline.steps.vis_searcher.configs import (
     load_config as load_search_config,
 )
 from vinishko.pred.router import router as pred_router
+from vinishko.pred.frontend import catalog_images, router as frontend_router
+from vinishko.pred.ui import WineCatalog
 from vinishko.sommelier.router import router as sommelier_router
 from vinishko.sommelier.service import SommelierService
 from vinishko.sommelier.storage import JsonSessionStore
@@ -46,6 +51,18 @@ from vinishko.whatis.service import RecognitionService
 
 
 logger = setup_logger(fmt="detailed")
+FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend" / "dist"
+
+
+def default_pipeline() -> Pipeline:
+    max_bottles = int(os.getenv("MAX_BOTTLES", "10"))
+    if not 1 <= max_bottles <= 100:
+        raise ValueError("MAX_BOTTLES должен быть от 1 до 100")
+    config = load_norm_config(
+        NORM_DIR / "normalize.toml",
+        [f"selection.max_bottles={max_bottles}"],
+    )
+    return Pipeline(normalizer=Normalizer(config, NORM_DIR))
 
 
 def create_app(pipeline: Pipeline | None = None) -> FastAPI:
@@ -58,9 +75,15 @@ def create_app(pipeline: Pipeline | None = None) -> FastAPI:
         app.state.sommelier = SommelierService(JsonSessionStore(sessions.resolve()))
         app.state.whatis = RecognitionService()
         app.state.pipeline = (
-            pipeline if pipeline is not None else await asyncio.to_thread(Pipeline)
+            pipeline
+            if pipeline is not None
+            else await asyncio.to_thread(default_pipeline)
         )
         app.state.lock = threading.Lock()
+        app.state.ui_catalog = WineCatalog(
+            app.state.pipeline.catalog.rows,
+            await asyncio.to_thread(catalog_images, app.state.pipeline),
+        )
         logger.info("приложение готово")
         yield
 
@@ -72,6 +95,26 @@ def create_app(pipeline: Pipeline | None = None) -> FastAPI:
     app.include_router(pred_router)
     app.include_router(sommelier_router)
     app.include_router(whatis_router)
+    app.include_router(frontend_router)
+    app.include_router(sommelier_router, prefix="/api")
+    app.include_router(whatis_router, prefix="/api")
+    if (FRONTEND_DIR / "assets").is_dir():
+        app.mount(
+            "/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets"
+        )
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/scan/{scan_id}", include_in_schema=False)
+    @app.get("/wine/{slug}", include_in_schema=False)
+    async def frontend() -> FileResponse:
+        index = FRONTEND_DIR / "index.html"
+        if not index.is_file():
+            raise HTTPException(
+                status_code=503,
+                detail="Откройте frontend на порту 8080 или соберите frontend/dist",
+            )
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
     return app
 
 
@@ -86,6 +129,13 @@ app = create_app()
     help="0.0.0.0 — слушать все интерфейсы",
 )
 @click.option("--port", type=int, default=8000, show_default=True)
+@click.option(
+    "--max-bottles",
+    type=click.IntRange(1, 100),
+    default=10,
+    envvar="MAX_BOTTLES",
+    show_default=True,
+)
 @click.option(
     "--pipeline-config",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
@@ -116,17 +166,22 @@ app = create_app()
 def main(
     host: str,
     port: int,
+    max_bottles: int,
     pipeline_config: Path,
     search_config: Path,
     norm_config: Path,
     no_resolve: bool,
 ) -> None:
     """Поднять пайплайн и HTTP-сервер."""
+    load_openrouter_env()
     cfg = load_pipeline_config(pipeline_config)
     search_cfg = load_search_config(search_config)
     search_cfg.debug_path = None
     pipeline = Pipeline(
-        Normalizer(load_norm_config(norm_config, []), norm_config.resolve().parent),
+        Normalizer(
+            load_norm_config(norm_config, [f"selection.max_bottles={max_bottles}"]),
+            norm_config.resolve().parent,
+        ),
         VisSearcher(search_cfg),
         catalog=load_catalog(cfg.catalog, cfg.slug_column),
         resolve=not no_resolve,
@@ -135,4 +190,5 @@ def main(
 
 
 if __name__ == "__main__":
+    load_openrouter_env()
     main()

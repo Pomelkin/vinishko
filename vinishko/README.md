@@ -33,7 +33,7 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.override.yml up -d --
 `frontend.Dockerfile` (сборка Vite, nginx раздаёт её и проксирует `/api/` в приложение). Колёса из `wheels/` копируются в сборку обоих
 образов приложения: uv сверяет с `uv.lock` все path-источники. torch из `uv.lock` — сборка PyPI под CUDA 12.8, её библиотеки CUDA едут и в
 CPU-образ. Веса SAM3, модель поиска, engine TensorRT и картинки из S3 качаются при первом старте в том `cache`, диалоги сомелье — в том
-`sessions`; коллекцию qdrant приложение восстанавливает из снапшота в S3. Фронт пока собирается в mock-режиме: на контракт API он не переведён.
+`sessions`; коллекцию qdrant приложение восстанавливает из снапшота в S3. Фронтенд работает в HTTP-режиме: адаптер `/api` отдаёт каталог и распознавание, а также подключает сомелье и whatis. Контракт описан в [frontend/API.md](../frontend/API.md).
 
 Пайплайн поднимается при старте: нормализация, поиск, второй уровень и каталог по своим конфигам (`pred/pipeline/steps/normalization/normalize.toml`,
 `pred/pipeline/steps/vis_searcher/config.yaml`, `pred/pipeline/steps/near_duplicates/config.yaml`, `pred/pipeline/config.yaml`). Устройства — `NORMALIZER_DEV` и `VIS_SEARCHER_DEV`,

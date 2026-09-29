@@ -8,7 +8,7 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 COPY frontend/ ./
 # mock — демонстрационные данные без бэкенда; http — запросы в VITE_API_BASE_URL
-ARG VITE_API_MODE=mock
+ARG VITE_API_MODE=http
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_MODE=$VITE_API_MODE \
     VITE_API_BASE_URL=$VITE_API_BASE_URL

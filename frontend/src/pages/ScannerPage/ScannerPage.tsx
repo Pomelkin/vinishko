@@ -19,6 +19,7 @@ export function ScannerPage() {
     navigate = useNavigate(),
     [params, setParams] = useSearchParams();
   const [query, setQuery] = useState(""),
+    [visibleCount, setVisibleCount] = useState(24),
     [wines, setWines] = useState<WineSummary[]>([]),
     [error, setError] = useState<string | null>(null),
     [loading, setLoading] = useState(true);
@@ -66,6 +67,7 @@ export function ScannerPage() {
       (region === "Все" || w.region === region),
   );
   const active = color !== "Все" || region !== "Все";
+  useEffect(() => setVisibleCount(24), [query, color, region]);
   const closeDemo = () => {
     setDemoOpen(false);
     if (params.has("demo")) {
@@ -162,7 +164,7 @@ export function ScannerPage() {
           ) : visible.length ? (
             <>
               <div className="grid">
-                {visible.map((w) => (
+                {visible.slice(0, visibleCount).map((w) => (
                   <WineCard
                     key={w.slug}
                     wine={w}
@@ -176,6 +178,14 @@ export function ScannerPage() {
                 <p className={s.count} role="status">
                   Найдено вин: {visible.length}
                 </p>
+              )}
+              {visibleCount < visible.length && (
+                <button
+                  className="secondary"
+                  onClick={() => setVisibleCount((count) => count + 24)}
+                >
+                  Показать ещё
+                </button>
               )}
             </>
           ) : (
@@ -234,7 +244,16 @@ export function ScannerPage() {
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
               >
-                {["Все", "Крым", "Кубань"].map((v) => (
+                {[
+                  "Все",
+                  ...Array.from(
+                    new Set(
+                      wines
+                        .map((w) => w.region)
+                        .filter((r): r is string => Boolean(r)),
+                    ),
+                  ).sort((a, b) => a.localeCompare(b, "ru")),
+                ].map((v) => (
                   <option key={v}>{v}</option>
                 ))}
               </select>

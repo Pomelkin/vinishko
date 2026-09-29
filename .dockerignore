@@ -23,4 +23,7 @@ frontend/references
 frontend/test-results
 frontend/playwright-report
 frontend/.env.local
+frontend/.env*
+frontend/.verification*
+frontend/.catalog-verification.json
 frontend/*.tsbuildinfo

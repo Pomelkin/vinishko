@@ -41,10 +41,18 @@ export function includesPoint(p: Point[], [x, y]: Point) {
 /** Smallest containing silhouette wins; stable id breaks equal-area ties. */
 export function hitTest(detections: BottleDetection[], point: Point) {
   return detections
-    .filter((d) => includesPoint(d.polygon, point))
+    .filter((d) =>
+      (d.polygons || [d.polygon]).some((p) => includesPoint(p, point)),
+    )
     .sort(
       (a, b) =>
-        polygonArea(a.polygon) - polygonArea(b.polygon) ||
-        a.id.localeCompare(b.id),
+        (a.polygons || [a.polygon]).reduce(
+          (sum, p) => sum + polygonArea(p),
+          0,
+        ) -
+          (b.polygons || [b.polygon]).reduce(
+            (sum, p) => sum + polygonArea(p),
+            0,
+          ) || a.id.localeCompare(b.id),
     )[0];
 }

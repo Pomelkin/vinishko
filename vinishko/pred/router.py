@@ -8,6 +8,7 @@ TensorRT не рассчитаны на параллельные вызовы и
 """
 
 import asyncio
+import os
 import threading
 import time
 from io import BytesIO
@@ -33,6 +34,7 @@ from vinishko.pred.pipeline.steps.vis_searcher.search import VisSearcher
 from vinishko.pred.pipeline.steps.vis_searcher.storage import encode_image
 from vinishko.pred.pipeline.structs import BottleOutcome
 from vinishko.pred.pipeline.structs import Candidate
+from vinishko.pred.pipeline.structs import BottleCandidates
 from vinishko.pred.schemas import BottleOut
 from vinishko.pred.schemas import CandidateOut
 from vinishko.pred.schemas import HealthResponse
@@ -46,6 +48,8 @@ from vinishko.whatis.service import RecognitionService
 
 IMAGE_ROUTE = "/catalog/images/{name}"
 AUTO_WHATIS = False
+MAX_RECOGNITION_BYTES = 20 * 1024 * 1024
+MAX_IMAGE_PIXELS = 80_000_000
 
 router = APIRouter(tags=["recognition"])
 
@@ -122,7 +126,13 @@ async def attach_unknown_wine(
 ) -> None:
     """При AUTO_WHATIS — категория и винодельня от whatis по box_crop каждой отвергнутой бутылки, по очереди; ошибка whatis ложится в unknown_wine_error, исход распознавания не меняется."""
     rejected = [b for b in response.bottles if b.status == "rejected"]
-    if not AUTO_WHATIS or not rejected:
+    if (
+        not (
+            AUTO_WHATIS
+            or os.getenv("AUTO_WHATIS", "false").lower() in {"true", "1", "yes"}
+        )
+        or not rejected
+    ):
         return
     crops = {b.uuid: b.crop for b in result.bottles if b.crop is not None}
     started = time.perf_counter()
@@ -173,10 +183,25 @@ async def recognize(
     image: Annotated[UploadFile, File(description="Фото: jpeg, png, webp, heic")],
 ) -> RecognizeResponse:
     """Фото → бутылки с исходом."""
-    data = await image.read()
+    data = await image.read(MAX_RECOGNITION_BYTES + 1)
+    if len(data) > MAX_RECOGNITION_BYTES:
+        raise HTTPException(status_code=413, detail="Фото превышает 20 МиБ")
+
+    def decode() -> Image.Image:
+        with Image.open(BytesIO(data)) as source:
+            if source.width * source.height > MAX_IMAGE_PIXELS:
+                raise HTTPException(
+                    status_code=413, detail="Фото превышает 80 мегапикселей"
+                )
+        return open_image(BytesIO(data))
+
     try:
-        picture = open_image(BytesIO(data))
-    except (UnidentifiedImageError, OSError) as error:
+        picture = await asyncio.to_thread(decode)
+    except Image.DecompressionBombError as error:
+        raise HTTPException(
+            status_code=413, detail="Слишком большое разрешение фото"
+        ) from error
+    except (UnidentifiedImageError, OSError, ValueError) as error:
         raise HTTPException(
             status_code=400, detail=f"файл не читается как изображение: {error}"
         ) from error
@@ -189,6 +214,16 @@ async def recognize(
 
     result = await asyncio.to_thread(run)
     response = recognize_response(picture, result, pipe.catalog)
+    if request.url.path == "/api/recognize":
+        found = {
+            b.crop.uuid: b.candidates
+            for b in result.search
+            if isinstance(b, BottleCandidates)
+        }
+        for bottle in response.bottles:
+            bottle.candidates = [
+                candidate_out(c, pipe.catalog) for c in found.get(bottle.uuid, [])
+            ]
     await attach_unknown_wine(response, result, request.app.state.whatis)
     return response
 
@@ -202,7 +237,13 @@ async def catalog_image(request: Request, name: str) -> Response:
             status_code=404, detail="поиск выключен, картинок коллекции нет"
         )
     store = pipe.searcher.store
+    if "/" in name or "\\" in name or name in {".", ".."}:
+        raise HTTPException(status_code=404, detail="Изображение не найдено")
     if not await asyncio.to_thread(store.exists, name):
         raise HTTPException(status_code=404, detail=f"в хранилище нет {name}")
     picture = await asyncio.to_thread(store.get, name)
-    return Response(content=encode_image(picture, "jpg", 90), media_type="image/jpeg")
+    return Response(
+        content=await asyncio.to_thread(encode_image, picture, "jpg", 90),
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )

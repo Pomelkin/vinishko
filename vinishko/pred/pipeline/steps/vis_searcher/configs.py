@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Annotated
 from typing import Literal
@@ -141,9 +142,14 @@ class VisSearcherConfig(StrictModel):
 def load_config(path: Path | None = None) -> VisSearcherConfig:
     """Конфиг из YAML; относительные пути внутри считаются от директории файла."""
     path = (path or DEFAULT_CONFIG).resolve()
-    cfg = VisSearcherConfig.model_validate(
-        yaml.safe_load(path.read_text(encoding="utf-8"))
-    )
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if "QDRANT_HOST" in os.environ:
+        data["qdrant"].update(host=os.environ["QDRANT_HOST"], path=None)
+    if "QDRANT_PORT" in os.environ:
+        data["qdrant"]["port"] = int(os.environ["QDRANT_PORT"])
+    if "QDRANT_HTTPS" in os.environ:
+        data["qdrant"]["https"] = os.environ["QDRANT_HTTPS"].lower() in {"true", "1", "yes"}
+    cfg = VisSearcherConfig.model_validate(data)
     base = path.parent
     cfg.cache_dir = resolve_path(cfg.cache_dir, base)
     if cfg.debug_path is not None:

@@ -1,60 +1,42 @@
-# Проект API-контракта
+# HTTP API интерфейса
 
-Это предложение для будущего backend, а не описание работающего сервиса. Полные TypeScript-типы и схемы валидации Zod находятся в `src/shared/api/contracts.ts`.
+Рабочий API единого FastAPI-приложения. Схемы TypeScript и Zod — `src/shared/api/contracts.ts`, серверный адаптер — `vinishko/pred/frontend.py` и `ui.py`. В Docker nginx сохраняет префикс `/api`; Vite проксирует его на приложение.
 
-| Метод и путь | Запрос | Ответ |
-| --- | --- | --- |
-| `POST /api/recognize` | `multipart/form-data`, поле `image`, JPEG после нормализации ориентации | `RecognitionResponse` |
-| `GET /api/wines/:slug` | URL-encoded slug | `WineDetails` |
-| `GET /api/wines?q=...` | строка поиска; пустая строка означает каталог | `WineSummary[]` |
+| Метод и путь | Назначение |
+| --- | --- |
+| `POST /api/recognize` | Multipart `image`, результат `RecognitionResponse` |
+| `GET /api/wines?q=...` | Каталог `WineSummary[]`, поиск по словам в названии, винодельне, регионе и сортах |
+| `GET /api/wines/{slug}` | `WineDetails`, 404 для неизвестного slug |
+| `GET /api/catalog/images/{name}` | JPEG из хранилища поисковой коллекции |
+| `GET /api/health` | Готовность приложения и сведения о моделях/каталоге |
+| `POST /api/sommelier/sessions/{uuid7}` | Создать диалог: JSON `{wine, candidates}` |
+| `POST /api/sommelier/sessions/{uuid7}/messages` | Вопрос: JSON `{content}` |
+| `GET /api/sommelier/sessions/{uuid7}` | История сообщений |
+| `DELETE /api/sommelier/sessions/{uuid7}` | Удалить диалог, ответ 204 |
+| `POST /api/whatis` | Multipart `image`, предполагаемые `{category, brand}` для неизвестной бутылки |
 
-Все три метода принимают `AbortSignal`. Отмена fetch прекращает ожидание клиента; backend сам решает, как останавливать вычисления. HTTP-ошибки не показываются пользователю как JSON. 404 карточки, отсутствие сети, серверная ошибка, повреждённый JSON и неверная схема имеют понятные сообщения.
+Исходные `/recognize`, `/sommelier/...`, `/whatis`, `/health`, `/catalog/images/...` сохранены. `/recognize` возвращает исходный ответ пайплайна с пиксельными координатами; `/api/recognize` адаптирует его к UI. Полные схемы — в `/docs` на порту 8000. Плоский ответ `{"slug":"..."}` не является контрактом UI.
 
-## Распознавание
+## Фото и геометрия
 
-```ts
-interface RecognitionResponse {
-  schemaVersion: '1.0';
-  requestId: string;
-  image: {
-    width: number;
-    height: number;
-    coordinateSpace: 'normalized';
-    orientationApplied: true;
-  };
-  bestMatch: { slug: string } | null;
-  metrics: {
-    f1Top1: number | null;
-    f1Top5: number | null;
-    scope: 'evaluation-dataset';
-    datasetId: string | null;
-    isMock: boolean;
-  };
-  detections: BottleDetection[];
-  processingTimeMs: number | null;
-}
-```
+Клиент исправляет EXIF-ориентацию и отправляет JPEG. Сервер ограничивает файл 20 МиБ и разрешение 80 мегапикселями, декодирует фото вне event loop. Невалидное изображение — 400, превышение лимита — 413. Вызовы моделей сериализованы замком. AbortSignal прекращает ожидание клиента, уже начавшееся вычисление на сервере может завершиться.
 
-Каждая `BottleDetection` содержит стабильный `id`, полигон **всей бутылки** в координатах `[0, 1]` и `detectionConfidence: number | null`. Минимум 3 точки, ненулевая площадь. Максимум 100 объектов, 4096 точек на объект. Полигоны должны описывать простой замкнутый силуэт без отверстий (замыкающий сегмент подразумевается). Чем грубее геометрия backend, тем грубее выделение; frontend не выполняет сегментацию.
+В `RecognitionResponse` сохранена версия `schemaVersion: '1.0'`. `image` содержит фактические width/height, `coordinateSpace: 'normalized'`, `orientationApplied: true`. Каждая detection содержит `id`, `polygon` (наибольший контур), `polygons` (все компоненты маски), `detectionConfidence`, `status`, `match`, `similar`. Координаты маски нормализованы в [0, 1]; фронтенд выделяет и обрабатывает нажатия по всем компонентам. Лимит бутылок — `MAX_BOTTLES`, по умолчанию 10, максимум 100.
 
-- `status: 'matched'`: `match: {slug, wine: WineSummary, matchConfidence}`, отдельно `similar: Candidate[]`.
-- `status: 'unmatched'`: `match: null`, `similar: Candidate[]`. Собственного выдуманного slug у неизвестной бутылки нет.
-- `Candidate`: `{slug, rank, similarityScore: number | null, wine: WineSummary}`. `slug` равен `wine.slug`; rank — положительное целое число.
-- Все confidence/similarity и F1 — числа от 0 до 1 либо `null`.
-- `image.width/height` должны совпадать с размерами нормализованного файла, отправленного клиентом. Нельзя незаметно повернуть или обрезать изображение на backend и вернуть координаты относительно другой версии.
-- `detections: []` означает, что объектов не найдено; это успешный ответ, а не техническая ошибка.
-- `bestMatch` относится ко всему фото; frontend не использует его для автоматического перехода мимо попапа.
+`matched` содержит карточку и slug, `unmatched` — `match: null`. В `similar` до пяти кандидатов поиска без выбранной позиции. `rejection` объясняет отказ поиска или второго уровня; `unknownWine` и `unknownWineError` передают результат необязательного whatis. `ignored` — число объектов, отброшенных нормализацией. Пустой `detections` — успешный ответ без распознанных бутылок.
 
-**F1 — качество на размеченной выборке, не вероятность правильности отдельной бутылки.** F1 хранится отдельно от confidence и не вычисляется на клиенте. Семантику top-1/top-5, используемую выборку и протокол оценки нужно согласовать с организатором. Mock возвращает `null` для обеих метрик и confidence.
+Косинусное сходство не является вероятностью: `matchConfidence: null`, поисковый score — `similarityScore`. F1 относится к размеченной выборке; `metrics.f1Top1`, `f1Top5`, `datasetId` равны null, `isMock: false`. `processingTimeMs` — сумма времени шагов пайплайна, а не полная задержка HTTP.
 
-## Данные вина
+## Каталог
 
-`WineSummary`: slug, name, producer, imageUrl (локальный путь или http/https, либо null), region, grapeVarieties[], color, category, vintage, shortDescription, ratings.
+Данные берутся из CSV пайплайна. Slug допускает дефисы и подчёркивания. Изображение берётся из реального payload Qdrant; если его нет, `imageUrl: null`. Неизвестные рейтинги, температура подачи, гастросочетания и крепость не придумываются: null или пустой массив. Некорректная крепость из CSV (например 135) не выводится как процент.
 
-`ratings.community` и `ratings.roskachestvo` независимы; каждое значение — `{value, scaleMax}` либо `null`. `value` не превышает `scaleMax`. В UI подпись источника и шкала сохраняются. Отсутствующие значения не превращаются в ноль.
+`WineDetails` дополнительно содержит исходную строку `catalog` и до пяти `candidateCatalogs` из той же группы близких позиций для сомелье. `similarWines` на карточке — позиции из этой группы; `similar` результата фото — кандидаты визуального поиска.
 
-`WineDetails` дополнительно содержит description, alcoholPercent (0–100 либо null), servingTemperature, foodPairings[], similarWines[]. Строковые отсутствующие свойства передаются как `null`, массивы — `[]`. `slug` — непустой kebab-case идентификатор.
+## Диалоги и признаки
 
-## Оценочный скрипт хакатона
+Сомелье получает исходную карточку и кандидатов. UUIDv7 создаётся в браузере; его сохранение позволяет загрузить историю после обновления страницы. Сервер хранит диалоги в томе `sessions`. Неоднозначно завершившийся POST автоматически не повторяется: сначала пользователь загружает историю.
 
-Плоский ответ `{"slug":"wine-slug"}` из PDF — отдельный формат. Будущий backend или отдельный endpoint оценки должен возвращать его для скрипта организатора. Он не заменяет расширенный контракт UI. Frontend не реализует этот сервер и не заявляет выполнение end-to-end требований хакатона.
+Whatis вызывается отдельной кнопкой по кропу выбранной бутылки. При пустом результате распознавания можно отправить фото целиком. Результат для выбранной бутылки сохраняется в сессии сканирования. `AUTO_WHATIS=true` включает автоматическую обработку отказов на сервере; по умолчанию она выключена. Эти признаки не подтверждают точную позицию каталога.
+
+Все клиенты обрабатывают отмену, сетевые ошибки, HTTP-ошибки и некорректные ответы. Секреты OpenRouter/S3 не передаются фронтенду.

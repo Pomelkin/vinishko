@@ -1,5 +1,5 @@
 import { useId, useRef } from "react";
-import type { BottleDetection } from "../../shared/api/contracts";
+import type { BottleDetection, Point } from "../../shared/api/contracts";
 import { center, hitTest } from "../../shared/geometry/polygons";
 import s from "./BottlePhoto.module.css";
 export function BottlePhoto({
@@ -19,8 +19,8 @@ export function BottlePhoto({
 }) {
   const prefix = useId().replace(/:/g, ""),
     svg = useRef<SVGSVGElement>(null);
-  const points = (d: BottleDetection) =>
-    d.polygon.map(([x, y]) => `${x * width},${y * height}`).join(" ");
+  const points = (polygon: Point[]) =>
+    polygon.map(([x, y]) => `${x * width},${y * height}`).join(" ");
   return (
     <div
       className={`${s.photo} ${selected ? s.hasSelection : ""}`}
@@ -47,7 +47,9 @@ export function BottlePhoto({
         <defs>
           {detections.map((d) => (
             <clipPath key={d.id} id={`${prefix}-${d.id}`}>
-              <polygon points={points(d)} />
+              {(d.polygons || [d.polygon]).map((p, i) => (
+                <polygon key={i} points={points(p)} />
+              ))}
             </clipPath>
           ))}
         </defs>
@@ -60,7 +62,8 @@ export function BottlePhoto({
           className={s.dimmer}
         />
         {detections.map((d, index) => {
-          const [cx, cy] = center(d.polygon);
+          const contours = d.polygons || [d.polygon];
+          const [cx, cy] = center(contours.flat());
           const active = d.id === selected;
           return (
             <g
@@ -78,14 +81,17 @@ export function BottlePhoto({
                 clipPath={`url(#${prefix}-${d.id})`}
                 opacity={active || !selected ? 1 : 0.62}
               />
-              <polygon
-                points={points(d)}
-                fill="transparent"
-                stroke={active ? "#fffdf3" : "#fffdf3bb"}
-                strokeWidth={active ? 2.5 : 1.5}
-                vectorEffect="non-scaling-stroke"
-                className={s.outline}
-              />
+              {contours.map((p, i) => (
+                <polygon
+                  key={i}
+                  points={points(p)}
+                  fill="transparent"
+                  stroke={active ? "#fffdf3" : "#fffdf3bb"}
+                  strokeWidth={active ? 2.5 : 1.5}
+                  vectorEffect="non-scaling-stroke"
+                  className={s.outline}
+                />
+              ))}
               <g
                 transform={`translate(${cx * width},${Math.max(...d.polygon.map((p) => p[1])) * height + 35})`}
                 aria-hidden="true"

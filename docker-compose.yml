@@ -4,12 +4,11 @@
 services:
   qdrant:
     image: qdrant/qdrant:v1.19.0
-    container_name: qdrant
     restart: unless-stopped
     ports:
       - '6333:6333'
     environment:
-      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?QDRANT_API_KEY не задан, положите его в .env}
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-}
     volumes:
       - qdrant_storage:/qdrant/storage
     networks:
@@ -17,27 +16,34 @@ services:
 
   app:
     image: vinishko-app:cpu
+    platform: linux/amd64
     build:
       context: .
       dockerfile: docker/app-cpu.Dockerfile
     restart: unless-stopped
     depends_on:
-      - qdrant
+      qdrant-ready:
+        condition: service_completed_successfully
     ports:
       - '8000:8000'
     environment:
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?OPENROUTER_API_KEY не задан, положите его в .env}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       openrouter_http_proxy: ${openrouter_http_proxy:-}
-      QDRANT_API_KEY: ${QDRANT_API_KEY:?QDRANT_API_KEY не задан, положите его в .env}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       # S3 Selectel: картинки коллекции и снапшоты qdrant (vis_searcher/config.yaml)
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID не задан, положите его в .env}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY не задан, положите его в .env}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ru-6}
+      AWS_EC2_METADATA_DISABLED: "true"
+      HF_TOKEN: ${HF_TOKEN:-}
+      MAX_BOTTLES: ${MAX_BOTTLES:-10}
+      AUTO_WHATIS: ${AUTO_WHATIS:-false}
     volumes:
       # веса SAM3, модель поиска с Hugging Face, engine TensorRT, картинки из S3 — скачиваются при первом старте
       - cache:/root/.cache
       - sessions:/data/sessions
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
       interval: 30s
       timeout: 10s
       # первый старт качает SAM3 (3.4 ГБ) и модель, восстанавливает коллекцию из снапшота
@@ -51,13 +57,21 @@ services:
       context: .
       dockerfile: docker/frontend.Dockerfile
       args:
-        # http — запросы в приложение через /api; фронт пока не переведён на контракт API, поэтому mock
-        VITE_API_MODE: mock
+        VITE_API_MODE: http
     restart: unless-stopped
     depends_on:
       - app
     ports:
       - '8080:80'
+    networks:
+      - app
+
+  qdrant-ready:
+    image: curlimages/curl:8.12.1
+    restart: "no"
+    depends_on:
+      - qdrant
+    command: ["--fail", "--silent", "--show-error", "--retry", "60", "--retry-connrefused", "--retry-delay", "2", "--max-time", "5", "http://qdrant:6333/readyz"]
     networks:
       - app
 

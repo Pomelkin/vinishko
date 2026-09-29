@@ -10,6 +10,7 @@ import { WineCard, WinePreview } from "../../entities/wine/WineCard";
 import { Icon } from "../../shared/ui/Icon";
 import type { WineSummary } from "../../shared/api/contracts";
 import type { ScanSession } from "../../shared/storage/sessions";
+import { UnknownWine } from "../../features/unknown-wine/UnknownWine";
 import s from "./ScanResultPage.module.css";
 export function ScanResultPage() {
   const { scanId = "" } = useParams();
@@ -100,7 +101,9 @@ function ScanResult({ scanId }: { scanId: string }) {
       ? selected?.similar.find(
           (c) => c.slug === session.selectedSimilarWineSlug,
         )?.wine
-      : selected?.match?.wine;
+      : session.sheetView === "match"
+        ? selected?.match?.wine
+        : undefined;
   const change = async (patch: Partial<ScanSession>) =>
     update({ ...patch, relevantScrollPositions: { ...scroll.current } });
   const select = (id: string) => {
@@ -222,6 +225,9 @@ function ScanResult({ scanId }: { scanId: string }) {
             >
               Найти по названию
             </button>
+            {!session.recognitionResult.metrics.isMock && (
+              <UnknownWine image={session.imageBlob} contextId={scanId} />
+            )}
           </div>
         )}
         <button className={`secondary ${s.newPhoto}`} onClick={scan.upload}>
@@ -232,7 +238,13 @@ function ScanResult({ scanId }: { scanId: string }) {
       {open && (
         <Sheet
           compact
-          title={wine ? wine.name : "Эту бутылку не удалось найти в каталоге"}
+          title={
+            wine
+              ? wine.name
+              : selected?.status === "matched"
+                ? "Похожие вина"
+                : "Эту бутылку не удалось найти в каталоге"
+          }
           onClose={close}
           viewKey={session.sheetView}
           initialScroll={listScroll}
@@ -278,6 +290,20 @@ function ScanResult({ scanId }: { scanId: string }) {
                     : "Вино найдено"
                 }
               />
+              {session.sheetView === "match" && !!selected?.similar.length && (
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    scroll.current.similar = 0;
+                    void change({
+                      sheetView: "similar",
+                      selectedSimilarWineSlug: null,
+                    });
+                  }}
+                >
+                  Посмотреть похожие вина
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -285,11 +311,49 @@ function ScanResult({ scanId }: { scanId: string }) {
                 Бутылка {detections.indexOf(selected!) + 1}
               </p>
               <h2 className={s.unmatchedTitle}>
-                Эту бутылку не удалось найти в каталоге
+                {selected!.status === "matched"
+                  ? "Другие варианты"
+                  : "Эту бутылку не удалось найти в каталоге"}
               </h2>
+              {selected!.status === "matched" && (
+                <button
+                  className={s.backToSimilar}
+                  onClick={() => void change({ sheetView: "match" })}
+                >
+                  Вернуться к найденному вину
+                </button>
+              )}
+              {selected!.rejection && (
+                <p className="muted">{selected!.rejection.description}</p>
+              )}
+              {selected!.status === "unmatched" &&
+                !session.recognitionResult.metrics.isMock && (
+                  <UnknownWine
+                    key={selected!.id}
+                    image={session.imageBlob}
+                    detection={selected}
+                    contextId={`${scanId}-${selected!.id}`}
+                    onResult={(value) =>
+                      void change({
+                        recognitionResult: {
+                          ...session.recognitionResult,
+                          detections: detections.map((d) =>
+                            d.id === selected!.id
+                              ? {
+                                  ...d,
+                                  unknownWine: value,
+                                  unknownWineError: null,
+                                }
+                              : d,
+                          ),
+                        },
+                      })
+                    }
+                  />
+                )}
               <p className="muted">
                 {selected!.similar.length
-                  ? "Но есть вина, с которыми стоит познакомиться. Это рекомендации, а не точное совпадение."
+                  ? "Похожие варианты по результатам поиска. Это не подтверждение точного совпадения."
                   : "Похожих вин пока нет. Сделайте ещё одно фото или воспользуйтесь поиском по названию."}
               </p>
               {selected!.similar.length ? (

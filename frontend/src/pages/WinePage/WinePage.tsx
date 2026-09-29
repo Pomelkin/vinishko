@@ -7,6 +7,7 @@ import type { WineDetails } from "../../shared/api/contracts";
 import { WineImage, WineCard, Ratings } from "../../entities/wine/WineCard";
 import { Icon } from "../../shared/ui/Icon";
 import { Sheet } from "../../shared/ui/Sheet";
+import { SommelierChat } from "../../features/sommelier/SommelierChat";
 import s from "./WinePage.module.css";
 const pairings: Record<string, { image: string; text: string }> = {
   "Мясо и стейки": {
@@ -185,6 +186,14 @@ export function WinePage() {
                 из предоставленных макетов; часть описаний и сочетаний — пример
                 наполнения. Неизвестные значения не подставляются.
               </p>
+            )}
+            {!isMockMode && wine.catalog && (
+              <SommelierChat
+                key={wine.slug}
+                contextId={wine.slug}
+                wine={wine.catalog}
+                candidates={wine.candidateCatalogs}
+              />
             )}
           </>
         )}
