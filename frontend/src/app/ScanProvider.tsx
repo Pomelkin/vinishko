@@ -7,7 +7,11 @@ import {
 } from "react";
 import { useStore } from "zustand";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ScanController } from "../features/scanning/controller";
+import {
+  DEMO_SLOW_MS,
+  ScanController,
+  SLOW_MS,
+} from "../features/scanning/controller";
 import { service, isMockMode, type DemoScenario } from "../shared/api/service";
 import { MockRecognitionService } from "../shared/api/mock-recognition-service";
 import { prepareImage } from "../features/image-input/image";
@@ -15,7 +19,11 @@ import { Camera } from "../features/image-input/Camera";
 import { Icon } from "../shared/ui/Icon";
 import { cleanupSessions } from "../shared/storage/sessions";
 import s from "./Shell.module.css";
-export const scanController = new ScanController(service);
+export const scanController = new ScanController(
+  service,
+  undefined,
+  isMockMode ? DEMO_SLOW_MS : SLOW_MS,
+);
 interface Actions {
   upload: () => void;
   camera: () => void;

@@ -26,6 +26,10 @@ interface ScanState {
   storageNotice: string | null;
   operationId: string | null;
 }
+/** Через столько ожидания ответа показывается «Сканирование заняло больше времени чем обычно». */
+export const SLOW_MS = 60_000;
+/** В демо короче: сценарий «Долгое ожидание» длится 14 с и должен успеть показать это окно. */
+export const DEMO_SLOW_MS = 6_000;
 export class ScanController {
   readonly store = createStore<ScanState>(() => ({
     phase: "idle",
@@ -47,7 +51,7 @@ export class ScanController {
   constructor(
     private service: RecognitionService,
     private persist = saveSession,
-    private slowMs = 6000,
+    private slowMs = SLOW_MS,
   ) {}
   setPhase(phase: "idle" | "camera") {
     this.store.setState({ phase });
