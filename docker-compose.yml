@@ -3,6 +3,7 @@
 # Переменные берутся из .env в корне (образец — .env.example); в контейнер приложения уходят только перечисленные ниже.
 services:
   qdrant:
+    container_name: qdrant
     image: qdrant/qdrant:v1.19.0
     restart: unless-stopped
     ports:
