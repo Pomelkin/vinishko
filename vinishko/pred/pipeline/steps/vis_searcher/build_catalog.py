@@ -97,8 +97,8 @@ class Row:
 
 
 @dataclass(slots=True)
-class Failure:
-    """Фото, не попавшее в коллекцию."""
+class Issue:
+    """Фото, не попавшее в коллекцию либо попавшее в неё всем кадром без нормализации."""
 
     slug: str
     photo: str
@@ -171,19 +171,23 @@ def ensure_absent(client: QdrantClient, name: str) -> None:
     client.delete_collection(name)
 
 
-def single_crop(norm: Normalizer, images: Path, row: Row) -> BottleCrop:
-    """Единственная годная бутылка на фото каталога; иначе ошибка с именем фото, slug и причинами отказов."""
-    items = norm(open_image(images / row.photo))
+def catalog_crop(
+    norm: Normalizer, images: Path, row: Row
+) -> tuple[BottleCrop, str | None]:
+    """Единственная годная бутылка на фото каталога и None; если нормализация не дала ровно одной, весь кадр (Normalizer.frame_crop) и причина
+    с именем фото, slug и отказами: позиция каталога не теряется, её векторы считаются с фото как есть."""
+    image = open_image(images / row.photo)
+    items = norm(image)
     crops = [item for item in items if isinstance(item, BottleCrop)]
-    if len(crops) != 1:
-        reasons = ", ".join(
-            item.rejection.reason for item in items if not isinstance(item, BottleCrop)
-        )
-        raise ValueError(
-            f"{row.photo} ({row.slug}): годных бутылок {len(crops)}, нужна ровно одна"
-            + (f"; отказы: {reasons}" if reasons else "")
-        )
-    return crops[0]
+    if len(crops) == 1:
+        return crops[0], None
+    reasons = ", ".join(
+        item.rejection.reason for item in items if not isinstance(item, BottleCrop)
+    )
+    return norm.frame_crop(image), (
+        f"{row.photo} ({row.slug}): годных бутылок {len(crops)}, нужна ровно одна"
+        + (f"; отказы: {reasons}" if reasons else "")
+    )
 
 
 def make_payload(
@@ -194,14 +198,16 @@ def make_payload(
     device: Device,
     encoder_input: Sequence[str],
     normalization: str,
+    whole_frame: bool,
 ) -> dict:
-    """Метаданные точки; список позиций группы дописывается, когда известно, кто из группы попал в коллекцию. normalization — отпечаток crop_config."""
+    """Метаданные точки; список позиций группы дописывается, когда известно, кто из группы попал в коллекцию. normalization — отпечаток crop_config.
+    whole_frame — нормализация не нашла годной бутылки, картинка и векторы со всего кадра."""
     return {
         FIELD_SLUG: row.slug,
         FIELD_GROUP: row.group,
         FIELD_GROUP_SLUGS: [],
         FIELD_IMAGE: image,
-        "image_crop": "bottle_box",
+        "image_crop": "whole_frame" if whole_frame else "bottle_box",
         "source_image": row.photo,
         **row.fields,
         "bottle_score": crop.score,
@@ -237,11 +243,12 @@ def progress() -> Progress:
 
 @dataclass(slots=True)
 class Build:
-    """Ход сборки: векторы по slug и входу энкодера, метаданные по slug, неудачи."""
+    """Ход сборки: векторы по slug и входу энкодера, метаданные по slug, неудачи и позиции, попавшие всем кадром."""
 
     vectors: dict[str, dict[str, np.ndarray]]
     payloads: dict[str, dict]
-    failures: list[Failure]
+    failures: list[Issue]
+    whole_frames: list[Issue]
 
     def points(self) -> list[PointStruct]:
         """Точки с заполненными списками групп: в группе только те позиции, что попали в коллекцию."""
@@ -276,33 +283,34 @@ def build(
 ) -> Build:
     """Фото → кропы → хранилище и вектор на каждый вход энкодера, пачками по батчу энкодера. normalization — отпечаток crop_config, уходит в каждую точку.
 
-    Без skip_failures первая же ошибка останавливает сборку с именем фото и slug в тексте; с ним фото пропускается, а причина
-    попадает в предупреждение и в отчёт.
+    Фото без ровно одной годной бутылки идёт в коллекцию всем кадром с предупреждением, см. catalog_crop. Без skip_failures первая же
+    ошибка чтения или нормализации останавливает сборку; с ним фото пропускается, а причина попадает в предупреждение и в отчёт.
     """
-    state = Build({}, {}, [])
+    state = Build({}, {}, [], [])
     with progress() as bar:
         task = bar.add_task("каталог", total=len(rows))
         for batch in batched(rows, encoder.max_batch):
-            crops: list[tuple[Row, BottleCrop]] = []
+            crops: list[tuple[Row, BottleCrop, str | None]] = []
             for row in batch:
                 if not skip_failures:
-                    crops.append((row, single_crop(norm, images, row)))
+                    crops.append((row, *catalog_crop(norm, images, row)))
                     continue
                 try:
-                    crops.append((row, single_crop(norm, images, row)))
-                except ValueError as error:  # своя проверка: в тексте уже фото и slug
-                    state.failures.append(Failure(row.slug, row.photo, str(error)))
+                    crops.append((row, *catalog_crop(norm, images, row)))
                 except Exception as error:  # битая картинка не должна ронять сборку на час, отчёт о ней будет в конце
                     state.failures.append(
-                        Failure(
+                        Issue(
                             row.slug, row.photo, f"{row.photo} ({row.slug}): {error!r}"
                         )
                     )
             vectors = {
-                inp: encoder([getattr(crop, inp) for _, crop in crops])
+                inp: encoder([getattr(crop, inp) for _, crop, _ in crops])
                 for inp in encoder_input
             }
-            for i, (row, crop) in enumerate(crops):
+            for i, (row, crop, whole_frame) in enumerate(crops):
+                if whole_frame is not None:
+                    logger.warning(f"{whole_frame}; в коллекцию идёт весь кадр")
+                    state.whole_frames.append(Issue(row.slug, row.photo, whole_frame))
                 name = f"{row.slug}.{fmt}"
                 store.put(
                     name, crop.box_crop, fmt, quality
@@ -318,6 +326,7 @@ def build(
                     encoder.device,
                     encoder_input,
                     normalization,
+                    whole_frame is not None,
                 )
             bar.update(task, advance=len(batch))
     return state
@@ -340,6 +349,7 @@ def report(
         ("строк с фото", len(rows)),
         ("строк без фото, пропущено", skipped),
         ("в коллекции", len(state.payloads)),
+        ("из них всем кадром", len(state.whole_frames)),
         (
             "групп" if has_group else "групп (колонки нет, позиция = группа)",
             len(groups),
@@ -354,6 +364,12 @@ def report(
         logger.warning(
             f"… и ещё {len(state.failures) - 20} неудач, полный список в --report"
         )
+    if state.whole_frames:
+        slugs = [issue.slug for issue in state.whole_frames]
+        logger.warning(
+            f"всем кадром без нормализации {len(slugs)}: {', '.join(slugs[:10])}"
+            + (", … полный список в --report" if len(slugs) > 10 else "")
+        )
     if path is not None:
         path.write_text(
             json.dumps(
@@ -362,6 +378,7 @@ def report(
                     "indexed": len(state.payloads),
                     "skipped_no_photo": skipped,
                     "failures": [asdict(f) for f in state.failures],
+                    "whole_frame": [asdict(f) for f in state.whole_frames],
                 },
                 ensure_ascii=False,
                 indent=1,
@@ -415,7 +432,7 @@ def report(
     type=click.Choice(["stop", "skip"]),
     default="stop",
     show_default=True,
-    help="Фото без ровно одной годной бутылки: остановить сборку либо пропустить и перечислить в конце",
+    help="Фото, которое не прочиталось или уронило нормализацию: остановить сборку либо пропустить и перечислить в конце. Фото без ровно одной годной бутылки не теряется, оно идёт в коллекцию всем кадром",
 )
 @click.option(
     "--limit",
@@ -462,7 +479,7 @@ def main(
 ) -> None:
     """Собрать коллекцию каталога для визуального поиска по config.yaml.
 
-    Каждое фото проходит нормализацию, на нём должна найтись ровно одна годная бутылка; по вектору на каждый вход encoder_input (crop, box_crop либо оба
+    Каждое фото проходит нормализацию, на нём должна найтись ровно одна годная бутылка, иначе с предупреждением берётся весь кадр как есть; по вектору на каждый вход encoder_input (crop, box_crop либо оба
     для гибридного поиска), в коллекции у каждого входа своё именованное пространство, а в хранилище картинок
     из конфига уходит вся бутылка по bbox маски, как box_crop у запроса, — её смотрит второй уровень; вектор — в коллекцию qdrant из конфига вместе с метаданными: slug, группа и все slug группы, попавшие в коллекцию, имя кропа,
     поля каталога, модель и её ревизия, отпечаток нормализации. Рядом с картинками пишется manifest.json: часть конфига нормализации,

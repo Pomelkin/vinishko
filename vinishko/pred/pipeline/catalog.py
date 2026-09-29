@@ -5,9 +5,22 @@ from dataclasses import dataclass
 from io import StringIO
 
 import boto3
+from botocore.exceptions import BotoCoreError
+from botocore.exceptions import ClientError
+from botocore.exceptions import NoCredentialsError
 
 from vinishko.pred.pipeline.configs import LocalCatalogConfig
 from vinishko.pred.pipeline.configs import S3CatalogConfig
+
+
+S3_REASONS = {
+    "NoSuchKey": "объекта нет в бакете",
+    "NoSuchBucket": "бакета нет",
+    "AccessDenied": "нет доступа: у реквизитов нет прав на объект, либо объекта нет, а прав на список бакета нет",
+    "InvalidAccessKeyId": "ключ доступа неизвестен хранилищу",
+    "SignatureDoesNotMatch": "секретный ключ не подходит к ключу доступа",
+}
+"""Коды ошибок S3 при чтении каталога → причина для сообщения; остальные коды идут как есть."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,15 +45,33 @@ class Catalog:
 
 
 def read_catalog_text(cfg: LocalCatalogConfig | S3CatalogConfig) -> tuple[str, str]:
-    """Текст CSV и описание источника."""
+    """Текст CSV и описание источника; нет файла либо объекта, нет доступа или связи с хранилищем — ошибка с адресом каталога и причиной."""
     if isinstance(cfg, LocalCatalogConfig):
-        return cfg.path.read_text(encoding="utf-8-sig"), f"файл {cfg.path}"
-    body = (
-        boto3.client("s3", endpoint_url=cfg.endpoint)
-        .get_object(Bucket=cfg.bucket, Key=cfg.key)["Body"]
-        .read()
-    )
-    return body.decode("utf-8-sig"), f"s3 {cfg.endpoint} {cfg.bucket}/{cfg.key}"
+        description = f"файл {cfg.path}"
+        if not cfg.path.is_file():
+            raise RuntimeError(f"каталог недоступен ({description}): файла нет")
+        return cfg.path.read_text(encoding="utf-8-sig"), description
+    description = f"s3 {cfg.endpoint} {cfg.bucket}/{cfg.key}"
+    try:
+        body = (
+            boto3.client("s3", endpoint_url=cfg.endpoint)
+            .get_object(Bucket=cfg.bucket, Key=cfg.key)["Body"]
+            .read()
+        )
+    except ClientError as error:
+        code = error.response["Error"]["Code"]
+        reason = S3_REASONS.get(
+            code, f"{code} {error.response['Error'].get('Message', '')}".strip()
+        )
+        raise RuntimeError(f"каталог недоступен ({description}): {reason}") from error
+    except NoCredentialsError as error:
+        raise RuntimeError(
+            f"каталог недоступен ({description}): нет реквизитов S3, задайте AWS_ACCESS_KEY_ID и AWS_SECRET_ACCESS_KEY в окружении либо ~/.aws"
+        ) from error
+    # нет связи с endpoint, таймаут и прочее до ответа хранилища
+    except BotoCoreError as error:
+        raise RuntimeError(f"каталог недоступен ({description}): {error}") from error
+    return body.decode("utf-8-sig"), description
 
 
 def load_catalog(

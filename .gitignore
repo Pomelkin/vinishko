@@ -222,7 +222,6 @@ __marimo__/
 sam3.pt
 # Результаты прогонов обучения: в git идёт только config.yaml эксперимента
 vis_seacher_training/experiments/*/*/
-/weights
 # встроенный qdrant для локальной отладки vis_searcher
 /.qdrant
 /datasets/hack-vine
@@ -230,4 +229,6 @@ vis_seacher_training/experiments/*/*/
 /catalog
 /reports/vis_searcher
 /reports/pipeline
+/test/weights
 /test
+/weights

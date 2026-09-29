@@ -755,18 +755,24 @@ class Normalizer:
             n_valid += isinstance(item, BottleCrop)
             items.append(item)
         if self.cfg["selection"]["bypass"] and not n_valid:
-            w, h = (
-                img.size
-            )  # весь кадр как бутылка и этикетка, score 0: по нему дальше видно, что это обход, а отказы остаются в списке
-            frame = [[[0, 0], [w, 0], [w, h], [0, h]]]
-            crop, info = render_bottle(rgb, frame, frame, self.cfg, angle=0.0)
-            box, box_info = render_bottle_box(
-                rgb, frame, self.cfg, angle=0.0, padding=(0.0, 0.0)
-            )
             items.append(
-                BottleCrop(1, 0.0, frame, frame, 0.0, crop, info, box, box_info)
-            )
+                self.frame_crop(img)
+            )  # отказы остаются в списке, по score 0 дальше видно, что это обход
         return items
+
+    def frame_crop(self, img: Image.Image) -> BottleCrop:
+        """Весь кадр как бутылка и этикетка, score 0, без поворота: crop и box_crop — та же картинка с теми же правилами рендера, что у годных.
+
+        Обход selection.bypass, его же зовёт сборка каталога, когда годной бутылки на фото нет.
+        """
+        rgb = np.asarray(img)
+        w, h = img.size
+        frame = [[[0, 0], [w, 0], [w, h], [0, h]]]
+        crop, info = render_bottle(rgb, frame, frame, self.cfg, angle=0.0)
+        box, box_info = render_bottle_box(
+            rgb, frame, self.cfg, angle=0.0, padding=(0.0, 0.0)
+        )
+        return BottleCrop(1, 0.0, frame, frame, 0.0, crop, info, box, box_info)
 
     def annotate(self, path: Path | str) -> list[BottleCrop | RejectedBottle]:
         """Разметка одной картинки по пути; см. annotate_image."""
