@@ -81,42 +81,47 @@ export function UnknownWine({
   const [result, setResult] = useState<Attributes | null>(
     detection?.unknownWine || null,
   );
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(!detection?.unknownWine);
   const [error, setError] = useState<string | null>(
     detection?.unknownWineError || null,
   );
-  const flight = useRef<AbortController | null>(null);
-  useEffect(() => () => flight.current?.abort(), []);
-  const predict = async () => {
-    if (flight.current) return;
-    const controller = new AbortController();
-    flight.current = controller;
-    setBusy(true);
+  const inputs = useRef({ detection, onResult });
+  inputs.current = { detection, onResult };
+  useEffect(() => {
+    const currentDetection = inputs.current.detection;
+    const saved = currentDetection?.unknownWine || null;
+    setResult(saved);
     setError(null);
-    try {
-      const blob = await cropBottle(image, detection);
-      if (controller.signal.aborted) return;
-      const body = new FormData();
-      body.append("image", blob, "bottle.jpg");
-      const attributes = parse(
-        UnknownWineSchema,
-        await request("/whatis", {
-          method: "POST",
-          body,
-          signal: controller.signal,
-        }),
-      );
-      if (!controller.signal.aborted) {
-        setResult(attributes);
-        onResult?.(attributes);
+    setBusy(!saved);
+    if (saved) return;
+    const controller = new AbortController();
+    const predict = async () => {
+      try {
+        const blob = await cropBottle(image, currentDetection);
+        if (controller.signal.aborted) return;
+        const body = new FormData();
+        body.append("image", blob, "bottle.jpg");
+        const attributes = parse(
+          UnknownWineSchema,
+          await request("/whatis", {
+            method: "POST",
+            body,
+            signal: controller.signal,
+          }),
+        );
+        if (!controller.signal.aborted) {
+          setResult(attributes);
+          inputs.current.onResult?.(attributes);
+        }
+      } catch (e) {
+        if (!isAbort(e) && !controller.signal.aborted) setError(messageFor(e));
+      } finally {
+        if (!controller.signal.aborted) setBusy(false);
       }
-    } catch (e) {
-      if (!isAbort(e) && !controller.signal.aborted) setError(messageFor(e));
-    } finally {
-      flight.current = null;
-      if (!controller.signal.aborted) setBusy(false);
-    }
-  };
+    };
+    void predict();
+    return () => controller.abort();
+  }, [image, contextId]);
   return (
     <section>
       <h3>Что можно узнать по этикетке</h3>
@@ -147,14 +152,10 @@ export function UnknownWine({
             }}
           />
         </>
+      ) : busy ? (
+        <p role="status">Изучаем этикетку…</p>
       ) : (
-        <button
-          className="secondary"
-          disabled={busy}
-          onClick={() => void predict()}
-        >
-          {busy ? "Изучаем этикетку…" : "Определить признаки"}
-        </button>
+        <p className="muted">Не удалось определить признаки по фотографии.</p>
       )}
     </section>
   );
