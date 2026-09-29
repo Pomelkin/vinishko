@@ -13,6 +13,7 @@ from threading import BoundedSemaphore
 import numpy as np
 from PIL import Image
 
+from vinishko.openrouter_proxy import check_proxy
 from vinishko.pred.pipeline.steps.vis_searcher.catalog import FIELD_GROUP_SLUGS
 from vinishko.pred.pipeline.steps.vis_searcher.storage import encode_image
 from vinishko.pred.pipeline.structs import BottleCandidates
@@ -38,6 +39,11 @@ from .predictor import predict
 HERE = Path(__file__).resolve().parent
 QUERY_MAX_SIDE = 1600
 """Кроп запроса крупнее этой стороны уменьшается перед отправкой модели."""
+QUERY_MIN_SIDE = 512
+"""Кроп запроса с короткой стороной меньше этой увеличивается до неё: модель режет картинку на патчи почти в родном разрешении
+(токены вызова растут с размером картинок), и мелкая надпись вроде сорта под маркой бутылки с полки иначе ей не читается."""
+QUERY_UPSCALED_MAX_SIDE = 2048
+"""Потолок длинной стороны, когда масштаб подбирается под QUERY_MIN_SIDE: у узкой бутылки короткая 512 — это 1700–1900 по длинной."""
 IMAGE_QUALITY = 92
 """JPEG-качество картинок для модели, запроса и позиций: в 4 раза легче PNG при том же разрешении и числе токенов, надписи читаются.
 Замер 2026-09-28 на 60 картинках: медиана 303 КБ в PNG против 73 КБ, тело запроса в среднем 2.8 МБ вместо ~0.7."""
@@ -195,12 +201,19 @@ def split_groups(result: BottleCandidates) -> list[list[Candidate]]:
 
 
 def query_jpeg(crop: BottleCrop) -> bytes:
-    """box_crop бутылки для модели: не крупнее QUERY_MAX_SIDE по большей стороне, JPEG."""
+    """box_crop бутылки для модели, JPEG, пропорции сохраняются: длинная сторона не больше QUERY_MAX_SIDE, но если короткая выходит
+    меньше QUERY_MIN_SIDE — масштаб под неё, в том числе увеличение, а длинная тогда не больше QUERY_UPSCALED_MAX_SIDE."""
     image = crop.box_crop
-    if max(image.shape[:2]) > QUERY_MAX_SIDE:
-        resized = Image.fromarray(image)
-        resized.thumbnail((QUERY_MAX_SIDE, QUERY_MAX_SIDE), Image.Resampling.LANCZOS)
-        image = np.asarray(resized)
+    short, long = sorted(image.shape[:2])
+    scale = min(1.0, QUERY_MAX_SIDE / long)
+    if short * scale < QUERY_MIN_SIDE:
+        scale = min(QUERY_MIN_SIDE / short, QUERY_UPSCALED_MAX_SIDE / long)
+    if scale != 1.0:
+        height, width = image.shape[:2]
+        size = (max(1, round(width * scale)), max(1, round(height * scale)))
+        image = np.asarray(
+            Image.fromarray(image).resize(size, Image.Resampling.LANCZOS)
+        )
     return encode_image(image, "jpg", IMAGE_QUALITY)
 
 
@@ -236,6 +249,9 @@ class NearDuplicateResolver:
         cards: dict[str, dict] | None = None,
     ) -> None:
         self.settings = settings if settings is not None else load_config()
+        # OR_PROXY могла прийти из .env; мёртвый прокси — ошибка сразу, а не на первом фото
+        load_openrouter_env()
+        check_proxy()
         self.trace_dir = trace_dir
         self.cards = cards
         limit = self.settings.execution.concurrency

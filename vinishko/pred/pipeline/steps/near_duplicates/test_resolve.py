@@ -39,6 +39,7 @@ from vinishko.pred.pipeline.steps.near_duplicates.resolve import NearDuplicateEr
 from vinishko.pred.pipeline.steps.near_duplicates.resolve import NearDuplicateResolver
 from vinishko.pred.pipeline.steps.near_duplicates.resolve import candidate_card
 from vinishko.pred.pipeline.steps.near_duplicates.resolve import load_cards
+from vinishko.pred.pipeline.steps.near_duplicates.resolve import query_jpeg
 from vinishko.pred.pipeline.steps.normalization.normalize import Normalizer
 from vinishko.pred.pipeline.steps.vis_searcher.search import SearchReason
 from vinishko.pred.pipeline.structs import BottleCandidates
@@ -47,6 +48,18 @@ from vinishko.pred.pipeline.structs import Candidate
 from vinishko.pred.pipeline.structs import MatchedBottle
 from vinishko.pred.pipeline.structs import Rejection
 from vinishko.pred.pipeline.structs import UnmatchedBottle
+
+
+PROXY_OFF = patch.dict(os.environ, {"OR_PROXY": ""})
+"""OR_PROXY из .env не должна уводить офлайн-тесты в сеть: NearDuplicateResolver при создании проверяет прокси, а load_dotenv заданную переменную не трогает."""
+
+
+def setUpModule() -> None:
+    PROXY_OFF.start()
+
+
+def tearDownModule() -> None:
+    PROXY_OFF.stop()
 
 
 PREDICT = "vinishko.pred.pipeline.steps.near_duplicates.resolve.predict"
@@ -348,9 +361,24 @@ class NearDuplicateResolverTests(unittest.TestCase):
         )
         self.assertTrue(requests[0]["query"]["image_bytes"].startswith(b"\xff\xd8\xff"))
         with Image.open(BytesIO(requests[0]["query"]["image_bytes"])) as query:
-            self.assertEqual((query.format, query.size), ("JPEG", (4, 4)))
+            self.assertEqual((query.format, query.size), ("JPEG", (512, 512)))
             pixel = cast(tuple[int, int, int], query.getpixel((0, 0)))
             self.assertTrue(all(abs(value - 177) <= 2 for value in pixel))
+
+    def test_query_crop_keeps_proportions_and_short_side_512(self) -> None:
+        """Мелкий кроп увеличивается до 512 по короткой, крупный уменьшается до 1600 по длинной, пока короткая не меньше 512."""
+        cases = {
+            (900, 280): (512, 1646),
+            (3000, 800): (512, 1920),
+            (1400, 300): (439, 2048),
+            (1200, 600): (600, 1200),
+            (4000, 3000): (1200, 1600),
+        }
+        for (height, width), expected in cases.items():
+            bottle = crop()
+            object.__setattr__(bottle, "box_crop", np.zeros((height, width, 3), np.uint8))
+            with self.subTest(size=(width, height)), Image.open(BytesIO(query_jpeg(bottle))) as query:
+                self.assertEqual(query.size, expected)
 
     def test_single_group_winner_skips_final(self) -> None:
         bottle = crop()
@@ -832,7 +860,7 @@ class RetryTests(unittest.TestCase):
             http_ok(completion("second")),
         ]
         with (
-            patch("urllib.request.urlopen", side_effect=answers) as urlopen,
+            patch("urllib.request.OpenerDirector.open", side_effect=answers) as urlopen,
             patch("time.sleep") as sleep,
         ):
             result = self.call()
@@ -848,7 +876,7 @@ class RetryTests(unittest.TestCase):
     def test_retries_stop_after_limit(self) -> None:
         with (
             patch(
-                "urllib.request.urlopen",
+                "urllib.request.OpenerDirector.open",
                 side_effect=lambda *_a, **_k: (_ for _ in ()).throw(
                     http_error(429, "Too Many Requests")
                 ),
@@ -863,7 +891,7 @@ class RetryTests(unittest.TestCase):
     def test_client_error_is_not_retried(self) -> None:
         with (
             patch(
-                "urllib.request.urlopen", side_effect=[http_error(400, "Bad Request")]
+                "urllib.request.OpenerDirector.open", side_effect=[http_error(400, "Bad Request")]
             ) as urlopen,
             patch("time.sleep") as sleep,
         ):
@@ -877,7 +905,7 @@ class RetryTests(unittest.TestCase):
             http_ok({"error": {"code": 429, "message": "provider rate limited"}}),
             http_ok(completion("first")),
         ]
-        with patch("urllib.request.urlopen", side_effect=answers), patch("time.sleep"):
+        with patch("urllib.request.OpenerDirector.open", side_effect=answers), patch("time.sleep"):
             result = self.call()
         self.assertEqual(
             (result["status"], result["selected"]["slug"]), ("ok", "first")

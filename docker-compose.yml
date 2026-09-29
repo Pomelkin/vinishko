@@ -26,8 +26,12 @@ services:
         condition: service_completed_successfully
     ports:
       - '8000:8000'
+    extra_hosts:
+      # прокси на хосте для OR_PROXY — http://host.docker.internal:порт; на Linux это имя само не появляется
+      - host.docker.internal:host-gateway
     environment:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OR_PROXY: ${OR_PROXY:-}
       openrouter_http_proxy: ${openrouter_http_proxy:-}
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       # S3 Selectel: картинки коллекции и снапшоты qdrant (vis_searcher/config.yaml)

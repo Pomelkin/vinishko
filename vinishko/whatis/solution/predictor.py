@@ -11,6 +11,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from vinishko.openrouter_proxy import describe_error
+from vinishko.openrouter_proxy import opener as openrouter_opener
 from vinishko.whatis.solution.catalog import UNKNOWN
 from vinishko.whatis.solution.catalog import catalog_values
 
@@ -178,11 +180,7 @@ def predict(image: bytes | str | Path) -> dict[str, Any]:
     }
     try:
         proxy = os.environ.get("openrouter_http_proxy", "").strip()
-        opener = urllib.request.build_opener(
-            urllib.request.ProxyHandler(
-                {"http": proxy, "https": proxy} if proxy else {}
-            )
-        )
+        opener = openrouter_opener({"http": proxy, "https": proxy} if proxy else {})
         with opener.open(request, timeout=settings["timeout_seconds"]) as response:
             raw = response.read().decode("utf-8", errors="replace")
         parsed = json.loads(raw)
@@ -214,6 +212,6 @@ def predict(image: bytes | str | Path) -> dict[str, Any]:
             "category": UNKNOWN,
             "brand": UNKNOWN,
             "_status": "api_error",
-            "_error": f"{type(error).__name__}: {error}",
+            "_error": describe_error(error),
             "_trace": trace,
         }

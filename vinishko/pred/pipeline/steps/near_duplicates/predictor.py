@@ -30,6 +30,9 @@ from tenacity import stop_after_attempt
 from tenacity import stop_before_delay
 from tenacity import wait_exponential_jitter
 
+from vinishko.openrouter_proxy import describe_error
+from vinishko.openrouter_proxy import opener
+
 from .models import ModelContractError
 from .models import nearest_output_model
 from .models import response_format
@@ -525,7 +528,8 @@ def call_model(  # noqa: C901 - сохранён контракт и обраб�
             method="POST",
         )
         try:
-            response_context = urllib.request.urlopen(  # noqa: S310 - endpoint_url проверяет схему.
+            # без OR_PROXY opener() — тот же, что у urllib.request.urlopen: прокси из окружения
+            response_context = opener().open(
                 http_request,
                 timeout=remaining_seconds(deadline, timeout_seconds),
             )
@@ -675,7 +679,7 @@ def call_model(  # noqa: C901 - сохранён контракт и обраб�
     except Exception as error:
         return {
             "status": "predictor_error",
-            "error": f"{type(error).__name__}: {error}",
+            "error": describe_error(error),
             "selected": None,
             "trace": trace,
         }

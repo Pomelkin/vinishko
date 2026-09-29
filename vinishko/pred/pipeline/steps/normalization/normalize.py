@@ -780,6 +780,12 @@ class Normalizer:
             img = open_image(img)
         return self.annotate_image(img)
 
+    def warmup(self) -> None:
+        """Холостой прогон SAM3 на белом кадре 3024×4032: первый вызов на GPU стоит около 5 с, без прогрева их платит первый запрос."""
+        started = time.perf_counter()
+        self(Image.new("RGB", (3024, 4032), "white"))
+        logger.info(f"нормализация прогрета: {time.perf_counter() - started:.2f} с")
+
 
 def remove_stale(out_dir: Path, stem: str) -> None:
     """Удаляет результаты прошлого прогона этой же картинки: бутылок могло стать меньше."""

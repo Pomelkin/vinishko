@@ -28,6 +28,13 @@ docker compose up -d --build                                                    
 docker compose -f docker-compose.yml -f docker-compose.gpu.override.yml up -d --build  # приложение на GPU
 ```
 
+HTTPS: `docker-compose.tls.override.yml` добавляется третьим `-f` или в `COMPOSE_FILE` в `.env`. Фронт слушает 443 с сертификатом
+Let's Encrypt с хоста: в `.env` задаются `LETSENCRYPT_DIR` (каталог на хосте, обычно `/etc/letsencrypt`, монтируется целиком, потому что
+`live/` — симлинки в `archive/`) и `TLS_DOMAIN` (имя сертификата, то есть каталог в `live/`). Без них compose не запускается. HTTP на :8080
+отвечает 301 на `https://TLS_DOMAIN`, кроме `/v1/eval/`: скрипт оценки за редиректом не идёт. Конфиг nginx — `docker/frontend.site.conf`,
+его подключают `frontend.nginx.conf` (HTTP) и шаблон `frontend.tls.nginx.conf.template`. nginx читает сертификат только при старте, поэтому
+после продления certbot нужен `docker compose exec frontend nginx -s reload`, например из deploy-hook.
+
 Образы — `docker/`: `app-cpu.Dockerfile` (python 3.13 slim, группа `cpu-inference`, поиск на OpenVINO), `app-gpu.Dockerfile`
 (`nvidia/cuda:13.0.3-base-ubuntu24.04`, группа `flash-inference`, поиск на TensorRT; драйвер ≥ 580 и NVIDIA Container Toolkit),
 `frontend.Dockerfile` (сборка Vite, nginx раздаёт её и проксирует `/api/` в приложение). Колёса из `wheels/` копируются в сборку обоих
@@ -42,9 +49,15 @@ CPU-образ. Веса SAM3, модель поиска, engine TensorRT и к�
 с распознаванием.
 
 При старте читается корневой `.env`; уже заданные переменные окружения имеют приоритет. Второй уровень, сомелье и whatis берут ключ
-из `OPENROUTER_API_KEY` (сомелье и whatis — ещё из файла по `OPENROUTER_API_KEY_FILE`). `openrouter_http_proxy` — proxy только для запросов
-сомелье и whatis к OpenRouter; пусто или нет — напрямую, `HTTP_PROXY`/`HTTPS_PROXY` они не читают. `SOMMELIER_DATA_DIR` — каталог диалогов
+из `OPENROUTER_API_KEY` (сомелье и whatis — ещё из файла по `OPENROUTER_API_KEY_FILE`). `SOMMELIER_DATA_DIR` — каталог диалогов
 сомелье, без неё — `data/sessions/` от текущего каталога.
+
+`OR_PROXY` — HTTP-прокси для всех вызовов OpenRouter: второй уровень, сомелье, whatis (`vinishko/openrouter_proxy.py`). Задана и не пуста —
+при старте приложения и при создании `NearDuplicateResolver` один GET списка моделей OpenRouter через прокси; не прошёл — `OpenRouterProxyError`
+с причиной (отказ соединения, 407 от прокси, код ответа OpenRouter) до загрузки моделей. Адрес — `http://[логин:пароль@]хост:порт`, пароль
+в сообщениях скрыт; socks не поддерживается. Сетевые ошибки вызовов в работе называют прокси, через который шёл запрос. Без `OR_PROXY` — как
+раньше: второй уровень берёт прокси из окружения (`HTTPS_PROXY`), сомелье и whatis — `openrouter_http_proxy`, пусто — напрямую, `HTTP_PROXY`/`HTTPS_PROXY`
+они не читают.
 
 Офлайн-проверки сомелье, whatis и второго уровня, без GPU, пайплайна и вызовов OpenRouter:
 

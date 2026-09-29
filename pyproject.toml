@@ -33,6 +33,7 @@ dependencies = [
     "python-multipart>=0.0.32",
     "pi-heif>=1.4.0",
     "tenacity>=9.1.4",
+    "python-dotenv>=1.2.3",
 ]
 [dependency-groups]
 cpu-inference = [

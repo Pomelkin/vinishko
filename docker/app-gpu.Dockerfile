@@ -11,10 +11,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 # Python 3.13 в Ubuntu 24.04 нет — ставит uv, в /opt/python: этот же путь переедет в итоговый образ
-ENV UV_COMPILE_BYTECODE=0 \
-    UV_CONCURRENT_DOWNLOADS=4 \
-    UV_CONCURRENT_INSTALLS=2 \
-    UV_LINK_MODE=copy \
+ENV UV_LINK_MODE=copy \
     UV_PYTHON_INSTALL_DIR=/opt/python \
     UV_PYTHON_PREFERENCE=only-managed
 RUN uv python install 3.13

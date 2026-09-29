@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from vinishko.openrouter_proxy import describe_error
+from vinishko.openrouter_proxy import opener as openrouter_opener
 from vinishko.sommelier.solution.config import SETTINGS
 from vinishko.sommelier.solution.config import SommelierSettings
 from vinishko.sommelier.solution.config import settings_with_overrides
@@ -328,11 +330,7 @@ def respond(request: Mapping[str, Any]) -> dict[str, Any]:  # noqa: C901  # ty: 
     max_attempts = 2 if prepared.first_turn else 1
     try:
         proxy = os.environ.get("openrouter_http_proxy", "").strip()  # noqa: SIM112
-        opener = urllib.request.build_opener(
-            urllib.request.ProxyHandler(
-                {"http": proxy, "https": proxy} if proxy else {}
-            )
-        )
+        opener = openrouter_opener({"http": proxy, "https": proxy} if proxy else {})
         for attempt_number in range(1, max_attempts + 1):
             attempt_trace: dict[str, Any] = {
                 "number": attempt_number,
@@ -401,12 +399,12 @@ def respond(request: Mapping[str, Any]) -> dict[str, Any]:  # noqa: C901  # ty: 
             trace,
         )
     except (OSError, TimeoutError, json.JSONDecodeError) as error:
-        trace["attempts"][-1]["error"] = f"{type(error).__name__}: {error}"
+        trace["attempts"][-1]["error"] = describe_error(error)
         if isinstance(error, json.JSONDecodeError):
             trace["raw_response_text"] = raw_text
             trace["attempts"][-1]["raw_response_text"] = raw_text
         return _failure(
             "provider_error",
-            f"{type(error).__name__}: {error}",
+            describe_error(error),
             trace,
         )

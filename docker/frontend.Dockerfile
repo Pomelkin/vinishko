@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Фронтенд: сборка Vite и раздача nginx; /api/ nginx проксирует в приложение (docker/frontend.nginx.conf).
+# Фронтенд: сборка Vite и раздача nginx; /api/ nginx проксирует в приложение (docker/frontend.site.conf).
 # Собирается из корня репозитория: docker compose build frontend
 
 FROM node:22-alpine AS build
@@ -16,4 +16,7 @@ RUN npm run build
 
 FROM nginx:1.30-alpine
 COPY docker/frontend.nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/frontend.site.conf /etc/nginx/vinishko/site.conf
+# шаблон читается, только когда docker-compose.tls.override.yml задаёт NGINX_ENVSUBST_TEMPLATE_DIR
+COPY docker/frontend.tls.nginx.conf.template /etc/nginx/vinishko/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html

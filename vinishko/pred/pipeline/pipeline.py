@@ -6,6 +6,7 @@ from dataclasses import field
 from pathlib import Path
 from typing import Protocol
 
+from kostyl.utils import setup_logger
 from PIL import Image
 
 from vinishko.pred.pipeline.catalog import Catalog
@@ -23,6 +24,9 @@ from vinishko.pred.pipeline.structs import RejectedBottle
 from vinishko.pred.pipeline.structs import UnmatchedBottle
 
 
+logger = setup_logger(fmt="detailed")
+
+
 class Searcher(Protocol):
     """Визуальный поиск: кропы бутылок → ответ на каждый, в том же порядке: BottleCandidates с кандидатами каталога либо UnmatchedBottle с отказом и причиной."""
 
@@ -36,6 +40,10 @@ class Searcher(Protocol):
 
     def slugs(self) -> set[str]:
         """Все позиции, которые поиск может выдать кандидатами."""
+        ...
+
+    def warmup(self) -> None:
+        """Холостой прогон, после которого первый настоящий запрос идёт с обычной скоростью."""
         ...
 
 
@@ -182,6 +190,14 @@ class Pipeline:
                     f"в каталоге ({catalog.description}) нет {len(missing)} позиций коллекции поиска, например {missing[:5]}: "
                     "коллекция и каталог из разных выгрузок"
                 )
+
+    def warmup(self) -> None:
+        """Прогрев нормализации и поиска до первого запроса: первые вызовы SAM3 и энкодера на GPU в разы дольше обычных."""
+        started = time.perf_counter()
+        self.normalizer.warmup()
+        if self.searcher is not None:
+            self.searcher.warmup()
+        logger.info(f"пайплайн прогрет: {time.perf_counter() - started:.2f} с")
 
     def __call__(self, img: Image.Image | Path | str) -> PipelineResult:
         """Картинка → выходы шагов: разметка нормализации, ответы поиска по годным бутылкам, ответы второго уровня, время каждого шага."""

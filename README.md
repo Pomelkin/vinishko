@@ -42,7 +42,8 @@ PyTorch 2.10 устанавливает собственные CUDA 12.8-биб�
 
 Compose поднимает Qdrant, единое приложение и nginx с frontend. Проверка готовности
 Qdrant завершается до запуска приложения. Nginx сохраняет префикс `/api` и обслуживает
-прямые ссылки `/scan/:id`, `/wine/:slug`. Для телефона используйте HTTPS перед nginx.
+прямые ссылки `/scan/:id`, `/wine/:slug`. Для телефона нужен HTTPS: `docker-compose.tls.override.yml`
+поднимает фронт на 443 с сертификатом Let's Encrypt с хоста, подробности в [vinishko/README.md](vinishko/README.md).
 Proxy OpenRouter на Windows-хосте указывайте через `host.docker.internal`, а не `127.0.0.1`.
 
 Первый старт скачивает SAM3 и энкодер, восстанавливает Qdrant из готового снапшота,

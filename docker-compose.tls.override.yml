@@ -1,0 +1,16 @@
+# Фронт по HTTPS на 443 поверх docker-compose.yml, сертификаты Let's Encrypt с хоста:
+#   docker compose -f docker-compose.yml -f docker-compose.tls.override.yml up -d --build
+# Вместе с GPU и без -f: COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.override.yml:docker-compose.tls.override.yml в .env.
+# В .env: LETSENCRYPT_DIR — каталог letsencrypt на хосте, TLS_DOMAIN — имя сертификата, то есть каталог в live/.
+# HTTP на 8080 отвечает редиректом на https://TLS_DOMAIN, кроме /v1/eval/ для скрипта оценки.
+services:
+  frontend:
+    ports:
+      - '443:443'
+    environment:
+      TLS_DOMAIN: ${TLS_DOMAIN:?задайте TLS_DOMAIN в .env}
+      # entrypoint nginx собирает default.conf из шаблона с TLS, запечённого в образ
+      NGINX_ENVSUBST_TEMPLATE_DIR: /etc/nginx/vinishko/templates
+    volumes:
+      # каталог целиком: файлы в live/ — симлинки в archive/
+      - ${LETSENCRYPT_DIR:?задайте LETSENCRYPT_DIR в .env}:/etc/letsencrypt:ro

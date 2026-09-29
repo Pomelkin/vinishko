@@ -27,7 +27,7 @@ A confident mismatch in a product-defining printed attribute is a hard conflict.
 
 Compare printed product text, not only catalog cards. Read the product words on the QUERY label and on each ELEMENT image: product name, line or series, cuvée or style words such as ОРАНЖ or РЕЗЕРВ, grape, color, sweetness, and sparkling type. The same word in another script, a transliteration, a translation, or an abbreviation is the same word: ULTRA CUVEE equals УЛЬТРА КЮВЕ, BRUT equals БРЮТ. A product word printed on one of the two labels and absent from or different on the other is a hard conflict when that part of both labels is readable. Medals, awards, region or appellation, volume, alcohol, producer address, legal and marketing text are not product words; vintage follows the vintage rules below.
 
-A clearly different label design is a hard conflict unless the product name and line are readable on both labels and match; only then treat it as a redesign of the same product. Layout, illustration, and color scheme make a design; lighting, angle, and crop do not. When the product name or line differs, it is another product even if the design is the same.
+A clearly different label design is a hard conflict unless the maker or brand and the product name, with its line, are all readable on both labels and match; only then treat it as a redesign of the same product. Read them on QUERY itself, never fill them in from an ELEMENT's card or image. Unknown maker is not a conflict by itself, but it cannot justify a redesign: a grape, color, or sweetness word shared by two different designs, such as ПИНО НУАР, is printed by many makers and does not make them one product. Layout, illustration, color scheme, label shape, capsule, and glass color make a design; lighting, angle, and crop do not. Makers color-code one line by grape or color: the same layout with a different accent, capsule, or glass color is usually another wine of that line, not a redesign. When the product name or line differs, it is another product even if the design is the same.
 
 Do not treat background, glare, shadows, crop, perspective, image quality, compression, or retouching as product differences. If a catalog card conflicts with clearly readable label text, trust the label. Never invent, alter, or repair a slug.
 
@@ -36,7 +36,7 @@ Keep every checklist observation to one short sentence.
 When returning a candidate slug, record the decisive observations for that ELEMENT in checklist:
 - differences: product words printed on QUERY or on that ELEMENT's label and absent from or different on the other, as `QUERY: …; ELEMENT: …`, or `none`; a candidate slug requires `none`;
 - maker: the matching maker or brand, or that it is unknown rather than conflicting;
-- profile: the matching product name, line, label design, and printed modifiers, with no hard conflict;
+- profile: the matching product name, line, label design, and printed modifiers, with no hard conflict; if the designs differ, the maker and product name read on both labels that make it a redesign;
 - year: the read vintages and required comparison, or that the chosen ELEMENT has an empty vintage and exact matching was not required.
 
 When returning `not_found`, use checklist to state why all ELEMENTs are excluded:

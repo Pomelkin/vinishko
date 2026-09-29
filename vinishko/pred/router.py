@@ -177,12 +177,8 @@ async def health(request: Request) -> HealthResponse:
     )
 
 
-@router.post("/recognize", response_model=RecognizeResponse)
-async def recognize(
-    request: Request,
-    image: Annotated[UploadFile, File(description="Фото: jpeg, png, webp, heic")],
-) -> RecognizeResponse:
-    """Фото → бутылки с исходом."""
+async def read_picture(image: UploadFile) -> Image.Image:
+    """Загруженный файл → фото после EXIF-поворота; больше 20 МиБ или 80 Мп — 413, не картинка — 400."""
     data = await image.read(MAX_RECOGNITION_BYTES + 1)
     if len(data) > MAX_RECOGNITION_BYTES:
         raise HTTPException(status_code=413, detail="Фото превышает 20 МиБ")
@@ -196,7 +192,7 @@ async def recognize(
         return open_image(BytesIO(data))
 
     try:
-        picture = await asyncio.to_thread(decode)
+        return await asyncio.to_thread(decode)
     except Image.DecompressionBombError as error:
         raise HTTPException(
             status_code=413, detail="Слишком большое разрешение фото"
@@ -205,6 +201,15 @@ async def recognize(
         raise HTTPException(
             status_code=400, detail=f"файл не читается как изображение: {error}"
         ) from error
+
+
+@router.post("/recognize", response_model=RecognizeResponse)
+async def recognize(
+    request: Request,
+    image: Annotated[UploadFile, File(description="Фото: jpeg, png, webp, heic")],
+) -> RecognizeResponse:
+    """Фото → бутылки с исходом."""
+    picture = await read_picture(image)
     pipe = current(request)
     lock: threading.Lock = request.app.state.lock
 

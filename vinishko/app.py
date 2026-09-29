@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from kostyl.utils import setup_logger
 
+from vinishko.openrouter_proxy import check_proxy
 from vinishko.pred.pipeline.catalog import load_catalog
 from vinishko.pred.pipeline.configs import DEFAULT_CONFIG as PIPELINE_CONFIG
 from vinishko.pred.pipeline.configs import load_config as load_pipeline_config
@@ -40,6 +41,7 @@ from vinishko.pred.pipeline.steps.vis_searcher.configs import (
 from vinishko.pred.pipeline.steps.vis_searcher.configs import (
     load_config as load_search_config,
 )
+from vinishko.pred.eval import router as eval_router
 from vinishko.pred.router import router as pred_router
 from vinishko.pred.frontend import catalog_images, router as frontend_router
 from vinishko.pred.ui import WineCatalog
@@ -71,6 +73,8 @@ def create_app(pipeline: Pipeline | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         load_openrouter_env()
+        # OR_PROXY задана — OpenRouter должен отвечать через неё, иначе приложение не поднимается
+        await asyncio.to_thread(check_proxy)
         sessions = Path(os.environ.get("SOMMELIER_DATA_DIR", "data/sessions"))
         app.state.sommelier = SommelierService(JsonSessionStore(sessions.resolve()))
         app.state.whatis = RecognitionService()
@@ -80,6 +84,8 @@ def create_app(pipeline: Pipeline | None = None) -> FastAPI:
             else await asyncio.to_thread(default_pipeline)
         )
         app.state.lock = threading.Lock()
+        # первые вызовы SAM3 и энкодера поиска на GPU в разы дольше обычных: прогрев до первого запроса
+        await asyncio.to_thread(app.state.pipeline.warmup)
         app.state.ui_catalog = WineCatalog(
             app.state.pipeline.catalog.rows,
             await asyncio.to_thread(catalog_images, app.state.pipeline),
@@ -93,6 +99,7 @@ def create_app(pipeline: Pipeline | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(pred_router)
+    app.include_router(eval_router)
     app.include_router(sommelier_router)
     app.include_router(whatis_router)
     app.include_router(frontend_router)
@@ -174,6 +181,7 @@ def main(
 ) -> None:
     """Поднять пайплайн и HTTP-сервер."""
     load_openrouter_env()
+    check_proxy()  # до SAM3 и модели поиска: мёртвый прокси виден за секунды
     cfg = load_pipeline_config(pipeline_config)
     search_cfg = load_search_config(search_config)
     search_cfg.debug_path = None

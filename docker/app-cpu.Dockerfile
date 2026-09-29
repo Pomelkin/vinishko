@@ -8,10 +8,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.29 /uv /bin/uv
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
-ENV UV_COMPILE_BYTECODE=0 \
-    UV_CONCURRENT_DOWNLOADS=4 \
-    UV_CONCURRENT_INSTALLS=2 \
-    UV_LINK_MODE=copy \
+ENV UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
     UV_PYTHON=/usr/local/bin/python3.13
 WORKDIR /app

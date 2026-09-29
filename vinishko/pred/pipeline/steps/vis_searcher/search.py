@@ -2,6 +2,7 @@
 
 import json
 import re
+import time
 from datetime import UTC
 from datetime import datetime
 from pathlib import Path
@@ -189,6 +190,19 @@ class VisSearcher:
                 / datetime.now(tz=UTC).astimezone().strftime("%Y-%m-%d_%H-%M-%S_%f"),
             )
         return results
+
+    def warmup(self) -> None:
+        """Холостой прогон на белом кропе: энкодер по каждому входу и поиск в qdrant с досчётом векторов — первый запрос не платит за разогрев."""
+        started = time.perf_counter()
+        blank = np.full((*self.files.input_size, 3), 255, np.uint8)
+        query: dict[str, np.ndarray] = {
+            inp: self.encoder([blank])[0] for inp in self.inputs
+        }
+        encoded = time.perf_counter()
+        self._hits(query)
+        logger.info(
+            f"поиск прогрет: энкодер {encoded - started:.2f} с, qdrant {time.perf_counter() - encoded:.2f} с"
+        )
 
     def _search(
         self, crop: BottleCrop, query: dict[str, np.ndarray]
