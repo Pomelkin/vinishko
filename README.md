@@ -1,5 +1,6 @@
 # Команда «Ландурики». Поиск вина по картинке для платформы «Своё Вино»
 
+> 
 ## Метрики решения
 
 | Метрика | Значение | Что означает |
@@ -99,5 +100,5 @@ npm run dev
 Интерфейс автоматически запрашивает whatis при отображении неизвестного вина, если признаки ещё не сохранены. Демонстрация без API включается
 явно через `VITE_API_MODE=mock`. Секреты нельзя помещать в `VITE_*`.
 
-Контракт: [frontend/API.md](frontend/API.md). Архитектура: [frontend/ARCHITECTURE.md](frontend/ARCHITECTURE.md).
-Сервер: [vinishko/README.md](vinishko/README.md). Проверки: [frontend/qa/VERIFICATION.md](frontend/qa/VERIFICATION.md).
+Архитектура: [ARCHITECTURE.md](ARCHITECTURE.md).
+Сервер: [README.md](README.md).
