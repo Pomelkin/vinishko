@@ -327,7 +327,7 @@ def respond(request: Mapping[str, Any]) -> dict[str, Any]:  # noqa: C901  # ty: 
     )
     max_attempts = 2 if prepared.first_turn else 1
     try:
-        proxy = os.environ.get("openrouter_http_proxy", "").strip()
+        proxy = os.environ.get("openrouter_http_proxy", "").strip()  # noqa: SIM112
         opener = urllib.request.build_opener(
             urllib.request.ProxyHandler(
                 {"http": proxy, "https": proxy} if proxy else {}
@@ -340,7 +340,7 @@ def respond(request: Mapping[str, Any]) -> dict[str, Any]:  # noqa: C901  # ty: 
                 "raw_response": None,
             }
             trace["attempts"].append(attempt_trace)
-            with opener.open(  # noqa: S310 - configured OpenRouter endpoint.
+            with opener.open(
                 http_request,
                 timeout=prepared.settings.timeout_seconds,
             ) as response:
