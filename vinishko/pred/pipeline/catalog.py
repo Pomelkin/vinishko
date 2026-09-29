@@ -8,11 +8,13 @@ import boto3
 from botocore.exceptions import BotoCoreError
 from botocore.exceptions import ClientError
 from botocore.exceptions import NoCredentialsError
+from kostyl.utils import setup_logger
 
 from vinishko.pred.pipeline.configs import LocalCatalogConfig
 from vinishko.pred.pipeline.configs import S3CatalogConfig
 
 
+logger = setup_logger(fmt="detailed")
 S3_REASONS = {
     "NoSuchKey": "объекта нет в бакете",
     "NoSuchBucket": "бакета нет",
@@ -99,4 +101,5 @@ def load_catalog(
             for key, value in record.items()
             if key is not None
         }
+    logger.info(f"каталог: {description}, позиций {len(rows)}")
     return Catalog(rows, description)
