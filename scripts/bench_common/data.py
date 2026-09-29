@@ -13,8 +13,8 @@ from PIL import Image
 from rich.progress import Progress
 from torch.utils.data import Dataset
 
-from vinishko.pipeline.steps.normalization.normalize import render_bottle
-from vinishko.pipeline.steps.normalization.seg import open_image
+from vinishko.pred.pipeline.steps.normalization.normalize import render_bottle
+from vinishko.pred.pipeline.steps.normalization.seg import open_image
 
 
 MARKUP_NAME = "normalization.jsonl"

@@ -14,7 +14,7 @@ from scripts.bench_common.metrics import KS
 from scripts.bench_common.metrics import SIGNALS
 from scripts.bench_common.metrics import ModeResult
 from scripts.bench_common.metrics import Retrieval
-from vinishko.pipeline.steps.normalization.seg import open_image
+from vinishko.pred.pipeline.steps.normalization.seg import open_image
 
 
 MODE_TITLES = {"raw": "без нормализации", "norm": "с нормализацией"}

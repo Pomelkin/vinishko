@@ -11,8 +11,8 @@ from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
 from torch.utils.data import DataLoader
 from torch.utils.data import get_worker_info
 
-from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
-from vinishko.pipeline.steps.normalization.normalize import load_config
+from vinishko.pred.pipeline.steps.normalization.normalize import HERE as NORM_DIR
+from vinishko.pred.pipeline.steps.normalization.normalize import load_config
 from vis_seacher_training.configs import DataConfig
 from vis_seacher_training.data.augmentations import TrainAugmenter
 from vis_seacher_training.data.dataset import WineViewDataset

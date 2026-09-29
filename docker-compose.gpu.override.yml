@@ -1,0 +1,16 @@
+# Приложение на GPU поверх docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.override.yml up -d --build
+# Чтобы не писать -f каждый раз: COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.override.yml в .env.
+# Нужны драйвер NVIDIA ≥ 580 (TensorRT собран под CUDA 13) и NVIDIA Container Toolkit.
+services:
+  app:
+    image: vinishko-app:gpu
+    build:
+      dockerfile: docker/app-gpu.Dockerfile
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

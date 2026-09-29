@@ -4,10 +4,10 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
-from vinishko.pipeline.steps.normalization.normalize import BORDERS
-from vinishko.pipeline.steps.normalization.normalize import affine
-from vinishko.pipeline.steps.normalization.normalize import all_points
-from vinishko.pipeline.steps.normalization.normalize import rotated_extent
+from vinishko.pred.pipeline.steps.normalization.normalize import BORDERS
+from vinishko.pred.pipeline.steps.normalization.normalize import affine
+from vinishko.pred.pipeline.steps.normalization.normalize import all_points
+from vinishko.pred.pipeline.steps.normalization.normalize import rotated_extent
 from vis_seacher_training.data.kernels import blend_color
 
 

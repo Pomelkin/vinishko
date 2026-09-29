@@ -1,7 +1,7 @@
 """Сквозная проверка через API: фото тестового набора уходят в POST /recognize, ответы сравниваются с разметкой, метрики классификации.
 
 Промежуточные картинки не сохраняются, это проверка работоспособности и качества сервиса как чёрного ящика; разбор шагов с дампами —
-vinishko/pipeline/evaluate_pipeline.py. Запуск из корня при поднятом сервисе: python -m vinishko.e2e --url http://127.0.0.1:8000
+vinishko/pred/pipeline/evaluate_pipeline.py. Запуск из корня при поднятом сервисе: python -m vinishko.e2e --url http://127.0.0.1:8000
 Разметка — CSV с колонками image_filename и slug; пустой slug значит, что верный ответ — отказ.
 """
 
@@ -23,9 +23,9 @@ from kostyl.utils import setup_logger
 from rich.console import Console
 from rich.table import Table
 
-from vinishko.pipeline.steps.vis_searcher.evaluate import progress
-from vinishko.pipeline.steps.vis_searcher.evaluate import read_test
-from vinishko.pipeline.steps.vis_searcher.evaluate import share
+from vinishko.pred.pipeline.steps.vis_searcher.evaluate import progress
+from vinishko.pred.pipeline.steps.vis_searcher.evaluate import read_test
+from vinishko.pred.pipeline.steps.vis_searcher.evaluate import share
 
 
 console = Console()

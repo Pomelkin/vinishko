@@ -28,7 +28,7 @@ from scripts.bench_dino.model import read_contract
 from scripts.bench_tulip.search import (
     retrieve,
 )  # точный faiss по косинусу: у обеих моделей один вектор на картинку
-from vinishko.pipeline.steps.normalization.normalize import load_config
+from vinishko.pred.pipeline.steps.normalization.normalize import load_config
 
 
 SPEC = ReportSpec(model=MODEL, score_name="косинус", score_short="cos")

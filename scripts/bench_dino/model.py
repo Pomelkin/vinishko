@@ -119,7 +119,7 @@ def make_runner(
             raise RuntimeError(
                 "TensorRT работает только на CUDA: укажите --device cuda:<индекс>"
             )
-        from vinishko.pipeline.steps.vis_searcher.backends import TensorRTRunner
+        from vinishko.pred.pipeline.steps.vis_searcher.backends import TensorRTRunner
 
         return TensorRTRunner(onnx, device, max_batch=batch_size, input_size=input_size)
     return OnnxRuntimeRunner(onnx, device)

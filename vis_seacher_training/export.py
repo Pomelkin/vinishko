@@ -107,8 +107,8 @@ def verify_tensorrt(
 
     onnxruntime bf16-граф не исполняет, поэтому другого исполнителя у этого файла нет. Батч подгоняется под профиль engine — ровно input_size.
     """
-    from vinishko.pipeline.steps.vis_searcher.backends import TensorRTRunner
-    from vinishko.pipeline.steps.vis_searcher.backends import tensorrt_available
+    from vinishko.pred.pipeline.steps.vis_searcher.backends import TensorRTRunner
+    from vinishko.pred.pipeline.steps.vis_searcher.backends import tensorrt_available
 
     if not tensorrt_available():
         logger.warning(

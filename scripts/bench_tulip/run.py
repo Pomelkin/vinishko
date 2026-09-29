@@ -26,7 +26,7 @@ from scripts.bench_tulip.model import MODEL
 from scripts.bench_tulip.model import RESIZE_MODES
 from scripts.bench_tulip.model import TulipWorker
 from scripts.bench_tulip.search import retrieve
-from vinishko.pipeline.steps.normalization.normalize import load_config
+from vinishko.pred.pipeline.steps.normalization.normalize import load_config
 
 
 SPEC = ReportSpec(model=MODEL, score_name="косинус", score_short="cos")

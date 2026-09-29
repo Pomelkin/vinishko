@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 import rich_click as click
 
-from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
-from vinishko.pipeline.steps.normalization.normalize import load_config
+from vinishko.pred.pipeline.steps.normalization.normalize import HERE as NORM_DIR
+from vinishko.pred.pipeline.steps.normalization.normalize import load_config
 from vis_seacher_training.configs import TrainingConfig
 from vis_seacher_training.data.augmentations import TrainAugmenter
 from vis_seacher_training.data.dataset import WineViewDataset

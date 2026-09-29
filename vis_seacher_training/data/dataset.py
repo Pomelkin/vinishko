@@ -4,8 +4,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from vinishko.pipeline.steps.normalization.normalize import render_bottle
-from vinishko.pipeline.steps.normalization.seg import open_image
+from vinishko.pred.pipeline.steps.normalization.normalize import render_bottle
+from vinishko.pred.pipeline.steps.normalization.seg import open_image
 from vis_seacher_training.data.augmentations import TrainAugmenter
 from vis_seacher_training.data.augmentations import resize_to_fit
 from vis_seacher_training.data.markup import Items

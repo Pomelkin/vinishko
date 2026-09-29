@@ -26,8 +26,8 @@ from lightning.pytorch.strategies import ModelParallelStrategy
 from lightning.pytorch.strategies import SingleDeviceStrategy
 from lightning.pytorch.strategies import Strategy
 
-from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
-from vinishko.pipeline.steps.normalization.normalize import load_config
+from vinishko.pred.pipeline.steps.normalization.normalize import HERE as NORM_DIR
+from vinishko.pred.pipeline.steps.normalization.normalize import load_config
 from vis_seacher_training.configs import TrainingConfig
 from vis_seacher_training.datamodule import WineDataModule
 from vis_seacher_training.export import export_model

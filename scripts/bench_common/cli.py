@@ -34,7 +34,7 @@ from scripts.bench_common.report import ReportSpec
 from scripts.bench_common.report import build_html
 from scripts.bench_common.report import column_title
 from scripts.bench_common.report import metric_sections
-from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
+from vinishko.pred.pipeline.steps.normalization.normalize import HERE as NORM_DIR
 
 
 console = Console()

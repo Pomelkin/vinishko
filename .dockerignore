@@ -1,0 +1,26 @@
+# Контекст сборки всех образов — корень репозитория; внутрь попадает только перечисленное здесь
+*
+!pyproject.toml
+!uv.lock
+!wheels/
+!vinishko/
+!frontend/
+!docker/
+
+**/__pycache__
+**/*.pyc
+# веса SAM3 (3.4 ГБ) контейнер скачивает сам в кэш на томе
+**/*.pt
+# локальные данные калибровки нормализации и диалоги сомелье
+vinishko/pred/pipeline/steps/normalization/images
+vinishko/pred/pipeline/steps/normalization/out
+vinishko/pred/pipeline/steps/normalization/cache
+vinishko/sommelier/data
+
+frontend/node_modules
+frontend/dist
+frontend/references
+frontend/test-results
+frontend/playwright-report
+frontend/.env.local
+frontend/*.tsbuildinfo

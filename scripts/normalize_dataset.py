@@ -25,11 +25,11 @@ from rich.progress import TimeElapsedColumn
 from rich.progress import TimeRemainingColumn
 from rich.table import Table
 
-from vinishko.pipeline.steps.normalization.normalize import HERE as NORM_DIR
-from vinishko.pipeline.steps.normalization.normalize import Normalizer
-from vinishko.pipeline.steps.normalization.normalize import load_config
-from vinishko.pipeline.structs import BottleCrop
-from vinishko.pipeline.structs import RejectedBottle
+from vinishko.pred.pipeline.steps.normalization.normalize import HERE as NORM_DIR
+from vinishko.pred.pipeline.steps.normalization.normalize import Normalizer
+from vinishko.pred.pipeline.steps.normalization.normalize import load_config
+from vinishko.pred.pipeline.structs import BottleCrop
+from vinishko.pred.pipeline.structs import RejectedBottle
 
 
 console = Console()

@@ -132,8 +132,8 @@ def verify_tensorrt(
     input_size: tuple[int, int],
 ) -> float | None:
     """Сверка bf16-графа через TensorRT с PyTorch float32: наименьший косинус по батчу; None — TensorRT не установлен."""
-    from vinishko.pipeline.steps.vis_searcher.backends import TensorRTRunner
-    from vinishko.pipeline.steps.vis_searcher.backends import tensorrt_available
+    from vinishko.pred.pipeline.steps.vis_searcher.backends import TensorRTRunner
+    from vinishko.pred.pipeline.steps.vis_searcher.backends import tensorrt_available
 
     if not tensorrt_available():
         logger.warning(f"{path.name} не сверен: нет tensorrt либо CUDA")
