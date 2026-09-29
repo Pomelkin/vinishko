@@ -3,6 +3,8 @@
 React + TypeScript + Vite. По умолчанию подключён настоящий API.
 Полный запуск CPU/GPU — в [корневом README](../README.md).
 
+(!) Если возникли проблемы с запуском, пишите в Telegram: [@pomelk1n](https://t.me/pomelk1n) или [@zeromikhai](https://t.me/zeromikhai).
+
 ## Разработка и сборка
 
 Node.js 22.12+:
