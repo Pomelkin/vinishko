@@ -8,7 +8,7 @@ top_k: 10
 
 qdrant:
   collection: catalog_siglip2_hybrid
-  host: 127.0.0.1
+  host: qdrant
   port: 6333
   https: false # true для сервера за TLS, ключ API — в окружении QDRANT_API_KEY
   # path: ../../../../../.qdrant                           # встроенный qdrant без сервера, для локальной отладки
