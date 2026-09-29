@@ -8,9 +8,10 @@ import { BottlePhoto } from "../../features/bottle-selection/BottlePhoto";
 import { Sheet } from "../../shared/ui/Sheet";
 import { WineCard, WinePreview } from "../../entities/wine/WineCard";
 import { Icon } from "../../shared/ui/Icon";
-import type { WineSummary } from "../../shared/api/contracts";
+import type { Suggestions, WineSummary } from "../../shared/api/contracts";
 import type { ScanSession } from "../../shared/storage/sessions";
 import { UnknownWine } from "../../features/unknown-wine/UnknownWine";
+import { CatalogSuggestions } from "../../features/unknown-wine/CatalogSuggestions";
 import s from "./ScanResultPage.module.css";
 const variants = (n: number) =>
   `${n} ${
@@ -104,18 +105,34 @@ function ScanResult({ scanId }: { scanId: string }) {
   const detections = session.recognitionResult.detections;
   const selected = detections.find((d) => d.id === session.selectedDetectionId);
   const open = session.sheetView !== "closed" && !!selected;
-  // Похожие — кандидаты поиска: они есть, когда отказал второй уровень; отказал поиск — похожих нет.
-  const shown = selected?.similar.map((c) => c.wine) ?? [];
+  // Похожие — кандидаты поиска, они есть, когда отказал второй уровень. Отказал поиск — вина каталога
+  // той категории, что определил whatis, своя винодельня первой.
+  const suggested = selected?.similar.length
+    ? []
+    : (selected?.suggestions?.wines ?? []);
+  const shown = suggested.length
+    ? suggested
+    : (selected?.similar.map((c) => c.wine) ?? []);
   const wine: WineSummary | undefined =
     session.sheetView === "candidate"
-      ? selected?.similar.find(
+      ? (suggested.find((w) => w.slug === session.selectedSimilarWineSlug) ??
+        selected?.similar.find(
           (c) => c.slug === session.selectedSimilarWineSlug,
-        )?.wine
+        )?.wine)
       : session.sheetView === "match"
         ? selected?.match?.wine
         : undefined;
   const change = async (patch: Partial<ScanSession>) =>
     update({ ...patch, relevantScrollPositions: { ...scroll.current } });
+  const saveSuggestions = (id: string, value: Suggestions) =>
+    void change({
+      recognitionResult: {
+        ...session.recognitionResult,
+        detections: detections.map((d) =>
+          d.id === id ? { ...d, suggestions: value } : d,
+        ),
+      },
+    });
   const select = (id: string) => {
     const d = detections.find((d) => d.id === id);
     if (!d) return;
@@ -361,15 +378,28 @@ function ScanResult({ scanId }: { scanId: string }) {
                     }
                   />
                 )}
+              {selected!.status === "unmatched" && (
+                <CatalogSuggestions
+                  key={`suggestions-${selected!.id}`}
+                  detection={selected!}
+                  onLoaded={(value) => saveSuggestions(selected!.id, value)}
+                />
+              )}
               <p className="muted">
-                {shown.length
-                  ? "Похожие варианты по результатам поиска. Это не подтверждение точного совпадения."
-                  : "Похожих вин пока нет. Сделайте ещё одно фото или воспользуйтесь поиском по названию."}
+                {suggested.length
+                  ? "Вина из каталога с теми же винодельней или цветом, что на этикетке. Это не точное совпадение."
+                  : shown.length
+                    ? "Похожие варианты по результатам поиска. Это не подтверждение точного совпадения."
+                    : "Похожих вин пока нет. Сделайте ещё одно фото или воспользуйтесь поиском по названию."}
               </p>
               {shown.length ? (
                 <>
                   <div className="section-title">
-                    <h2>Похожие вина</h2>
+                    <h2>
+                      {suggested.length
+                        ? selected!.suggestions!.title
+                        : "Похожие вина"}
+                    </h2>
                     <span>{variants(shown.length)}</span>
                   </div>
                   <div className="grid">

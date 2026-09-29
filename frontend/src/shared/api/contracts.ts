@@ -82,12 +82,18 @@ export const UnknownWineSchema = z.object({
   category: z.string(),
   brand: z.string(),
 });
+/** Похожие для бутылки без кандидатов поиска: вина каталога категории, которую определил whatis, своя винодельня — первой; title null — признаков нет. */
+export const SuggestionsSchema = z.object({
+  title: z.string().nullable(),
+  wines: z.array(WineSummarySchema),
+});
 const base = {
   id: z.string().min(1),
   polygon: PolygonSchema,
   polygons: z.array(PolygonSchema).min(1).optional(),
   unknownWine: UnknownWineSchema.nullable().optional(),
   unknownWineError: z.string().nullable().optional(),
+  suggestions: SuggestionsSchema.nullable().optional(),
   rejection: z
     .object({
       stage: z.string(),
@@ -146,6 +152,7 @@ export type Point = [number, number];
 export type WineSummary = z.infer<typeof WineSummarySchema>;
 export type WineDetails = z.infer<typeof WineDetailsSchema>;
 export type Candidate = z.infer<typeof CandidateSchema>;
+export type Suggestions = z.infer<typeof SuggestionsSchema>;
 export type BottleDetection = z.infer<typeof DetectionSchema>;
 export type RecognitionResponse = z.infer<typeof RecognitionSchema>;
 export interface RecognitionService {

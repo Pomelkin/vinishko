@@ -40,17 +40,26 @@ beforeAll(() => {
 afterEach(cleanup);
 
 let fetch: ReturnType<typeof vi.fn>;
+let suggestions: { title: string | null; wines: unknown[] };
 beforeEach(() => {
+  suggestions = {
+    title: "Белые вина в каталоге",
+    wines: wines.slice(0, 3).map(summary),
+  };
   fetch = vi.fn(async (url: string) => {
     await new Promise((resolve) => setTimeout(resolve, 50));
-    return url.endsWith("/whatis")
-      ? new Response(
-          JSON.stringify({ category: "Красное", brand: "Не удалось определить" }),
-        )
-      : new Response("{}", { status: 404 });
+    if (url.endsWith("/whatis"))
+      return new Response(
+        JSON.stringify({ category: "Белое", brand: "Не удалось определить" }),
+      );
+    if (url.includes("/suggestions?"))
+      return new Response(JSON.stringify(suggestions));
+    return new Response("{}", { status: 404 });
   });
   vi.stubGlobal("fetch", fetch);
 });
+const calls = (path: string) =>
+  fetch.mock.calls.filter(([url]) => String(url).includes(path)).length;
 
 async function openUnmatched(detection: Partial<BottleDetection>) {
   const base = response.detections[0];
@@ -74,30 +83,48 @@ async function openUnmatched(detection: Partial<BottleDetection>) {
       </ScanProvider>
     </MemoryRouter>,
   );
-  await waitFor(() => expect(screen.getByText("Красное")).toBeInTheDocument());
-}
-
-it("second-level rejection shows search candidates and the whatis block exactly once", async () => {
-  const similar = wines.slice(0, 3).map((wine, i) => ({
-    slug: wine.slug,
-    rank: i + 1,
-    similarityScore: 0.8,
-    wine: summary(wine),
-  }));
-  await openUnmatched({ similar });
-  // Duplicate sibling keys used to leak a new block on every re-render while whatis was pending.
+  await waitFor(() => expect(screen.getByText("Белое")).toBeInTheDocument());
+  // Раньше одинаковые ключи соседей плодили новый блок whatis на каждой перерисовке, пока шёл запрос.
   await new Promise((resolve) => setTimeout(resolve, 300));
   expect(screen.getAllByText(WHATIS_TITLE)).toHaveLength(1);
-  expect(
-    fetch.mock.calls.filter(([url]) => String(url).endsWith("/whatis")),
-  ).toHaveLength(1);
+  expect(calls("/whatis")).toBe(1);
+}
+
+const searchSimilar = wines.slice(3, 5).map((wine, i) => ({
+  slug: wine.slug,
+  rank: i + 1,
+  similarityScore: 0.8,
+  wine: summary(wine),
+}));
+
+it("second-level rejection keeps search candidates and asks no catalog wines", async () => {
+  await openUnmatched({ similar: searchSimilar });
+  expect(calls("/suggestions?")).toBe(0);
   expect(screen.getByRole("heading", { name: "Похожие вина" })).toBeVisible();
-  expect(screen.getByText("3 варианта")).toBeVisible();
+  expect(screen.getByText("2 варианта")).toBeVisible();
+  expect(screen.getByText(/по результатам поиска/)).toBeVisible();
 });
 
-it("search rejection has no similar wines", async () => {
+it("search rejection shows catalog wines by recognized attributes", async () => {
   await openUnmatched({ similar: [] });
-  expect(screen.getAllByText(WHATIS_TITLE)).toHaveLength(1);
+  await waitFor(() =>
+    expect(
+      screen.getByRole("heading", { name: "Белые вина в каталоге" }),
+    ).toBeVisible(),
+  );
+  expect(
+    String(
+      fetch.mock.calls.find(([url]) =>
+        String(url).includes("/suggestions?"),
+      )![0],
+    ),
+  ).toContain("category=%D0%91%D0%B5%D0%BB%D0%BE%D0%B5");
+});
+
+it("search rejection with nothing recognized has no similar wines", async () => {
+  suggestions = { title: null, wines: [] };
+  await openUnmatched({ similar: [] });
+  await waitFor(() => expect(calls("/suggestions?")).toBe(1));
   expect(screen.queryByRole("heading", { name: "Похожие вина" })).toBeNull();
   expect(screen.getByText(/Похожих вин пока нет/)).toBeVisible();
 });
