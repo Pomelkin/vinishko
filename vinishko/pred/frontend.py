@@ -49,6 +49,18 @@ async def wines(
     return request.app.state.ui_catalog.search(q)
 
 
+@router.get("/suggestions")
+async def suggestions(
+    request: Request,
+    seed: Annotated[str, Query(min_length=1, max_length=200)],
+    brand: Annotated[str | None, Query(max_length=300)] = None,
+    category: Annotated[str | None, Query(max_length=100)] = None,
+) -> dict:
+    """Вина каталога по винодельне и цвету, которые whatis узнал на бутылке не из каталога; title null и пустой список — признаков нет."""
+    found = request.app.state.ui_catalog.suggestions(brand, category, seed)
+    return found or {"title": None, "wines": []}
+
+
 @router.get("/wines/{slug}")
 async def wine(request: Request, slug: str) -> dict:
     catalog = request.app.state.ui_catalog

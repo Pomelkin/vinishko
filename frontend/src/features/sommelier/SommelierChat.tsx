@@ -75,19 +75,32 @@ export function SommelierChat({
       )
     ) {
       setId(saved);
-      void run(async (signal) => {
-        const data = parse(
-          History,
-          await request(`/sommelier/sessions/${saved}`, { signal }),
-        );
-        setMessages(data.messages);
-      });
+      void run((signal) => load(saved, signal));
     }
     return () => {
       flight.current?.abort();
     };
   }, [storageKey]);
 
+  // Истории на сервере нет — диалог не успел создаться или удалён: молча начинаем заново, без ошибки.
+  async function load(session: string, signal: AbortSignal) {
+    try {
+      const data = parse(
+        History,
+        await request(`/sommelier/sessions/${session}`, { signal }),
+      );
+      if (!signal.aborted) {
+        setMessages(data.messages);
+        setText("");
+      }
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 404)) throw e;
+      if (!signal.aborted) {
+        remember(null);
+        setMessages([]);
+      }
+    }
+  }
   async function run(action: (signal: AbortSignal) => Promise<void>) {
     if (flight.current && !flight.current.signal.aborted) return;
     const controller = new AbortController();
@@ -150,17 +163,7 @@ export function SommelierChat({
         setText("");
       }
     });
-  const restore = () =>
-    run(async (signal) => {
-      const data = parse(
-        History,
-        await request(`/sommelier/sessions/${id}`, { signal }),
-      );
-      if (!signal.aborted) {
-        setMessages(data.messages);
-        setText("");
-      }
-    });
+  const restore = (session: string) => run((signal) => load(session, signal));
   const remove = () =>
     run(async (signal) => {
       await request(`/sommelier/sessions/${id}`, { method: "DELETE", signal });
@@ -170,6 +173,11 @@ export function SommelierChat({
         setText("");
       }
     });
+  // Ответ не дошёл, но запрос мог выполниться на сервере: история подтягивается сама, без кнопки.
+  // Неудача оставляет uncertain как есть, поэтому повтор один; дальше поможет перезагрузка — история загрузится при открытии.
+  useEffect(() => {
+    if (uncertain && id) void restore(id);
+  }, [uncertain, id]);
   const suggestions = messages.at(-1)?.suggestions || [];
   return (
     <section className={s.chat} aria-label="AI-сомелье">
@@ -195,7 +203,7 @@ export function SommelierChat({
           </div>
         ))}
       </div>
-      {busy && <p role="status">Сомелье готовит ответ…</p>}
+      {busy && !uncertain && <p role="status">Сомелье готовит ответ…</p>}
       {!id ? (
         <button
           className="primary"
@@ -242,19 +250,13 @@ export function SommelierChat({
             </>
           )}
           {uncertain && (
-            <p className="muted">
-              Запрос мог выполниться. Загрузите историю перед следующим
-              сообщением.
+            <p className="muted" role="status">
+              {busy
+                ? "Связь прервалась, обновляем диалог…"
+                : "Не удалось обновить диалог. Обновите страницу — история загрузится сама."}
             </p>
           )}
           <div className={s.actions}>
-            <button
-              className="text-button"
-              disabled={busy}
-              onClick={() => void restore()}
-            >
-              Загрузить историю
-            </button>
             <button
               className="text-button"
               disabled={busy}

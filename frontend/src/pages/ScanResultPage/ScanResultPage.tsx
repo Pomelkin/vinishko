@@ -12,6 +12,14 @@ import type { WineSummary } from "../../shared/api/contracts";
 import type { ScanSession } from "../../shared/storage/sessions";
 import { UnknownWine } from "../../features/unknown-wine/UnknownWine";
 import s from "./ScanResultPage.module.css";
+const variants = (n: number) =>
+  `${n} ${
+    n % 10 === 1 && n % 100 !== 11
+      ? "вариант"
+      : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)
+        ? "варианта"
+        : "вариантов"
+  }`;
 export function ScanResultPage() {
   const { scanId = "" } = useParams();
   return <ScanResult key={scanId} scanId={scanId} />;
@@ -96,6 +104,8 @@ function ScanResult({ scanId }: { scanId: string }) {
   const detections = session.recognitionResult.detections;
   const selected = detections.find((d) => d.id === session.selectedDetectionId);
   const open = session.sheetView !== "closed" && !!selected;
+  // Похожие — кандидаты поиска: они есть, когда отказал второй уровень; отказал поиск — похожих нет.
+  const shown = selected?.similar.map((c) => c.wine) ?? [];
   const wine: WineSummary | undefined =
     session.sheetView === "candidate"
       ? selected?.similar.find(
@@ -329,7 +339,7 @@ function ScanResult({ scanId }: { scanId: string }) {
               {selected!.status === "unmatched" &&
                 !session.recognitionResult.metrics.isMock && (
                   <UnknownWine
-                    key={selected!.id}
+                    key={`whatis-${selected!.id}`}
                     image={session.imageBlob}
                     detection={selected}
                     contextId={`${scanId}-${selected!.id}`}
@@ -352,21 +362,21 @@ function ScanResult({ scanId }: { scanId: string }) {
                   />
                 )}
               <p className="muted">
-                {selected!.similar.length
+                {shown.length
                   ? "Похожие варианты по результатам поиска. Это не подтверждение точного совпадения."
                   : "Похожих вин пока нет. Сделайте ещё одно фото или воспользуйтесь поиском по названию."}
               </p>
-              {selected!.similar.length ? (
+              {shown.length ? (
                 <>
                   <div className="section-title">
                     <h2>Похожие вина</h2>
-                    <span>{selected!.similar.length} варианта</span>
+                    <span>{variants(shown.length)}</span>
                   </div>
                   <div className="grid">
-                    {selected!.similar.map((c) => (
+                    {shown.map((c) => (
                       <WineCard
                         key={c.slug}
-                        wine={c.wine}
+                        wine={c}
                         onClick={() => {
                           scroll.current.sheet = 0;
                           void change({

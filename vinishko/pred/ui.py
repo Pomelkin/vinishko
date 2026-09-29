@@ -1,11 +1,23 @@
 """Адаптер каталога и результатов пайплайна для React-интерфейса."""
 
 import math
+import random
 import re
 from urllib.parse import quote
 from uuid import uuid4
 
 from vinishko.pred.schemas import RecognizeResponse
+from vinishko.whatis.solution.catalog import UNKNOWN
+
+
+SUGGESTIONS = 5
+"""Сколько вин каталога предлагать бутылке, которой нет в каталоге."""
+COLORS_PLURAL = {
+    "Белое": "Белые",
+    "Красное": "Красные",
+    "Розовое": "Розовые",
+    "Оранжевое": "Оранжевые",
+}
 
 
 def text_value(row: dict[str, str], key: str) -> str | None:
@@ -81,6 +93,48 @@ class WineCatalog:
                 for word in words
             )
         ]
+
+    def suggestions(
+        self, brand: str | None, category: str | None, seed: str
+    ) -> dict | None:
+        """Вина каталога для бутылки, которой в нём нет, по признакам whatis: той же винодельни и цвета, иначе той же винодельни,
+        иначе того же цвета; None — whatis не узнал ни винодельню, ни цвет.
+
+        Выбор случайный, но для одного seed (id бутылки) один и тот же; позиции с фото берутся первыми."""
+        brand = brand if brand and brand != UNKNOWN else None
+        category = category if category and category != UNKNOWN else None
+        tiers: list[tuple[str, dict[str, str]]] = []
+        if brand and category:
+            tiers.append(
+                (
+                    f"{category} {brand} в каталоге",
+                    {"Винодельня": brand, "Категория": category},
+                )
+            )
+        if brand:
+            tiers.append((f"{brand} в каталоге", {"Винодельня": brand}))
+        if category:
+            tiers.append(
+                (
+                    f"{COLORS_PLURAL.get(category, category)} вина в каталоге",
+                    {"Категория": category},
+                )
+            )
+        for title, wanted in tiers:
+            pool = sorted(
+                slug
+                for slug, row in self.rows.items()
+                if all((row.get(k) or "").strip() == v for k, v in wanted.items())
+            )
+            if not pool:
+                continue
+            with_photo = [slug for slug in pool if self.summaries[slug]["imageUrl"]]
+            rng = random.Random(f"{seed}|{title}")
+            picked = rng.sample(with_photo, min(SUGGESTIONS, len(with_photo)))
+            rest = [slug for slug in pool if slug not in picked]
+            picked += rng.sample(rest, min(SUGGESTIONS - len(picked), len(rest)))
+            return {"title": title, "wines": [self.summaries[slug] for slug in picked]}
+        return None
 
     def details(self, slug: str) -> dict:
         row = self.rows[slug]
